@@ -901,3 +901,57 @@ def test_all_judge_bot_game_completes():
             break
         game.on_tick()
     assert game.status == "finished"
+
+
+# ==========================================================================
+# Grammar and announcement fixes
+# ==========================================================================
+
+
+def test_judge_announcement_two_judges_grammar():
+    game, users = _setup_game(num_players=4, options=HumanityCardsOptions(num_judges=2))
+    all_spoken = [m for u in users for m in u.get_spoken_messages()]
+    judge_names = [j.name for j in game._get_judges()]
+    # Should be "Alice and Bob are the Card Czars" — no trailing "and X, Y"
+    judge_announce = [m for m in all_spoken if "Card Czar" in m]
+    assert judge_announce, "no judge announcement found"
+    msg = judge_announce[0]
+    assert judge_names[0] in msg
+    assert judge_names[1] in msg
+    assert msg.count("and") == 1
+
+
+def test_judge_announcement_three_judges_oxford_comma():
+    game, users = _setup_game(num_players=4, options=HumanityCardsOptions(num_judges=3))
+    all_spoken = [m for u in users for m in u.get_spoken_messages()]
+    judge_names = [j.name for j in game._get_judges()]
+    judge_announce = [m for m in all_spoken if "Card Czar" in m]
+    assert judge_announce
+    msg = judge_announce[0]
+    # All names present, with Oxford comma pattern
+    for name in judge_names:
+        assert name in msg
+    assert ", and " in msg
+
+
+def test_all_judge_mode_no_czar_announcement():
+    game, users = _setup_all_judge(num_players=3)
+    all_spoken = [m for u in users for m in u.get_spoken_messages()]
+    assert not any("Card Czar" in m for m in all_spoken)
+
+
+def test_whose_turn_judging_lists_pending_judges():
+    game, users = _setup_multi_judge(num_judges=2, num_players=4)
+    judges = game._get_judges()
+    # First judge votes
+    game.execute_action(judges[0], "judge_pick_0")
+    assert game.phase == "judging"
+    # Use a non-judge player to call whose_turn
+    non_judge = game._get_non_judges()[0]
+    non_judge_user = next(u for u in users if u.username == non_judge.name)
+    non_judge_user.clear_messages()
+    game._action_whose_turn(non_judge, "whose_turn")
+    spoken = non_judge_user.get_spoken_messages()
+    # Should mention the pending judge, not "submitted"
+    assert any(judges[1].name in m for m in spoken)
+    assert not any("submitted" in m.lower() for m in spoken)

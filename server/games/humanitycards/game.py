@@ -407,6 +407,15 @@ class HumanityCardsGame(Game):
     def _all_players_are_judges(self) -> bool:
         return len(self._get_judges()) >= len(self.get_active_players())
 
+    @staticmethod
+    def _format_names(names: list[str]) -> str:
+        """Format a list of names as a grammatically correct series."""
+        if len(names) == 1:
+            return names[0]
+        if len(names) == 2:
+            return f"{names[0]} and {names[1]}"
+        return ", ".join(names[:-1]) + f", and {names[-1]}"
+
     def _get_submitters(self) -> list[HumanityCardsPlayer]:
         """Players expected to submit this round (everyone when all are judges)."""
         if self._all_players_are_judges():
@@ -805,30 +814,32 @@ class HumanityCardsGame(Game):
         if not user:
             return
         judges = self._get_judges()
-        if len(judges) == 1:
-            user.speak_l("hc-judge-is", player=judges[0].name, count=1, others="")
-        elif judges:
-            others = ", ".join(j.name for j in judges[1:])
-            user.speak_l("hc-judge-is", player=judges[0].name, count=len(judges), others=others)
+        if judges:
+            names = self._format_names([j.name for j in judges])
+            user.speak_l("hc-judge-is", names=names, count=len(judges))
 
     def _action_whose_turn(self, player: Player, action_id: str) -> None:
-        """Override default whose_turn to show submission status."""
+        """Override default whose_turn to show submission/judging status."""
         user = self.get_user(player)
         if not user:
             return
 
-        judges = self._get_judges()
-        judge_names = ", ".join(j.name for j in judges)
-
         if self.phase == "submitting":
-            # List who hasn't submitted
             waiting = [p.name for p in self._get_submitters() if p.submitted_cards is None]
             if waiting:
-                user.speak_l("hc-waiting-for", names=", ".join(waiting))
+                user.speak_l("hc-waiting-for", names=self._format_names(waiting))
             else:
-                user.speak_l("hc-all-submitted-waiting-judge", judge=judge_names)
+                judges = self._get_judges()
+                user.speak_l(
+                    "hc-all-submitted-waiting-judge",
+                    judge=self._format_names([j.name for j in judges]),
+                )
         elif self.phase == "judging":
-            user.speak_l("hc-all-submitted-waiting-judge", judge=judge_names)
+            pending = [j for j in self._get_judges() if j.id not in self.judge_picks]
+            if pending:
+                user.speak_l("hc-waiting-for-judges", names=self._format_names([j.name for j in pending]))
+            else:
+                user.speak_l("game-no-turn")
         else:
             user.speak_l("game-no-turn")
 
@@ -1330,17 +1341,15 @@ class HumanityCardsGame(Game):
         # Announce round
         self.broadcast_l("hc-round-start", round=self.round)
 
-        # Announce judge(s)
+        # Announce judge(s) — skip in all-judge mode (everyone knows)
         judges = self._get_judges()
-        if len(judges) == 1:
-            self.broadcast_l("hc-judge-is", player=judges[0].name, count=1, others="")
-        else:
-            others = ", ".join(j.name for j in judges[1:])
-            self.broadcast_l("hc-judge-is", player=judges[0].name, count=len(judges), others=others)
-        for judge in judges:
-            user = self.get_user(judge)
-            if user:
-                user.speak_l("hc-you-are-judge")
+        if not self._all_players_are_judges():
+            names = self._format_names([j.name for j in judges])
+            self.broadcast_l("hc-judge-is", names=names, count=len(judges))
+            for judge in judges:
+                user = self.get_user(judge)
+                if user:
+                    user.speak_l("hc-you-are-judge")
 
         # Announce black card
         black_text = self._speech_friendly_black(self.current_black_card["text"])
