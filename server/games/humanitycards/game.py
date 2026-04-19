@@ -1155,7 +1155,7 @@ class HumanityCardsGame(Game):
             user.speak_l("hc-select-cards-first")
 
     # ==========================================================================
-    # Score overrides
+    # Score overrides (CAH uses player.score, not team_manager)
     # ==========================================================================
 
     def _is_check_scores_enabled(self, player: Player) -> str | None:
@@ -1172,26 +1172,16 @@ class HumanityCardsGame(Game):
         user = self.get_user(player)
         if not user:
             return
-        sorted_players = sorted(
-            self.get_active_players(),
-            key=lambda p: p.score,  # type: ignore
-            reverse=True,
-        )
-        for p in sorted_players:
+        for p in sorted(self.get_active_players(), key=lambda p: p.score, reverse=True):  # type: ignore
             user.speak_l("hc-score-line", player=p.name, score=p.score)  # type: ignore
 
     def _action_check_scores_detailed(self, player: Player, action_id: str) -> None:
         user = self.get_user(player)
         if not user:
             return
-        sorted_players = sorted(
-            self.get_active_players(),
-            key=lambda p: p.score,  # type: ignore
-            reverse=True,
-        )
         lines = [
-            f"{p.name}: {p.score} points"  # type: ignore
-            for p in sorted_players
+            Localization.get(user.locale, "hc-score-line", player=p.name, score=p.score)  # type: ignore
+            for p in sorted(self.get_active_players(), key=lambda p: p.score, reverse=True)  # type: ignore
         ]
         self.status_box(player, lines)
 

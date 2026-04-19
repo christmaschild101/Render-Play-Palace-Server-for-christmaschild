@@ -56,7 +56,6 @@ hc-submit-cards = Submit ({ $selected } of { $required } selected)
 hc-submitted = You submitted your cards.
 hc-player-submitted = { $player } submitted.
 hc-submission-progress = { $submitted } of { $total } players submitted.
-hc-waiting-for-submissions = Waiting for submissions...
 hc-already-submitted = You already submitted your cards.
 hc-wrong-card-count = You need to select exactly { $count } { $count ->
     [one] card
@@ -99,9 +98,6 @@ hc-not-enough-cards = Not enough cards. Try enabling more packs.
 hc-view-hand = View hand
 
 # Scores
-hc-view-scores = View scores
-hc-no-scores = No scores yet.
-
 # Whose turn / whose judge
 hc-whose-judge = Who is judging
 hc-waiting-for = Waiting for { $names } to submit.
