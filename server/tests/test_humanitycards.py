@@ -354,7 +354,8 @@ def test_all_submit_triggers_judging_phase():
     assert game.phase == "judging"
 
 
-def test_submission_progress_broadcast():
+def test_submission_no_progress_broadcast():
+    # Progress broadcast was removed — sound only, no speech
     game, users = _setup_game(num_players=3)
     for u in users:
         u.clear_messages()
@@ -362,7 +363,8 @@ def test_submission_progress_broadcast():
     game.execute_action(non_judge, "toggle_card_0")
     game.execute_action(non_judge, "submit_cards")
     all_spoken = [m for u in users for m in u.get_spoken_messages()]
-    assert any("submitted" in m.lower() or "of" in m for m in all_spoken)
+    # Only the submitter hears "You submitted your cards." — no "N of M" broadcast
+    assert not any("of" in m and "player" in m.lower() for m in all_spoken)
 
 
 def test_pick_two_black_card_requires_two_submissions():
@@ -584,6 +586,109 @@ def test_judge_announcement_fires_each_new_round():
 
 
 # ==========================================================================
+# ==========================================================================
+# Multi-judge voting
+# ==========================================================================
+
+
+def _setup_multi_judge(num_judges: int = 2, num_players: int = 4):
+    game, users = _setup_game(
+        num_players=num_players,
+        options=HumanityCardsOptions(num_judges=num_judges),
+    )
+    for non_judge in game._get_non_judges():
+        game.execute_action(non_judge, "toggle_card_0")
+        game.execute_action(non_judge, "submit_cards")
+    assert game.phase == "judging"
+    return game, users
+
+
+def test_multi_judge_waits_for_all_judges():
+    game, _ = _setup_multi_judge(num_judges=2, num_players=4)
+    judges = game._get_judges()
+    assert len(judges) == 2
+    # First judge picks — should NOT end round yet
+    game.execute_action(judges[0], "judge_pick_0")
+    assert game.phase == "judging"
+    assert len(game.judge_picks) == 1
+
+
+def test_multi_judge_resolves_after_all_pick():
+    game, _ = _setup_multi_judge(num_judges=2, num_players=4)
+    judges = game._get_judges()
+    game.execute_action(judges[0], "judge_pick_0")
+    game.execute_action(judges[1], "judge_pick_0")
+    assert game.phase in ("round_end", "finished")
+
+
+def test_multi_judge_cannot_vote_twice():
+    game, _ = _setup_multi_judge(num_judges=2, num_players=4)
+    judges = game._get_judges()
+    game.execute_action(judges[0], "judge_pick_0")
+    first_picks = dict(game.judge_picks)
+    game.execute_action(judges[0], "judge_pick_1")  # attempt second vote
+    assert game.judge_picks == first_picks
+
+
+def test_multi_judge_majority_wins():
+    game, _ = _setup_multi_judge(num_judges=2, num_players=4)
+    judges = game._get_judges()
+    # Both judges pick submission 0 → that player wins
+    sub0_player_id = game.submissions[game.submission_order[0]]["player_id"]
+    game.execute_action(judges[0], "judge_pick_0")
+    game.execute_action(judges[1], "judge_pick_0")
+    winner = game.get_player_by_id(sub0_player_id)
+    assert winner.score == 1  # type: ignore[union-attr]
+
+
+def test_multi_judge_split_vote_tiebreak_by_order():
+    game, _ = _setup_multi_judge(num_judges=2, num_players=4)
+    judges = game._get_judges()
+    assert len(game.submissions) >= 2
+    # Judges split — submission_order[0] should win tiebreak
+    sub0_player_id = game.submissions[game.submission_order[0]]["player_id"]
+    game.execute_action(judges[0], "judge_pick_0")
+    game.execute_action(judges[1], "judge_pick_1")
+    winner = game.get_player_by_id(sub0_player_id)
+    assert winner.score == 1  # type: ignore[union-attr]
+
+
+def test_multi_judge_voted_broadcast():
+    game, users = _setup_multi_judge(num_judges=2, num_players=4)
+    for u in users:
+        u.clear_messages()
+    judges = game._get_judges()
+    game.execute_action(judges[0], "judge_pick_0")
+    all_spoken = [m for u in users for m in u.get_spoken_messages()]
+    assert any("made their choice" in m for m in all_spoken)
+
+
+def test_single_judge_no_waiting_broadcast():
+    game, users = _get_to_judging(num_players=3)
+    for u in users:
+        u.clear_messages()
+    judge = game._get_judges()[0]
+    game.execute_action(judge, "judge_pick_0")
+    all_spoken = [m for u in users for m in u.get_spoken_messages()]
+    # No "made their choice" intermediate broadcast — single judge goes straight to result
+    assert not any("made their choice" in m for m in all_spoken)
+
+
+def test_wrong_card_count_speaks_error_not_raw_tuple():
+    game, users = _setup_game(num_players=3)
+    game.current_black_card = _make_black("_ with _ always.", pick=2)
+    non_judge = game._get_non_judges()[0]
+    non_judge_user = next(u for u in users if u.username == non_judge.name)
+    # Select only 1 card, need 2
+    game.execute_action(non_judge, "toggle_card_0")
+    non_judge_user.clear_messages()
+    game.execute_action(non_judge, "submit_cards")
+    spoken = non_judge_user.get_spoken_messages()
+    assert spoken, "should have spoken an error"
+    assert not any("hc-wrong-card-count" in m for m in spoken), "raw key leaked into speech"
+    assert any("2" in m for m in spoken)
+
+
 # Round transition via ticks
 # ==========================================================================
 

@@ -64,6 +64,7 @@ hc-wrong-card-count = You need to select exactly { $count } { $count ->
 
 # Judging phase
 hc-judging-start = All cards are in! Time to judge.
+hc-judge-voted = { $player } has made their choice.
 hc-select-winner-prompt = Select the winning submission
 hc-submission-option = { $text }
 

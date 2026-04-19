@@ -235,6 +235,7 @@ class HumanityCardsGame(Game):
     last_winner_index: int = -1  # For "Most Recent Winner" czar selection
     submissions: list[dict] = field(default_factory=list)  # [{"player_id": str, "cards": [str]}]
     submission_order: list[int] = field(default_factory=list)  # Shuffled indices into submissions
+    judge_picks: dict[str, str] = field(default_factory=dict)  # judge_id → picked player_id
     round_end_ticks: int = 0  # Countdown ticks before next round starts
 
     @classmethod
@@ -638,7 +639,7 @@ class HumanityCardsGame(Game):
             return "game_humanitycards/cardselect.ogg"
         return None
 
-    def _is_submit_enabled(self, player: Player) -> str | tuple[str, dict] | None:
+    def _is_submit_enabled(self, player: Player) -> str | None:
         if self.status != "playing":
             return "action-not-playing"
         if player.is_spectator:
@@ -650,9 +651,6 @@ class HumanityCardsGame(Game):
             return "hc-already-submitted"
         if self.phase != "submitting":
             return "action-not-playing"
-        required = self.current_black_card["pick"] if self.current_black_card else 1
-        if len(hcp.selected_indices) != required:
-            return ("hc-wrong-card-count", {"count": required})
         return None
 
     def _is_submit_hidden(self, player: Player) -> Visibility:
@@ -691,6 +689,8 @@ class HumanityCardsGame(Game):
             return "action-spectator"
         if self.phase != "judging":
             return "action-not-playing"
+        if hcp.id in self.judge_picks:
+            return "action-already-done"
         idx = int(action_id.removeprefix("judge_pick_"))
         if idx >= len(self.submission_order):
             return "action-not-playing"
@@ -1028,19 +1028,12 @@ class HumanityCardsGame(Game):
         if user:
             user.speak_l("hc-submitted")
 
-        # Broadcast progress
-        non_judges = self._get_non_judges()
-        submitted_count = sum(1 for p in non_judges if p.submitted_cards is not None)
-        total = len(non_judges)
-        self.broadcast_l(
-            "hc-submission-progress",
-            submitted=submitted_count,
-            total=total,
-        )
-
         self.rebuild_all_menus()
 
         # Check if all have submitted
+        non_judges = self._get_non_judges()
+        submitted_count = sum(1 for p in non_judges if p.submitted_cards is not None)
+        total = len(non_judges)
         if submitted_count >= total:
             self._start_judging()
 
@@ -1051,49 +1044,64 @@ class HumanityCardsGame(Game):
         hcp: HumanityCardsPlayer = player  # type: ignore
         if not self._is_judge(hcp):
             return
+        if hcp.id in self.judge_picks:
+            return
         if pick_index >= len(self.submission_order):
             return
         actual_idx = self.submission_order[pick_index]
         if actual_idx >= len(self.submissions):
             return
 
-        winning_sub = self.submissions[actual_idx]
-        winner = self.get_player_by_id(winning_sub["player_id"])
-        if not winner:
+        picked_player_id = self.submissions[actual_idx]["player_id"]
+        self.judge_picks[hcp.id] = picked_player_id
+
+        judges = self._get_judges()
+        judges_still_pending = [j for j in judges if j.id not in self.judge_picks]
+
+        if judges_still_pending:
+            self.play_sound(f"game_humanitycards/judgechoice{random.randint(1, 3)}.ogg")  # nosec B311
+            self.broadcast_l("hc-judge-voted", player=hcp.name)
+            self.rebuild_all_menus()
             return
 
+        # All judges have voted — tally
+        vote_counts: dict[str, int] = {}
+        for voted_id in self.judge_picks.values():
+            vote_counts[voted_id] = vote_counts.get(voted_id, 0) + 1
+
+        max_votes = max(vote_counts.values())
+        candidates = [pid for pid, v in vote_counts.items() if v == max_votes]
+
+        if len(candidates) == 1:
+            winning_player_id = candidates[0]
+        else:
+            # Tiebreak: earliest position in shuffled submission_order
+            def _order_pos(pid: str) -> int:
+                for pos, sub_idx in enumerate(self.submission_order):
+                    if sub_idx < len(self.submissions) and self.submissions[sub_idx]["player_id"] == pid:
+                        return pos
+                return len(self.submission_order)
+            winning_player_id = min(candidates, key=_order_pos)
+
+        winning_sub = next(s for s in self.submissions if s["player_id"] == winning_player_id)
+        winner = self.get_player_by_id(winning_player_id)
+        if not winner:
+            return
         hc_winner: HumanityCardsPlayer = winner  # type: ignore
 
-        # Award point
         hc_winner.score += 1
         active = self.get_active_players()
         self.last_winner_index = next((i for i, p in enumerate(active) if p.id == winner.id), -1)
 
-        # Announce winner
         winning_text = self._fill_in_blanks(
             self.current_black_card["text"] if self.current_black_card else "",
             winning_sub["cards"],
         )
 
-        # Play judge choice sound
-        self.play_sound(
-            f"game_humanitycards/judgechoice{random.randint(1, 3)}.ogg"  # nosec B311
-        )
+        self.play_sound(f"game_humanitycards/judgechoice{random.randint(1, 3)}.ogg")  # nosec B311
+        self.broadcast_l("hc-winner-announcement", player=winner.name, score=hc_winner.score)
+        self.broadcast_l("hc-submission-reveal", player=winner.name, text=winning_text)
 
-        self.broadcast_l(
-            "hc-winner-announcement",
-            player=winner.name,
-            score=hc_winner.score,
-        )
-
-        # Announce winner's submission first
-        self.broadcast_l(
-            "hc-submission-reveal",
-            player=winner.name,
-            text=winning_text,
-        )
-
-        # Then announce other submissions
         self.broadcast_l("hc-all-submissions")
         for sub in self.submissions:
             if sub["player_id"] == winner.id:
@@ -1104,28 +1112,18 @@ class HumanityCardsGame(Game):
                     self.current_black_card["text"] if self.current_black_card else "",
                     sub["cards"],
                 )
-                self.broadcast_l(
-                    "hc-submission-reveal",
-                    player=sub_player.name,
-                    text=filled,
-                )
+                self.broadcast_l("hc-submission-reveal", player=sub_player.name, text=filled)
 
-        # Play draw card sound as players receive new cards
         self.play_sound(f"game_cards/draw{random.randint(1, 4)}.ogg")  # nosec B311
 
-        # Check win condition
         if hc_winner.score >= self.options.winning_score:
             self._end_game(hc_winner)
         else:
-            # Transition to round_end with delay before next round
             self.phase = "round_end"
-            self.round_end_ticks = 100  # ~5 seconds at 20 ticks/sec
-
-            # Discard current black card
+            self.round_end_ticks = 100
             if self.current_black_card:
                 self.black_discard.append(self.current_black_card)
                 self.current_black_card = None
-
             self.rebuild_all_menus()
 
     def _action_view_black_card(self, player: Player, action_id: str) -> None:
@@ -1313,6 +1311,7 @@ class HumanityCardsGame(Game):
         self.submission_order = list(range(len(self.submissions)))
         random.shuffle(self.submission_order)  # nosec B311
 
+        self.judge_picks = {}
         self.play_sound("game_humanitycards/judging.ogg")
         self.broadcast_l("hc-judging-start")
 
