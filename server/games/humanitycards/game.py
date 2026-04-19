@@ -1104,7 +1104,7 @@ class HumanityCardsGame(Game):
                 self.current_black_card["text"] if self.current_black_card else "",
                 sub["cards"] if sub else [],
             )
-            self.broadcast_l("hc-winner-announcement", player=player.name, points=points, text=text, score=hcp.score)
+            self.broadcast_l("hc-winner-announcement", player=player.name, points=points, text=text)
 
     def _announce_losing_submissions(self, winner_ids: set[str]) -> None:
         self.broadcast_l("hc-all-submissions")

@@ -80,7 +80,7 @@ hc-submission-option = { $text }
 hc-winner-announcement = { $player } gets { $points } { $points ->
     [one] point
    *[other] points
-} for { $text }. Score: { $score }.
+} for { $text }.
 hc-round-scores = Scores after round { $round }:
 hc-score-line = { $player }: { $score } { $score ->
     [one] point
