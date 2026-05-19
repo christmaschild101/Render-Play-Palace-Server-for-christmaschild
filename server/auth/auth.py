@@ -127,6 +127,8 @@ class AuthManager:
 
         password_hash = self.hash_password(new_password)
         self._db.update_user_password(username, password_hash)
+        self.invalidate_user_sessions(username)
+        self._db.revoke_user_refresh_tokens(username, int(time.time()))
         return True
 
     def get_user(self, username: str) -> "UserRecord | None":

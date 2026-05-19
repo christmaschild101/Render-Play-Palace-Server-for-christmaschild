@@ -47,7 +47,7 @@ class DummyDB:
     def get_pending_users(self):
         return [SimpleNamespace(username=name) for name in self.pending_users]
 
-    def get_non_admin_users(self):
+    def get_non_admin_users(self, exclude_banned=True):
         return [SimpleNamespace(username=name) for name in self.non_admin_users]
 
     def get_admin_users(self, include_server_owner=True):
@@ -55,6 +55,13 @@ class DummyDB:
         if not include_server_owner and self.admin_users:
             return users
         return users
+
+    def get_user(self, username):
+        if username in self.non_admin_users:
+            return SimpleNamespace(username=username, trust_level=TrustLevel.USER)
+        if username in self.admin_users:
+            return SimpleNamespace(username=username, trust_level=TrustLevel.ADMIN)
+        return None
 
 
 class AdminHost(AdministrationMixin):
@@ -136,13 +143,20 @@ def test_show_admin_menu_includes_owner_actions():
 
     host._show_admin_menu(admin_user)
     admin_ids = _get_menu_ids(admin_user)
-    assert admin_ids == ["account_approval", "ban_user", "unban_user", "back"]
+    assert admin_ids == [
+        "account_approval",
+        "reset_user_password",
+        "ban_user",
+        "unban_user",
+        "back",
+    ]
     assert host._user_states["admin"]["menu"] == "admin_menu"
 
     host._show_admin_menu(owner_user)
     owner_ids = _get_menu_ids(owner_user)
     assert owner_ids == [
         "account_approval",
+        "reset_user_password",
         "ban_user",
         "unban_user",
         "promote_admin",
@@ -218,6 +232,22 @@ def test_show_demote_admin_menu_filters_self_and_empty():
     assert _get_menu_ids(owner_user) == ["demote_eve", "back"]
 
 
+def test_show_reset_password_user_menu_handles_empty_and_entries():
+    db = DummyDB()
+    host = AdminHost(db=db)
+    admin_user = DummyUser("admin", TrustLevel.ADMIN)
+
+    host._show_reset_password_user_menu(admin_user)
+    assert admin_user.spoken[-1][0] == "no-users-to-reset-password"
+    assert host._user_states["admin"]["menu"] == "admin_menu"
+
+    db.non_admin_users = ["alice"]
+    admin_user.spoken.clear()
+    host._show_reset_password_user_menu(admin_user)
+    assert admin_user.menus[-1]["menu_id"] == "reset_password_user_menu"
+    assert _get_menu_ids(admin_user) == ["reset_password_alice", "back"]
+
+
 @pytest.mark.asyncio
 async def test_handle_account_approval_selection_routes(monkeypatch):
     host = AdminHost()
@@ -235,6 +265,54 @@ async def test_handle_account_approval_selection_routes(monkeypatch):
     await host._handle_account_approval_selection(admin_user, "pending_alice")
 
     assert calls == [("admin", "admin"), ("pending", "alice")]
+
+
+@pytest.mark.asyncio
+async def test_handle_reset_password_user_selection_routes():
+    host = AdminHost()
+    admin_user = DummyUser("admin", TrustLevel.ADMIN)
+    calls = []
+
+    host._show_admin_menu = types.MethodType(
+        lambda self, user: calls.append(("admin", user.username)), host
+    )
+    host._show_reset_password_editbox = types.MethodType(
+        lambda self, user, target: calls.append(("editbox", target)), host
+    )
+
+    await host._handle_reset_password_user_selection(admin_user, "back")
+    await host._handle_reset_password_user_selection(admin_user, "reset_password_alice")
+
+    assert calls == [("admin", "admin"), ("editbox", "alice")]
+
+
+@pytest.mark.asyncio
+async def test_reset_user_password_updates_auth_and_disconnects_online_user():
+    db = DummyDB()
+    db.non_admin_users = ["alice"]
+    host = AdminHost(db=db)
+    admin_user = DummyUser("admin", TrustLevel.ADMIN)
+    target_user = DummyUser("alice", TrustLevel.USER)
+    sent = []
+
+    async def send(payload):
+        sent.append(payload)
+
+    target_user.connection = SimpleNamespace(send=send)
+    target_user.get_queued_messages = lambda: []
+    host._users = {"alice": target_user}
+    calls = []
+    host._auth = SimpleNamespace(
+        reset_password=lambda username, password: calls.append((username, password)) or True
+    )
+
+    await host._reset_user_password(admin_user, "alice", "new-secret")
+
+    assert calls == [("alice", "new-secret")]
+    assert admin_user.spoken[-1][0] == "reset-user-password-done"
+    assert target_user.spoken[-1][0] == "your-password-was-reset"
+    assert sent[-1]["type"] == "disconnect"
+    assert sent[-1]["return_to_login"] is True
 
 
 @pytest.mark.asyncio

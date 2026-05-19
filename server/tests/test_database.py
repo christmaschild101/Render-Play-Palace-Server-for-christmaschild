@@ -140,6 +140,18 @@ def test_update_user_preferences_and_locale(db):
     assert row[1] == "pl"
 
 
+def test_revoke_user_refresh_tokens_revokes_only_target(db):
+    db.store_refresh_token("alice", "tok-a1", 100, 1)
+    db.store_refresh_token("Alice", "tok-a2", 100, 1)
+    db.store_refresh_token("bob", "tok-b1", 100, 1)
+
+    db.revoke_user_refresh_tokens("alice", 50)
+
+    assert db.get_refresh_token("tok-a1")["revoked_at"] == 50
+    assert db.get_refresh_token("tok-a2")["revoked_at"] == 50
+    assert db.get_refresh_token("tok-b1")["revoked_at"] is None
+
+
 def test_fluent_languages_default_empty(db):
     user = db.create_user("alice", "hash", approved=True)
     assert user.fluent_languages == []

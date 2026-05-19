@@ -486,6 +486,16 @@ class Database:
         )
         self._get_conn().commit()
 
+    def revoke_user_refresh_tokens(self, username: str, revoked_at: int) -> None:
+        """Revoke all active refresh tokens for a user."""
+        cursor = self._conn.cursor()
+        cursor.execute(
+            "UPDATE refresh_tokens SET revoked_at = ? "
+            "WHERE lower(username) = lower(?) AND revoked_at IS NULL",
+            (revoked_at, username),
+        )
+        self._conn.commit()
+
     def get_user_count(self) -> int:
         """Get the total number of users in the database."""
         cursor = self._get_conn().cursor()

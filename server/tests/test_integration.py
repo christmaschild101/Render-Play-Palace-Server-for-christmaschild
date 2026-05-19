@@ -166,6 +166,19 @@ class TestAuthIntegration:
         self.auth.invalidate_session(token)
         assert self.auth.validate_session(token) is None
 
+    def test_reset_password_invalidates_existing_sessions_and_refresh_tokens(self):
+        """Resetting a password revokes old credentials and accepts the new password."""
+        self.auth.register("resetuser", "oldpass", approved=True)
+        session_token, _ = self.auth.create_session("resetuser", 60)
+        refresh_token, _ = self.auth.create_refresh_token("resetuser", 60)
+
+        assert self.auth.reset_password("resetuser", "newpass") is True
+
+        assert self.auth.validate_session(session_token) is None
+        assert self.auth.refresh_session(refresh_token, 60, 60) is None
+        assert self.auth.authenticate("resetuser", "oldpass") == AuthResult.WRONG_PASSWORD
+        assert self.auth.authenticate("resetuser", "newpass") == AuthResult.SUCCESS
+
 
 class TestTableManagerIntegration:
     """Test table manager operations."""

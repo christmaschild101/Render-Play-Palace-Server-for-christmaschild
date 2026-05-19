@@ -88,6 +88,10 @@ class AdministrationMixin:
                 id="account_approval",
             ),
             MenuItem(
+                text=Localization.get(user.locale, "reset-user-password"),
+                id="reset_user_password",
+            ),
+            MenuItem(
                 text=Localization.get(user.locale, "ban-user"),
                 id="ban_user",
             ),
@@ -203,6 +207,48 @@ class AdministrationMixin:
             return
 
         self._show_user_list_menu(user, "demote_admin_menu", admins, "demote")
+
+    def _show_reset_password_user_menu(self, user: NetworkUser) -> None:
+        """Show reset password menu with users admins may reset."""
+        resettable_users = self._db.get_non_admin_users(exclude_banned=True)
+
+        if not resettable_users:
+            user.speak_l("no-users-to-reset-password", buffer="misc")
+            self._show_admin_menu(user)
+            return
+
+        items = []
+        for resettable_user in resettable_users:
+            items.append(
+                MenuItem(
+                    text=resettable_user.username,
+                    id=f"reset_password_{resettable_user.username}",
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            "reset_password_user_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "reset_password_user_menu"}
+
+    def _show_reset_password_editbox(self, user: NetworkUser, target_username: str) -> None:
+        """Show editbox for entering a replacement password."""
+        prompt = Localization.get(user.locale, "reset-user-password-prompt", player=target_username)
+        user.show_editbox(
+            "reset_user_password",
+            prompt,
+            default_value="",
+            multiline=False,
+            read_only=False,
+        )
+        self._user_states[user.username] = {
+            "menu": "reset_password_editbox",
+            "target_username": target_username,
+        }
 
     def _show_promote_confirm_menu(self, user: NetworkUser, target_username: str) -> None:
         """Show confirmation menu for promoting a user to admin."""
@@ -418,6 +464,8 @@ class AdministrationMixin:
         """Handle admin menu selection."""
         if selection_id == "account_approval":
             self._show_account_approval_menu(user)
+        elif selection_id == "reset_user_password":
+            self._show_reset_password_user_menu(user)
         elif selection_id == "promote_admin":
             self._show_promote_admin_menu(user)
         elif selection_id == "demote_admin":
@@ -501,6 +549,40 @@ class AdministrationMixin:
         elif selection_id.startswith("demote_"):
             target_username = selection_id[7:]  # Remove "demote_" prefix
             self._show_demote_confirm_menu(user, target_username)
+
+    async def _handle_reset_password_user_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle reset password user menu selection."""
+        if selection_id == "back":
+            self._show_admin_menu(user)
+        elif selection_id.startswith("reset_password_"):
+            target_username = selection_id[15:]
+            self._show_reset_password_editbox(user, target_username)
+
+    async def _handle_reset_password_editbox(
+        self, admin: NetworkUser, text: str, state: dict
+    ) -> None:
+        """Handle replacement password submission."""
+        target_username = state.get("target_username")
+        if not target_username:
+            self._show_reset_password_user_menu(admin)
+            return
+
+        password = text or ""
+        min_length = self._password_min_length
+        max_length = self._password_max_length
+        if not (min_length <= len(password) <= max_length):
+            admin.speak_l(
+                "credential-password-length",
+                min=min_length,
+                max=max_length,
+                buffer="activity",
+            )
+            self._show_reset_password_editbox(admin, target_username)
+            return
+
+        await self._reset_user_password(admin, target_username, password)
 
     async def _handle_promote_confirm_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -726,6 +808,40 @@ class AdministrationMixin:
                     self._show_main_menu(waiting_user)
 
         self._show_account_approval_menu(admin)
+
+    @require_admin
+    async def _reset_user_password(
+        self, admin: NetworkUser, username: str, new_password: str
+    ) -> None:
+        """Reset a user's password to an admin-provided temporary value."""
+        target_record = self._db.get_user(username)
+        if not target_record or target_record.trust_level.value >= TrustLevel.ADMIN.value:
+            _speak_activity(admin, "reset-user-password-unavailable", player=username)
+            self._show_reset_password_user_menu(admin)
+            return
+
+        if self._auth.reset_password(username, new_password):
+            _speak_activity(admin, "reset-user-password-done", player=username)
+            target_user = self._users.get(username)
+            if target_user:
+                target_user.speak_l("your-password-was-reset", buffer="activity")
+                for msg in target_user.get_queued_messages():
+                    await target_user.connection.send(msg)
+                await target_user.connection.send(
+                    {
+                        "type": "disconnect",
+                        "reconnect": False,
+                        "show_message": True,
+                        "return_to_login": True,
+                        "message": Localization.get(
+                            target_user.locale, "your-password-was-reset"
+                        ),
+                    }
+                )
+        else:
+            _speak_activity(admin, "reset-user-password-unavailable", player=username)
+
+        self._show_reset_password_user_menu(admin)
 
     @require_admin
     async def _decline_user(self, admin: NetworkUser, username: str, reason: str = "") -> None:

@@ -349,6 +349,14 @@ account-action-empty-reason = No reason given.
 account-request = account request
 account-action = account action taken
 
+# Password recovery
+reset-user-password = Reset User Password
+no-users-to-reset-password = No users available for password reset.
+reset-user-password-prompt = Enter a new temporary password for { $player } (or press Escape to cancel):
+reset-user-password-done = { $player }'s password has been reset.
+reset-user-password-unavailable = { $player } is not available for password reset.
+your-password-was-reset = Your password was reset by an administrator. Please log in with the new password.
+
 # Admin promotion/demotion
 promote-admin = Promote Admin
 demote-admin = Demote Admin

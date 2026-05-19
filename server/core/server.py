@@ -2268,6 +2268,10 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             ),
             "promote_admin_menu": (self._handle_promote_admin_selection, (user, selection_id)),
             "demote_admin_menu": (self._handle_demote_admin_selection, (user, selection_id)),
+            "reset_password_user_menu": (
+                self._handle_reset_password_user_selection,
+                (user, selection_id),
+            ),
             "promote_confirm_menu": (
                 self._handle_promote_confirm_selection,
                 (user, selection_id, state),
@@ -4170,6 +4174,11 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         if current_menu == "unban_reason_editbox":
             text = packet.get("text", "")
             await self._handle_unban_reason_editbox(user, text, state)
+            return
+
+        if current_menu == "reset_password_editbox":
+            text = packet.get("text", "")
+            await self._handle_reset_password_editbox(user, text, state)
             return
 
         # Forward to game if user is in a table
