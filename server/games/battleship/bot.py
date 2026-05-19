@@ -24,7 +24,8 @@ def bot_think(game: "BattleshipGame", player: "BattleshipPlayer") -> str | None:
 
 
 def _bot_battle(
-    game: "BattleshipGame", player: "BattleshipPlayer",
+    game: "BattleshipGame",
+    player: "BattleshipPlayer",
 ) -> str | None:
     """Choose a target cell and fire."""
     if game.current_player != player:
@@ -46,7 +47,8 @@ def _bot_battle(
 
 
 def _choose_target(
-    game: "BattleshipGame", player: "BattleshipPlayer",
+    game: "BattleshipGame",
+    player: "BattleshipPlayer",
 ) -> tuple[int, int] | None:
     """Smart target selection: hunt around hits, else pick random."""
     size = int(game.options.grid_size)
@@ -60,6 +62,7 @@ def _choose_target(
 
     # Filter to hits on ships not yet sunk
     from .game import _get_opponent
+
     opponent = _get_opponent(game, player)
     if not opponent:
         return None

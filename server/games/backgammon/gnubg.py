@@ -47,6 +47,7 @@ def is_gnubg_available() -> bool:
 # Position ID encoding
 # ---------------------------------------------------------------------------
 
+
 def encode_position_id(state: BackgammonGameState) -> str:
     """Encode the board as a GNUBG Position ID (14-char base64 string).
 
@@ -76,11 +77,11 @@ def encode_position_id(state: BackgammonGameState) -> str:
 
     # GNUBG format: opponent (not-on-roll) first, then on-roll player
     if state.current_color == "red":
-        first_counts, first_bar = white_counts, white_bar    # opponent
-        second_counts, second_bar = red_counts, red_bar       # on-roll
+        first_counts, first_bar = white_counts, white_bar  # opponent
+        second_counts, second_bar = red_counts, red_bar  # on-roll
     else:
-        first_counts, first_bar = red_counts, red_bar         # opponent
-        second_counts, second_bar = white_counts, white_bar   # on-roll
+        first_counts, first_bar = red_counts, red_bar  # opponent
+        second_counts, second_bar = white_counts, white_bar  # on-roll
 
     # Build bit string: for each player, 24 points + bar, unary encoded
     bits: list[int] = []
@@ -120,9 +121,7 @@ _HINT_RE = re.compile(
 
 # Individual sub-move patterns within the move string
 # "8/5" or "24/18(2)" or "bar/22" or "3/off"
-_SUBMOVE_RE = re.compile(
-    r"(bar|\d+)/(off|\d+)(?:\((\d+)\))?"
-)
+_SUBMOVE_RE = re.compile(r"(bar|\d+)/(off|\d+)(?:\((\d+)\))?")
 
 
 def parse_hint_line(line: str) -> list[tuple[str, str, int]] | None:
@@ -194,9 +193,7 @@ def resolve_next_action(
     legal_by_source: dict[int, list[tuple[int, int, int]]] = {}
     for die_val in usable_dice:
         for m in generate_legal_moves(state, color, die_val):
-            legal_by_source.setdefault(m.source, []).append(
-                (m.source, m.destination, die_val)
-            )
+            legal_by_source.setdefault(m.source, []).append((m.source, m.destination, die_val))
 
     # If on bar, we must enter first — find a bar goal or any bar entry
     on_bar = bar_count(state, color) > 0
@@ -298,6 +295,7 @@ def _linear_to_index(pos: int, color: str) -> int:
 # Subprocess manager
 # ---------------------------------------------------------------------------
 
+
 class GnubgProcess:
     """Manages a persistent gnubg-cli subprocess for move evaluation.
 
@@ -343,10 +341,12 @@ class GnubgProcess:
             # Read startup banner (may be slow)
             self._read_until_idle(idle_wait=self._STARTUP_IDLE_WAIT)
             # Set ply depth and start a game — batch these setup commands
-            self._send_batch([
-                f"set evaluation chequerplay evaluation plies {self._ply}",
-                "new game",
-            ])
+            self._send_batch(
+                [
+                    f"set evaluation chequerplay evaluation plies {self._ply}",
+                    "new game",
+                ]
+            )
             self._read_until_idle(idle_wait=self._STARTUP_IDLE_WAIT)
             self._started = True
             log.info("GNUBG subprocess started (ply=%d)", self._ply)
@@ -481,11 +481,13 @@ class GnubgProcess:
                 if len(unused_dice) < 2:
                     return None
 
-                self._send_batch([
-                    *self._position_commands(state),
-                    f"set dice {unused_dice[0]} {unused_dice[1]}",
-                    f"hint {hint_count}",
-                ])
+                self._send_batch(
+                    [
+                        *self._position_commands(state),
+                        f"set dice {unused_dice[0]} {unused_dice[1]}",
+                        f"hint {hint_count}",
+                    ]
+                )
                 output = self._read_until_match(
                     lambda line: _HINT_RE.match(line) is not None,
                     timeout=timeout,
@@ -527,14 +529,19 @@ class GnubgProcess:
         return cmds
 
     def _setup_and_query_cube(
-        self, state: BackgammonGameState, color: str, timeout: float,
+        self,
+        state: BackgammonGameState,
+        color: str,
+        timeout: float,
     ) -> list[str]:
         """Set position + cube, send hint 0, return raw output lines."""
-        self._send_batch([
-            *self._position_commands(state),
-            *self._cube_commands(state, color),
-            "hint 0",
-        ])
+        self._send_batch(
+            [
+                *self._position_commands(state),
+                *self._cube_commands(state, color),
+                "hint 0",
+            ]
+        )
         return self._read_until_match(
             lambda line: "proper cube action" in line.lower()
             or (line.strip().startswith("1.") and "No double" in line),
@@ -542,7 +549,10 @@ class GnubgProcess:
         )
 
     def _query_cube(
-        self, state: BackgammonGameState, color: str, timeout: float,
+        self,
+        state: BackgammonGameState,
+        color: str,
+        timeout: float,
     ) -> str | None:
         """Send position to GNUBG and parse the cube evaluation.
 
@@ -608,7 +618,10 @@ class GnubgProcess:
         return None
 
     def _query_hint(
-        self, state: BackgammonGameState, color: str, timeout: float,
+        self,
+        state: BackgammonGameState,
+        color: str,
+        timeout: float,
         pick_worst: bool = False,
     ) -> list[tuple[int, int]] | None:
         """Send position to GNUBG and parse the hint response.
@@ -626,11 +639,13 @@ class GnubgProcess:
                 return None
 
         hint_count = 999 if pick_worst else 1
-        self._send_batch([
-            *self._position_commands(state),
-            f"set dice {unused_dice[0]} {unused_dice[1]}",
-            f"hint {hint_count}",
-        ])
+        self._send_batch(
+            [
+                *self._position_commands(state),
+                f"set dice {unused_dice[0]} {unused_dice[1]}",
+                f"hint {hint_count}",
+            ]
+        )
         output = self._read_until_match(
             lambda line: _HINT_RE.match(line) is not None,
             timeout=timeout,
@@ -676,7 +691,9 @@ class GnubgProcess:
             self._proc.stdin.flush()
 
     def _read_until_idle(
-        self, timeout: float = 5.0, idle_wait: float | None = None,
+        self,
+        timeout: float = 5.0,
+        idle_wait: float | None = None,
     ) -> list[str]:
         """Read GNUBG output from the queue until idle.
 
@@ -707,7 +724,8 @@ class GnubgProcess:
         return lines
 
     def _read_until_match(
-        self, predicate: Callable[[str], bool],
+        self,
+        predicate: Callable[[str], bool],
         timeout: float = 5.0,
     ) -> list[str]:
         """Read GNUBG output until a line matches the predicate.
@@ -744,6 +762,7 @@ class GnubgProcess:
         additional hints for pick_worst). Grab them without a long wait.
         """
         import time
+
         deadline = time.monotonic() + self._IDLE_WAIT
         while time.monotonic() < deadline:
             remaining = deadline - time.monotonic()

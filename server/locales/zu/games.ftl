@@ -39,7 +39,6 @@ option-on = ivuliwe
 option-off = ivaliwe
 
 # Status box
-status-box-closed = Ulwazi lwesimo luvalwe.
 
 # Game end
 game-leave = Shiya umdlalo
@@ -64,6 +63,47 @@ game-player-deals = U-{ $player } wabela amakhadi.
 # Card names
 card-name = { $rank } we-{ $suit }
 no-cards = Awekho amakhadi
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = mnyama
+color-black-m = mnyama
+color-black-f = mnyama
+color-blue = luhlaza okwesibhakabhaka
+color-blue-m = luhlaza okwesibhakabhaka
+color-blue-f = luhlaza okwesibhakabhaka
+color-brown = nsundu
+color-brown-m = nsundu
+color-brown-f = nsundu
+color-gray = mpunga
+color-gray-m = mpunga
+color-gray-f = mpunga
+color-green = luhlaza
+color-green-m = luhlaza
+color-green-f = luhlaza
+color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
+color-orange = orenji
+color-orange-m = orenji
+color-orange-f = orenji
+color-pink = pinki
+color-pink-m = pinki
+color-pink-f = pinki
+color-purple = mfusa
+color-purple-m = mfusa
+color-purple-f = mfusa
+color-red = bomvu
+color-red-m = bomvu
+color-red-f = bomvu
+color-violet = violethi
+color-violet-m = violethi
+color-violet-f = violethi
+color-white = mhlophe
+color-white-m = mhlophe
+color-white-f = mhlophe
+color-yellow = phuzi
+color-yellow-m = phuzi
+color-yellow-f = phuzi
 
 # Suit names
 suit-diamonds = amadayimane

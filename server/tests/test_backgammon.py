@@ -52,6 +52,7 @@ from server.games.backgammon.game import (
 # State tests
 # ==========================================================================
 
+
 class TestInitialPosition:
     def test_15_checkers_per_side(self):
         gs = build_initial_game_state()
@@ -94,9 +95,9 @@ class TestStateHelpers:
 
     def test_point_owner(self):
         gs = build_initial_game_state()
-        assert point_owner(gs, 23) == "red"   # 2 Red on point 24
+        assert point_owner(gs, 23) == "red"  # 2 Red on point 24
         assert point_owner(gs, 0) == "white"  # 2 White on point 1
-        assert point_owner(gs, 1) is None     # Empty
+        assert point_owner(gs, 1) is None  # Empty
 
     def test_point_count(self):
         gs = build_initial_game_state()
@@ -157,9 +158,9 @@ class TestAllCheckersInHome:
     def test_all_in_home_red(self):
         gs = build_initial_game_state()
         gs.board.points = [0] * 24
-        gs.board.points[0] = 5   # point 1
-        gs.board.points[3] = 5   # point 4
-        gs.board.points[5] = 5   # point 6
+        gs.board.points[0] = 5  # point 1
+        gs.board.points[3] = 5  # point 4
+        gs.board.points[5] = 5  # point 6
         assert all_checkers_in_home(gs, "red")
 
     def test_all_in_home_white(self):
@@ -216,6 +217,7 @@ class TestGammonBackgammon:
 # ==========================================================================
 # Move generation tests
 # ==========================================================================
+
 
 class TestMoveGeneration:
     def test_initial_red_die_1(self):
@@ -290,8 +292,8 @@ class TestMoveGeneration:
     def test_hit_detection(self):
         gs = build_initial_game_state()
         gs.board.points = [0] * 24
-        gs.board.points[10] = 2   # Red on index 10
-        gs.board.points[7] = -1   # White blot on index 7
+        gs.board.points[10] = 2  # Red on index 10
+        gs.board.points[7] = -1  # White blot on index 7
         moves = generate_legal_moves(gs, "red", 3)
         hit_moves = [m for m in moves if m.is_hit]
         assert len(hit_moves) == 1
@@ -300,8 +302,8 @@ class TestMoveGeneration:
     def test_blocked_by_opponent(self):
         gs = build_initial_game_state()
         gs.board.points = [0] * 24
-        gs.board.points[10] = 2   # Red
-        gs.board.points[7] = -2   # White (2+ = blocked)
+        gs.board.points[10] = 2  # Red
+        gs.board.points[7] = -2  # White (2+ = blocked)
         moves = generate_legal_moves(gs, "red", 3)
         assert len(moves) == 0
 
@@ -310,9 +312,9 @@ class TestBearOff:
     def _bearing_off_state(self):
         gs = build_initial_game_state()
         gs.board.points = [0] * 24
-        gs.board.points[0] = 3   # Red on point 1
-        gs.board.points[2] = 4   # Red on point 3
-        gs.board.points[4] = 3   # Red on point 5
+        gs.board.points[0] = 3  # Red on point 1
+        gs.board.points[2] = 4  # Red on point 3
+        gs.board.points[4] = 3  # Red on point 5
         gs.board.off_red = 5
         return gs
 
@@ -333,8 +335,8 @@ class TestBearOff:
     def test_overshoot_not_highest_blocked(self):
         gs = build_initial_game_state()
         gs.board.points = [0] * 24
-        gs.board.points[0] = 5   # Red on point 1
-        gs.board.points[3] = 5   # Red on point 4
+        gs.board.points[0] = 5  # Red on point 1
+        gs.board.points[3] = 5  # Red on point 4
         gs.board.off_red = 5
         # Die 6 from point 1 (index 0) -> overshoot
         # But index 3 (point 4) has higher checkers, so can't bear off from 0
@@ -368,8 +370,8 @@ class TestApplyAndUndo:
         gs.moves_this_turn = []
         move = BackgammonMove(source=23, destination=20, die_value=3)
         apply_move(gs, move, "red")
-        assert gs.board.points[23] == 1   # Was 2, now 1
-        assert gs.board.points[20] == 1   # Was 0, now 1
+        assert gs.board.points[23] == 1  # Was 2, now 1
+        assert gs.board.points[20] == 1  # Was 0, now 1
         assert len(gs.moves_this_turn) == 1
 
     def test_apply_hit(self):
@@ -380,8 +382,8 @@ class TestApplyAndUndo:
         gs.moves_this_turn = []
         move = BackgammonMove(source=10, destination=7, die_value=3, is_hit=True)
         apply_move(gs, move, "red")
-        assert gs.board.points[7] == 1    # Red now
-        assert gs.board.bar_white == 1    # White sent to bar
+        assert gs.board.points[7] == 1  # Red now
+        assert gs.board.bar_white == 1  # White sent to bar
 
     def test_apply_bar_entry(self):
         gs = build_initial_game_state()
@@ -451,14 +453,14 @@ class TestMustUseBothDice:
     def test_only_one_usable_returns_larger(self):
         gs = build_initial_game_state()
         gs.board.points = [0] * 24
-        gs.board.points[0] = 1   # Red on point 1
+        gs.board.points[0] = 1  # Red on point 1
         # Die 1: can bear off from point 1
         # Die 6: can bear off from point 1 (highest checker rule)
         # Both usable individually
         gs.board.off_red = 14
         # Actually let's make a case where only one works
         gs.board.points[0] = 0
-        gs.board.points[3] = 1   # Red on point 4 only
+        gs.board.points[3] = 1  # Red on point 4 only
         gs.board.off_red = 14
         # Die 2: point 4 -> point 2 (legal)
         # Die 5: point 4 -> overshoot -> bear off (highest checker)
@@ -507,6 +509,7 @@ class TestHasAnyLegalMove:
 # ==========================================================================
 # GNUBG encoding tests
 # ==========================================================================
+
 
 class TestPositionIdEncoding:
     def test_starting_position(self):
@@ -591,6 +594,7 @@ class TestHintParsing:
 # Simple bot heuristic tests
 # ==========================================================================
 
+
 class TestSimpleBot:
     def test_prefers_bear_off(self):
         gs = build_initial_game_state()
@@ -614,8 +618,8 @@ class TestSimpleBot:
         gs = build_initial_game_state()
         gs.board.points = [0] * 24
         gs.board.points[10] = 2
-        gs.board.points[7] = 1   # Red blot — landing here makes a point
-        gs.board.points[6] = 0   # Empty — landing here creates a blot
+        gs.board.points[7] = 1  # Red blot — landing here makes a point
+        gs.board.points[6] = 0  # Empty — landing here creates a blot
         make_point = BackgammonMove(source=10, destination=7, die_value=3)
         leave_blot = BackgammonMove(source=10, destination=6, die_value=4)
         assert _score_move(gs, make_point, "red") > _score_move(gs, leave_blot, "red")
@@ -625,14 +629,17 @@ class TestSimpleBot:
 # Game registration tests
 # ==========================================================================
 
+
 class TestGameRegistration:
     def test_import(self):
         from server.games.backgammon import BackgammonGame
+
         assert BackgammonGame.get_name() == "Backgammon"
         assert BackgammonGame.get_type() == "backgammon"
 
     def test_registered(self):
         from server.games import BackgammonGame
+
         assert BackgammonGame is not None
 
     def test_min_max_players(self):
@@ -646,6 +653,7 @@ class TestGameRegistration:
 class TestDifficultyOptions:
     def test_all_choices_have_labels(self):
         from server.games.backgammon.game import BOT_DIFFICULTY_LABELS
+
         for choice in BOT_DIFFICULTY_CHOICES:
             assert choice in BOT_DIFFICULTY_LABELS
 
@@ -679,5 +687,5 @@ class TestGridLayout:
         indices = game._grid_indices()
         top_row = indices[:12]
         # Top row: indices 12-23 (points 13-24)
-        assert top_row[0] == 12   # point 13
+        assert top_row[0] == 12  # point 13
         assert top_row[-1] == 23  # point 24

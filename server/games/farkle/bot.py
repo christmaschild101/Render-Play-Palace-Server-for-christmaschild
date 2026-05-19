@@ -32,9 +32,7 @@ def bot_think(game, player) -> str | None:
 
     # Rank and choose among legal scoring actions first.
     scoring_actions = [
-        ra.action.id
-        for ra in resolved
-        if ra.enabled and ra.action.id.startswith("score_")
+        ra.action.id for ra in resolved if ra.enabled and ra.action.id.startswith("score_")
     ]
     if scoring_actions:
         if _should_skip_lone_five(game, player, scoring_actions, roll_enabled):

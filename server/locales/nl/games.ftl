@@ -39,7 +39,6 @@ option-on = aan
 option-off = uit
 
 # Status box
-status-box-closed = Statusinformatie gesloten.
 
 # Game end
 game-leave = Verlaat spel
@@ -64,6 +63,47 @@ game-player-deals = { $player } deelt de kaarten uit.
 # Card names
 card-name = { $rank } van { $suit }
 no-cards = Geen kaarten
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = zwart
+color-black-m = zwart
+color-black-f = zwart
+color-blue = blauw
+color-blue-m = blauw
+color-blue-f = blauw
+color-brown = bruin
+color-brown-m = bruin
+color-brown-f = bruin
+color-gray = grijs
+color-gray-m = grijs
+color-gray-f = grijs
+color-green = groen
+color-green-m = groen
+color-green-f = groen
+color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
+color-orange = oranje
+color-orange-m = oranje
+color-orange-f = oranje
+color-pink = roze
+color-pink-m = roze
+color-pink-f = roze
+color-purple = paars
+color-purple-m = paars
+color-purple-f = paars
+color-red = rood
+color-red-m = rood
+color-red-f = rood
+color-violet = violet
+color-violet-m = violet
+color-violet-f = violet
+color-white = wit
+color-white-m = wit
+color-white-f = wit
+color-yellow = geel
+color-yellow-m = geel
+color-yellow-f = geel
 
 # Suit names
 suit-diamonds = ruiten

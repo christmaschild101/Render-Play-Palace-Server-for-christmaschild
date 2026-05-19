@@ -8,14 +8,9 @@ scoring, and elimination (for inverse game modes).
 from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from ..messages.localization import Localization
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass
@@ -197,9 +192,7 @@ class TeamManager(DataClassJSONMixin):
         # For actual teams, could use localization
         return f"Team {team.index + 1}"
 
-    def get_sorted_teams(
-        self, by_score: bool = True, descending: bool = True
-    ) -> list[Team]:
+    def get_sorted_teams(self, by_score: bool = True, descending: bool = True) -> list[Team]:
         """
         Get teams sorted by score or index.
 
@@ -322,9 +315,7 @@ class TeamManager(DataClassJSONMixin):
         return modes
 
     @staticmethod
-    def get_team_modes_for_player_count(
-        num_players: int, locale: str = "en"
-    ) -> list[str]:
+    def get_team_modes_for_player_count(num_players: int, locale: str = "en") -> list[str]:
         """
         Get valid team mode options for a given number of players.
         Returns localized display strings.
@@ -336,13 +327,8 @@ class TeamManager(DataClassJSONMixin):
         Returns:
             List of valid team mode strings in user-friendly localized format.
         """
-        internal_modes = TeamManager.get_team_modes_for_player_count_internal(
-            num_players
-        )
-        return [
-            TeamManager.format_team_mode_for_display(mode, locale)
-            for mode in internal_modes
-        ]
+        internal_modes = TeamManager.get_team_modes_for_player_count_internal(num_players)
+        return [TeamManager.format_team_mode_for_display(mode, locale) for mode in internal_modes]
 
     @staticmethod
     def get_all_team_modes(min_players: int, max_players: int) -> list[str]:
@@ -429,18 +415,20 @@ class TeamManager(DataClassJSONMixin):
 
     def format_scores_detailed(self, locale: str = "en") -> list[str]:
         """
-        Format scores as a list of lines for a status box.
+        Format localized scores as a list of lines for a status box.
 
-        Returns something like:
+        Returns something like (English):
         ["Alice: 5 points", "Bob: 3 points", ...]
 
+        The points label is localized via the "game-points" Fluent key.
         No header needed - screen readers speak list items directly.
         """
         sorted_teams = self.get_sorted_teams(by_score=True, descending=True)
         lines = []
         for team in sorted_teams:
             name = self.get_team_name(team, locale)
-            lines.append(f"{name}: {team.total_score} points")
+            points = Localization.get(locale, "game-points", count=team.total_score)
+            lines.append(f"{name}: {points}")
         return lines
 
 

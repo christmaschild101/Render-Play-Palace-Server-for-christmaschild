@@ -35,6 +35,8 @@ whose-turn = Kié a lépés
 whos-at-table = Ki van az asztalnál
 check-scores = Eredmények ellenőrzése
 check-scores-detailed = Részletes eredmények
+check-game-options = Játékbeállítások ellenőrzése
+no-game-options = Nincsenek játékbeállítások.
 
 # Turn messages
 game-player-skipped = { $player } ki van hagyva.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] pont
    *[other] pont
 }
-status-box-closed = Lezárva.
 play = Játék
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = A fiókod tiltva van és nem érhető el.
 incorrect-username = A megadott felhasználónév nem létezik.
 incorrect-password = A megadott jelszó helytelen.
 already-logged-in = Ez a fiók már be van jelentkezve.
+
+# Hitelesítő adatok ellenőrzése
+credential-username-length = A felhasználónévnek { $min } és { $max } karakter között kell lennie.
+credential-password-length = A jelszónak { $min } és { $max } karakter között kell lennie.
+
+# Sebességkorlátozás
+rate-limit-login-ip = Túl sok bejelentkezési kísérlet érkezett erről a címről. Várj és próbáld újra.
+rate-limit-login-user = Túl sok sikertelen bejelentkezési kísérlet történt ehhez a felhasználónévhez. Várj és próbáld újra.
+rate-limit-registration = Túl sok regisztrációs kísérlet érkezett erről a címről. Várj és próbáld újra.
+rate-limit-refresh = Túl sok frissítési kísérlet érkezett erről a címről. Várj és próbáld újra.
+
+# Munkamenet- és hitelesítési hibák
+account-not-found = A fiók nem található.
+session-expired = A munkamenet lejárt. Jelentkezz be újra.
+session-token-mismatch = A munkamenet-token nem egyezik a felhasználónévvel.
+refresh-token-expired = A frissítési token lejárt. Jelentkezz be újra.
+refresh-token-mismatch = A frissítési token nem egyezik a felhasználónévvel.
+
+# Regisztráció
+registration-success = Sikeres regisztráció! A fiókod jóváhagyásra vár.
+registration-username-taken = Ez a felhasználónév már foglalt. Válassz másikat.
+
+# Beállítás alapértelmezett értéke
+pref-invalid-value = Érvénytelen választás, az alapértelmezett értéket használja.
 
 # Decline reason
 decline-reason-prompt = Add meg az elutasítás indokát (vagy nyomd meg az Escape-et a visszavonáshoz):

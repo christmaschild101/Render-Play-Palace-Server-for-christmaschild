@@ -15,6 +15,7 @@ from ..registry import register_game
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.actions import Action, ActionSet, Visibility
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 from ...messages.localization import Localization
 
@@ -66,9 +67,7 @@ class ChaosBearGame(Game):
     def get_max_players(cls) -> int:
         return 4
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> ChaosBearPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> ChaosBearPlayer:
         """Create a new player."""
         return ChaosBearPlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -220,9 +219,7 @@ class ChaosBearGame(Game):
         player = self.get_player_by_id(player_id) if player_id else None
 
         if event_type == "player_roll":
-            self.broadcast_l(
-                "chaosbear-roll", player=data["name"], roll=data["roll"]
-            )
+            self.broadcast_l("chaosbear-roll", player=data["name"], roll=data["roll"])
 
         elif event_type == "player_position":
             if player:
@@ -338,7 +335,7 @@ class ChaosBearGame(Game):
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round_number = 1
         self.players_moved_this_round = 0
@@ -489,7 +486,8 @@ class ChaosBearGame(Game):
         # Bear dice roll sounds
         self.schedule_sound("game_chaosbear/beardice0.ogg", delay_ticks=10)
         self.schedule_sound(
-            f"game_chaosbear/beardice{random.randint(1, 3)}.ogg", delay_ticks=18  # nosec B311
+            f"game_chaosbear/beardice{random.randint(1, 3)}.ogg",
+            delay_ticks=18,  # nosec B311
         )
 
         # Pre-calculate outcomes
@@ -528,21 +526,30 @@ class ChaosBearGame(Game):
         delay = 22
 
         # Bear roll announcement
-        self.schedule_event("bear_roll", {
-            "die": bear_die,
-            "energy": original_energy,
-            "total": bear_die + original_energy,
-        }, delay_ticks=delay)
+        self.schedule_event(
+            "bear_roll",
+            {
+                "die": bear_die,
+                "energy": original_energy,
+                "total": bear_die + original_energy,
+            },
+            delay_ticks=delay,
+        )
         delay += 6
 
         # Energy up (if rolled 3)
         if energy_gained:
             self.schedule_sound(
-                f"game_chaosbear/energyup{random.randint(1, 2)}.ogg", delay_ticks=25  # nosec B311
+                f"game_chaosbear/energyup{random.randint(1, 2)}.ogg",
+                delay_ticks=25,  # nosec B311
             )
-            self.schedule_event("bear_energy_up", {
-                "new_energy": new_energy,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "bear_energy_up",
+                {
+                    "new_energy": new_energy,
+                },
+                delay_ticks=delay,
+            )
             delay += 6
 
         # Bear step sounds
@@ -557,9 +564,13 @@ class ChaosBearGame(Game):
         delay = max(delay, last_step_delay + 4)
 
         # Bear position announcement
-        self.schedule_event("bear_position", {
-            "new_position": new_bear_position,
-        }, delay_ticks=delay)
+        self.schedule_event(
+            "bear_position",
+            {
+                "new_position": new_bear_position,
+            },
+            delay_ticks=delay,
+        )
         delay += 6
 
         # Caught players
@@ -569,9 +580,13 @@ class ChaosBearGame(Game):
                     f"game_chaosbear/playerdie{random.randint(1, 2)}.ogg",  # nosec B311
                     delay_ticks=delay,
                 )
-                self.schedule_event("player_caught", {
-                    "player_id": pid,
-                }, delay_ticks=delay + 2)
+                self.schedule_event(
+                    "player_caught",
+                    {
+                        "player_id": pid,
+                    },
+                    delay_ticks=delay + 2,
+                )
                 self.schedule_sound(
                     f"game_chaosbear/energydown{random.randint(1, 3)}.ogg",  # nosec B311
                     delay_ticks=delay + 40,
@@ -579,10 +594,14 @@ class ChaosBearGame(Game):
                 delay += 50
 
             # Bear feast
-            self.schedule_event("bear_feast", {
-                "new_energy": energy_after_feast,
-                "energy_changed": energy_after_feast != new_energy,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "bear_feast",
+                {
+                    "new_energy": energy_after_feast,
+                    "energy_changed": energy_after_feast != new_energy,
+                },
+                delay_ticks=delay,
+            )
             delay += 8
 
         # End bear turn
@@ -617,9 +636,7 @@ class ChaosBearGame(Game):
         self._is_tie = False
 
         self.schedule_sound("game_pig/win.ogg", delay_ticks=5)
-        self.broadcast_l(
-            "chaosbear-winner", player=winner.name, position=winner.position
-        )
+        self.broadcast_l("chaosbear-winner", player=winner.name, position=winner.position)
 
         self.finish_game()
 
@@ -635,7 +652,9 @@ class ChaosBearGame(Game):
 
     def build_game_result(self) -> GameResult:
         """Build the game result with ChaosBear-specific data."""
-        all_players = [p for p in self.players if isinstance(p, ChaosBearPlayer) and not p.is_spectator]
+        all_players = [
+            p for p in self.players if isinstance(p, ChaosBearPlayer) and not p.is_spectator
+        ]
         sorted_players = sorted(all_players, key=lambda p: p.position, reverse=True)
 
         # Build final positions
@@ -707,9 +726,14 @@ class ChaosBearGame(Game):
         new_position = player.position + roll
 
         # Announce roll result (after roll sound)
-        self.schedule_event("player_roll", {
-            "name": player.name, "roll": roll,
-        }, delay_ticks=8)
+        self.schedule_event(
+            "player_roll",
+            {
+                "name": player.name,
+                "roll": roll,
+            },
+            delay_ticks=8,
+        )
 
         # Schedule player step sounds
         for i in range(roll):
@@ -720,9 +744,14 @@ class ChaosBearGame(Game):
 
         # Update position after steps finish
         position_delay = 6 + (roll - 1) * 4 + 4
-        self.schedule_event("player_position", {
-            "player_id": player.id, "new_position": new_position,
-        }, delay_ticks=position_delay)
+        self.schedule_event(
+            "player_position",
+            {
+                "player_id": player.id,
+                "new_position": new_position,
+            },
+            delay_ticks=position_delay,
+        )
 
         # End turn after position announcement
         self.schedule_event("end_player_turn", {}, delay_ticks=position_delay + 6)
@@ -743,9 +772,13 @@ class ChaosBearGame(Game):
 
         # Announce draws card
         delay = 6
-        self.schedule_event("draw_announce", {
-            "name": player.name,
-        }, delay_ticks=delay)
+        self.schedule_event(
+            "draw_announce",
+            {
+                "name": player.name,
+            },
+            delay_ticks=delay,
+        )
         delay += 6
 
         # Pre-calculate card and effects
@@ -759,11 +792,15 @@ class ChaosBearGame(Game):
                 delay_ticks=delay,
             )
             delay += 6
-            self.schedule_event("card_effect", {
-                "effect": "impulsion",
-                "player_id": player.id,
-                "new_position": new_pos,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "card_effect",
+                {
+                    "effect": "impulsion",
+                    "player_id": player.id,
+                    "new_position": new_pos,
+                },
+                delay_ticks=delay,
+            )
 
         elif card == 1:
             # Super impulsion - forward 5
@@ -773,11 +810,15 @@ class ChaosBearGame(Game):
                 delay_ticks=delay,
             )
             delay += 6
-            self.schedule_event("card_effect", {
-                "effect": "super_impulsion",
-                "player_id": player.id,
-                "new_position": new_pos,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "card_effect",
+                {
+                    "effect": "super_impulsion",
+                    "player_id": player.id,
+                    "new_position": new_pos,
+                },
+                delay_ticks=delay,
+            )
 
         elif card == 2:
             # Tiredness - bear energy -1
@@ -787,10 +828,14 @@ class ChaosBearGame(Game):
                 delay_ticks=delay,
             )
             delay += 6
-            self.schedule_event("card_effect", {
-                "effect": "tiredness",
-                "new_energy": new_energy,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "card_effect",
+                {
+                    "effect": "tiredness",
+                    "new_energy": new_energy,
+                },
+                delay_ticks=delay,
+            )
             self.schedule_sound(
                 f"game_chaosbear/energydown{random.randint(1, 3)}.ogg",  # nosec B311
                 delay_ticks=delay + 8,
@@ -804,10 +849,14 @@ class ChaosBearGame(Game):
                 delay_ticks=delay,
             )
             delay += 6
-            self.schedule_event("card_effect", {
-                "effect": "hunger",
-                "new_energy": new_energy,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "card_effect",
+                {
+                    "effect": "hunger",
+                    "new_energy": new_energy,
+                },
+                delay_ticks=delay,
+            )
             self.schedule_sound(
                 f"game_chaosbear/energyup{random.randint(1, 2)}.ogg",  # nosec B311
                 delay_ticks=delay + 8,
@@ -821,11 +870,15 @@ class ChaosBearGame(Game):
                 delay_ticks=delay,
             )
             delay += 6
-            self.schedule_event("card_effect", {
-                "effect": "backward",
-                "player_id": player.id,
-                "new_position": new_pos,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "card_effect",
+                {
+                    "effect": "backward",
+                    "player_id": player.id,
+                    "new_position": new_pos,
+                },
+                delay_ticks=delay,
+            )
 
         else:
             # Random gift - forward/back 1-6
@@ -842,11 +895,15 @@ class ChaosBearGame(Game):
                     delay_ticks=delay,
                 )
                 delay += 6
-                self.schedule_event("card_effect", {
-                    "effect": "gift_back",
-                    "player_id": player.id,
-                    "new_position": new_pos,
-                }, delay_ticks=delay)
+                self.schedule_event(
+                    "card_effect",
+                    {
+                        "effect": "gift_back",
+                        "player_id": player.id,
+                        "new_position": new_pos,
+                    },
+                    delay_ticks=delay,
+                )
             else:
                 new_pos = player.position + amount
                 self.schedule_sound(
@@ -854,11 +911,15 @@ class ChaosBearGame(Game):
                     delay_ticks=delay,
                 )
                 delay += 6
-                self.schedule_event("card_effect", {
-                    "effect": "gift_forward",
-                    "player_id": player.id,
-                    "new_position": new_pos,
-                }, delay_ticks=delay)
+                self.schedule_event(
+                    "card_effect",
+                    {
+                        "effect": "gift_forward",
+                        "player_id": player.id,
+                        "new_position": new_pos,
+                    },
+                    delay_ticks=delay,
+                )
 
         # End player turn after card effect
         delay += 6

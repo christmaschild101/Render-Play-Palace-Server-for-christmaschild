@@ -65,9 +65,7 @@ class Keybind:
             return game.status == "playing"
         return False
 
-    def can_player_use(
-        self, game: "Game", player: "Player", is_spectator: bool = False
-    ) -> bool:
+    def can_player_use(self, game: "Game", player: "Player", is_spectator: bool = False) -> bool:
         """Check if a specific player can use this keybind."""
         # Check state first
         if not self.is_state_active(game):

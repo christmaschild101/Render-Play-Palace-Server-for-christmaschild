@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 # Dice keeping style enum (kept for type safety in game code)
 # ---------------------------------------------------------------------------
 
+
 class DiceKeepingStyle(Enum):
     """Dice keeping style preference."""
 
@@ -43,6 +44,7 @@ class DiceKeepingStyle(Enum):
 # ---------------------------------------------------------------------------
 # Preference field metadata
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PrefMeta:
@@ -74,6 +76,7 @@ class PrefMeta:
 def pref_field(meta: PrefMeta) -> Any:
     """Create a dataclass field with preference metadata."""
     from dataclasses import field as dc_field
+
     return dc_field(default=meta.default, metadata={"pref_meta": meta})
 
 
@@ -84,6 +87,7 @@ def pref_field(meta: PrefMeta) -> Any:
 PREF_CATEGORIES: list[tuple[str, str]] = [
     ("display", "pref-category-display"),
     ("sounds", "pref-category-sounds"),
+    ("gameplay", "pref-category-gameplay"),
     ("dice", "pref-category-dice"),
 ]
 """(category_key, fluent_key) in display order."""
@@ -92,6 +96,7 @@ PREF_CATEGORIES: list[tuple[str, str]] = [
 # ---------------------------------------------------------------------------
 # UserPreferences dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class UserPreferences:
@@ -102,49 +107,69 @@ class UserPreferences:
     """
 
     # --- Display category ---
-    brief_announcements: bool = pref_field(PrefMeta(
-        category="display",
-        label="pref-set-brief-announcements",
-        change_msg="pref-changed-brief-announcements",
-        description="pref-desc-brief-announcements",
-        kind="bool",
-        default=False,
-    ))
+    brief_announcements: bool = pref_field(
+        PrefMeta(
+            category="display",
+            label="pref-set-brief-announcements",
+            change_msg="pref-changed-brief-announcements",
+            description="pref-desc-brief-announcements",
+            kind="bool",
+            default=False,
+        )
+    )
 
     # --- Sounds category ---
-    play_turn_sound: bool = pref_field(PrefMeta(
-        category="sounds",
-        label="pref-set-play-turn-sound",
-        change_msg="pref-changed-play-turn-sound",
-        description="pref-desc-play-turn-sound",
-        kind="bool",
-        default=True,
-    ))
+    play_turn_sound: bool = pref_field(
+        PrefMeta(
+            category="sounds",
+            label="pref-set-play-turn-sound",
+            change_msg="pref-changed-play-turn-sound",
+            description="pref-desc-play-turn-sound",
+            kind="bool",
+            default=True,
+        )
+    )
+
+    # --- Gameplay category ---
+    confirm_destructive_actions: bool = pref_field(
+        PrefMeta(
+            category="gameplay",
+            label="pref-set-confirm-destructive-actions",
+            change_msg="pref-changed-confirm-destructive-actions",
+            description="pref-desc-confirm-destructive-actions",
+            kind="bool",
+            default=True,
+        )
+    )
 
     # --- Dice category ---
-    clear_kept_on_roll: bool = pref_field(PrefMeta(
-        category="dice",
-        label="pref-set-clear-kept-on-roll",
-        change_msg="pref-changed-clear-kept-on-roll",
-        description="pref-desc-clear-kept-on-roll",
-        kind="bool",
-        default=False,
-    ))
+    clear_kept_on_roll: bool = pref_field(
+        PrefMeta(
+            category="dice",
+            label="pref-set-clear-kept-on-roll",
+            change_msg="pref-changed-clear-kept-on-roll",
+            description="pref-desc-clear-kept-on-roll",
+            kind="bool",
+            default=False,
+        )
+    )
 
-    dice_keeping_style: DiceKeepingStyle = pref_field(PrefMeta(
-        category="dice",
-        label="pref-set-dice-keeping-style",
-        change_msg="pref-changed-dice-keeping-style",
-        description="pref-desc-dice-keeping-style",
-        prompt="pref-select-dice-keeping-style",
-        kind="menu",
-        default=DiceKeepingStyle.PLAYPALACE,
-        choices=[
-            ("playpalace", "pref-dice-keeping-style-playpalace"),
-            ("quentin_c", "pref-dice-keeping-style-quentin_c"),
-        ],
-        enum_class=DiceKeepingStyle,
-    ))
+    dice_keeping_style: DiceKeepingStyle = pref_field(
+        PrefMeta(
+            category="dice",
+            label="pref-set-dice-keeping-style",
+            change_msg="pref-changed-dice-keeping-style",
+            description="pref-desc-dice-keeping-style",
+            prompt="pref-select-dice-keeping-style",
+            kind="menu",
+            default=DiceKeepingStyle.PLAYPALACE,
+            choices=[
+                ("playpalace", "pref-dice-keeping-style-playpalace"),
+                ("quentin_c", "pref-dice-keeping-style-quentin_c"),
+            ],
+            enum_class=DiceKeepingStyle,
+        )
+    )
 
     # --- Per-game overrides ---
     game_overrides: dict[str, dict[str, Any]] = field(
@@ -224,8 +249,7 @@ class UserPreferences:
 
     def has_game_override(self, field_name: str, game_type: str) -> bool:
         """Check if a per-game override is set."""
-        return (game_type in self.game_overrides
-                and field_name in self.game_overrides[game_type])
+        return game_type in self.game_overrides and field_name in self.game_overrides[game_type]
 
     # ------------------------------------------------------------------
     # Reset

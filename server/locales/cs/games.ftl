@@ -39,7 +39,6 @@ option-on = zapnuto
 option-off = vypnuto
 
 # Stavové okno
-status-box-closed = Informace o stavu uzavřena.
 
 # Konec hry
 game-leave = Opustit hru
@@ -64,6 +63,47 @@ game-player-deals = { $player } rozdává karty.
 # Názvy karet
 card-name = { $rank } { $suit }
 no-cards = Žádné karty
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = černá
+color-black-m = černý
+color-black-f = černá
+color-blue = modrá
+color-blue-m = modrý
+color-blue-f = modrá
+color-brown = hnědá
+color-brown-m = hnědý
+color-brown-f = hnědá
+color-gray = šedá
+color-gray-m = šedý
+color-gray-f = šedá
+color-green = zelená
+color-green-m = zelený
+color-green-f = zelená
+color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
+color-orange = oranžová
+color-orange-m = oranžový
+color-orange-f = oranžová
+color-pink = růžová
+color-pink-m = růžový
+color-pink-f = růžová
+color-purple = purpurová
+color-purple-m = purpurový
+color-purple-f = purpurová
+color-red = červená
+color-red-m = červený
+color-red-f = červená
+color-violet = fialová
+color-violet-m = fialový
+color-violet-f = fialová
+color-white = bílá
+color-white-m = bílý
+color-white-f = bílá
+color-yellow = žlutá
+color-yellow-m = žlutý
+color-yellow-f = žlutá
 
 # Názvy barev
 suit-diamonds = kárové

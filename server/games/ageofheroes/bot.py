@@ -14,7 +14,12 @@ from .state import (
     BUILDING_COSTS,
     TRIBE_SPECIAL_RESOURCE,
 )
-from .construction import can_build, get_affordable_buildings, get_road_targets, execute_single_build
+from .construction import (
+    can_build,
+    get_affordable_buildings,
+    get_road_targets,
+    execute_single_build,
+)
 from .combat import (
     can_declare_war,
     get_valid_war_targets,
@@ -53,9 +58,7 @@ def bot_think(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str | None:
     return None
 
 
-def bot_think_play_phase(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> str | None:
+def bot_think_play_phase(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str | None:
     """Bot decision making during play phase."""
     # War battle - both attacker and defender need to roll (regardless of whose turn it is)
     if game.sub_phase == PlaySubPhase.WAR_BATTLE:
@@ -152,18 +155,14 @@ def bot_select_action(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str:
     return f"action_{ActionType.DO_NOTHING.value}"
 
 
-def _bot_disaster_action(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> str | None:
+def _bot_disaster_action(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str | None:
     """Consider playing a disaster card if the timing is right."""
     if game.current_day <= 1:
         return None
     return bot_should_play_disaster(game, player)
 
 
-def _bot_city_build_action(
-    affordable: list[BuildingType], cities: int
-) -> str | None:
+def _bot_city_build_action(affordable: list[BuildingType], cities: int) -> str | None:
     """Prefer building cities when it advances victory."""
     if cities == 4 and BuildingType.CITY in affordable:
         return f"action_{ActionType.CONSTRUCTION.value}"
@@ -180,9 +179,7 @@ def _bot_monument_tax_action(monument: int) -> str | None:
     return None
 
 
-def _bot_war_action(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, armies: int
-) -> str | None:
+def _bot_war_action(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, armies: int) -> str | None:
     """Decide whether to declare war."""
     if armies < 1:
         return None
@@ -210,9 +207,7 @@ def _bot_war_action(
     return None
 
 
-def _bot_army_build_action(
-    affordable: list[BuildingType], armies: int
-) -> str | None:
+def _bot_army_build_action(affordable: list[BuildingType], armies: int) -> str | None:
     """Build armies when low on defense."""
     if armies < 3 and BuildingType.ARMY in affordable:
         if random.random() < 0.7:  # 70% chance to build army when low  # nosec B311
@@ -241,9 +236,7 @@ def bot_discard_excess(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str 
     return None
 
 
-def bot_think_fair_phase(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> str | None:
+def bot_think_fair_phase(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str | None:
     """Bot decision making during fair/trading phase."""
     # For simplicity, bots don't actively trade - they just stop
     if not player.has_stopped_trading:
@@ -251,9 +244,7 @@ def bot_think_fair_phase(
     return None
 
 
-def bot_select_construction(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> str | None:
+def bot_select_construction(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str | None:
     """Bot selects what to build."""
     if not player.tribe_state:
         return None
@@ -420,7 +411,8 @@ def bot_select_armies(
 
     # Count hero cards
     hero_cards = sum(
-        1 for card in player.hand
+        1
+        for card in player.hand
         if card.card_type == CardType.EVENT and card.subtype == EventType.HERO
     )
 
@@ -446,9 +438,7 @@ def bot_select_armies(
     return (armies, generals, heroes_as_armies, heroes_as_generals)
 
 
-def bot_should_use_olympics(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> bool:
+def bot_should_use_olympics(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> bool:
     """Bot decides whether to use Olympic Games to cancel war."""
     if not player.tribe_state:
         return False
@@ -560,9 +550,7 @@ def score_card_for_discard(card: Card, player: AgeOfHeroesPlayer) -> int:
     return score
 
 
-def bot_select_card_to_discard(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> int:
+def bot_select_card_to_discard(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> int:
     """Bot selects which card to discard. Returns card index."""
     if not player.hand:
         return 0
@@ -635,7 +623,9 @@ def bot_make_trade_offers(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> N
         if card.card_type == CardType.SPECIAL:
             # Offer this for our special resource
             offer = create_offer(
-                game, player, i,
+                game,
+                player,
+                i,
                 wanted_type=CardType.SPECIAL,
                 wanted_subtype=wanted_special,
             )
@@ -646,7 +636,9 @@ def bot_make_trade_offers(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> N
         if card.is_disaster():
             # Offer for our special resource
             offer = create_offer(
-                game, player, i,
+                game,
+                player,
+                i,
                 wanted_type=CardType.SPECIAL,
                 wanted_subtype=wanted_special,
             )
@@ -780,7 +772,7 @@ def bot_should_play_disaster(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -
     active_players = game.get_active_players()
     targets = []
     for i, p in enumerate(active_players):
-        if p != player and hasattr(p, 'tribe_state') and p.tribe_state:
+        if p != player and hasattr(p, "tribe_state") and p.tribe_state:
             targets.append((i, p))
 
     if not targets:
@@ -916,9 +908,7 @@ def bot_play_disaster_on_target(
     game.rebuild_all_menus()
 
 
-def _find_disaster_card_index(
-    hand: list[Card], disaster_type: str
-) -> int | None:
+def _find_disaster_card_index(hand: list[Card], disaster_type: str) -> int | None:
     """Locate the first matching disaster card in hand."""
     for i, card in enumerate(hand):
         if card.card_type == CardType.EVENT and card.subtype == disaster_type:

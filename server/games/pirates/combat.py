@@ -32,9 +32,7 @@ class CombatResult:
 
 
 def get_targets_in_range(
-    game: "PiratesGame",
-    attacker: "PiratesPlayer",
-    max_range: int | None = None
+    game: "PiratesGame", attacker: "PiratesPlayer", max_range: int | None = None
 ) -> list["PiratesPlayer"]:
     """
     Get all valid targets within attack range.
@@ -75,7 +73,7 @@ def do_attack(
     defender: "PiratesPlayer",
     golden_moon_active: bool = False,
     global_xp_multiplier: float = 1.0,
-    gem_stealing: str = "with_roll_bonus"
+    gem_stealing: str = "with_roll_bonus",
 ) -> CombatResult:
     """
     Execute an attack between two players.
@@ -100,18 +98,11 @@ def do_attack(
     defender_user = game.get_user(defender)
 
     if attacker_user:
-        attacker_user.speak_l(
-            "pirates-attack-you-fire", target=defender.name, buffer="table"
-        )
+        attacker_user.speak_l("pirates-attack-you-fire", target=defender.name, buffer="table")
     if defender_user:
-        defender_user.speak_l(
-            "pirates-attack-incoming", attacker=attacker.name, buffer="table"
-        )
+        defender_user.speak_l("pirates-attack-incoming", attacker=attacker.name, buffer="table")
     game.broadcast_l(
-        "pirates-attack-fired",
-        attacker=attacker.name,
-        defender=defender.name,
-        exclude=attacker
+        "pirates-attack-fired", attacker=attacker.name, defender=defender.name, exclude=attacker
     )
 
     # Get bonuses from skills
@@ -130,7 +121,9 @@ def do_attack(
     defense_roll = random.randint(1, 6)  # nosec B311
     if defender_user:
         defender_user.speak_l("pirates-defense-roll", roll=defense_roll, buffer="table")
-    game.broadcast_l("pirates-defense-roll-others", player=defender.name, roll=defense_roll, exclude=defender)
+    game.broadcast_l(
+        "pirates-defense-roll-others", player=defender.name, roll=defense_roll, exclude=defender
+    )
 
     if defense_bonus > 0:
         game.broadcast_l("pirates-defense-bonus", bonus=defense_bonus)
@@ -148,32 +141,19 @@ def do_attack(
         game.play_sound(f"game_pirates/cannonhit{sound_num}.ogg", volume=70)
 
         if attacker_user:
-            attacker_user.speak_l(
-                "pirates-attack-hit-you", target=defender.name, buffer="table"
-            )
+            attacker_user.speak_l("pirates-attack-hit-you", target=defender.name, buffer="table")
         if defender_user:
-            defender_user.speak_l(
-                "pirates-attack-hit-them", attacker=attacker.name, buffer="table"
-            )
+            defender_user.speak_l("pirates-attack-hit-them", attacker=attacker.name, buffer="table")
         game.broadcast_l(
-            "pirates-attack-hit",
-            attacker=attacker.name,
-            defender=defender.name,
-            exclude=attacker
+            "pirates-attack-hit", attacker=attacker.name, defender=defender.name, exclude=attacker
         )
 
         # Give XP to attacker
         xp_gain = random.randint(50, 150)  # nosec B311
-        attacker.leveling.give_xp(
-            game, attacker.name, xp_gain, moon_mult, global_xp_multiplier
-        )
+        attacker.leveling.give_xp(game, attacker.name, xp_gain, moon_mult, global_xp_multiplier)
 
         # Handle boarding action (push or steal)
-        _handle_boarding(
-            game, attacker, defender,
-            attack_bonus, defense_bonus,
-            gem_stealing
-        )
+        _handle_boarding(game, attacker, defender, attack_bonus, defense_bonus, gem_stealing)
 
         return CombatResult(
             hit=True,
@@ -181,28 +161,21 @@ def do_attack(
             defense_roll=defense_roll,
             attack_bonus=attack_bonus,
             defense_bonus=defense_bonus,
-            xp_gained=int(xp_gain * total_mult)
+            xp_gained=int(xp_gain * total_mult),
         )
     else:
         # Miss!
         if attacker_user:
-            attacker_user.speak_l(
-                "pirates-attack-miss-you", target=defender.name, buffer="table"
-            )
+            attacker_user.speak_l("pirates-attack-miss-you", target=defender.name, buffer="table")
         if defender_user:
             defender_user.speak_l("pirates-attack-miss-them", buffer="table")
         game.broadcast_l(
-            "pirates-attack-miss",
-            attacker=attacker.name,
-            defender=defender.name,
-            exclude=attacker
+            "pirates-attack-miss", attacker=attacker.name, defender=defender.name, exclude=attacker
         )
 
         # Give XP to defender for successful defense
         xp_gain = random.randint(30, 100)  # nosec B311
-        defender.leveling.give_xp(
-            game, defender.name, xp_gain, moon_mult, global_xp_multiplier
-        )
+        defender.leveling.give_xp(game, defender.name, xp_gain, moon_mult, global_xp_multiplier)
 
         return CombatResult(
             hit=False,
@@ -210,7 +183,7 @@ def do_attack(
             defense_roll=defense_roll,
             attack_bonus=attack_bonus,
             defense_bonus=defense_bonus,
-            xp_gained=int(xp_gain * total_mult)
+            xp_gained=int(xp_gain * total_mult),
         )
 
 
@@ -220,7 +193,7 @@ def _handle_boarding(
     defender: "PiratesPlayer",
     attack_bonus: int,
     defense_bonus: int,
-    gem_stealing: str
+    gem_stealing: str,
 ) -> None:
     """
     Handle the boarding action after a successful attack.
@@ -247,9 +220,11 @@ def _handle_boarding(
 
         if choice == "steal":
             _attempt_gem_steal(
-                game, attacker, defender,
+                game,
+                attacker,
+                defender,
                 attack_bonus if gem_stealing == "with_roll_bonus" else 0,
-                defense_bonus if gem_stealing == "with_roll_bonus" else 0
+                defense_bonus if gem_stealing == "with_roll_bonus" else 0,
             )
             return
         elif choice in ("left", "right"):
@@ -262,10 +237,7 @@ def _handle_boarding(
 
 
 def _push_defender(
-    game: "PiratesGame",
-    attacker: "PiratesPlayer",
-    defender: "PiratesPlayer",
-    direction: str
+    game: "PiratesGame", attacker: "PiratesPlayer", defender: "PiratesPlayer", direction: str
 ) -> None:
     """Push the defender in the specified direction."""
     push_amount = random.randint(3, 8)  # nosec B311
@@ -301,7 +273,7 @@ def _push_defender(
         direction=direction,
         old_pos=old_pos,
         new_pos=defender.position,
-        exclude=attacker
+        exclude=attacker,
     )
 
 
@@ -310,7 +282,7 @@ def _attempt_gem_steal(
     attacker: "PiratesPlayer",
     defender: "PiratesPlayer",
     attack_bonus: int,
-    defense_bonus: int
+    defense_bonus: int,
 ) -> bool:
     """
     Attempt to steal a gem from the defender.
@@ -330,11 +302,7 @@ def _attempt_gem_steal(
     steal_roll = random.randint(1, 6) + attack_bonus  # nosec B311
     defend_roll = random.randint(1, 6) + defense_bonus  # nosec B311
 
-    game.broadcast_l(
-        "pirates-steal-rolls",
-        steal=steal_roll,
-        defend=defend_roll
-    )
+    game.broadcast_l("pirates-steal-rolls", steal=steal_roll, defend=defend_roll)
 
     if steal_roll > defend_roll:
         # Successful steal
@@ -374,7 +342,7 @@ def _attempt_gem_steal(
                 attacker=attacker.name,
                 gem=gem_name,
                 defender=defender.name,
-                exclude=attacker
+                exclude=attacker,
             )
             return True
     else:

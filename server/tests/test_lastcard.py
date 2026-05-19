@@ -3,10 +3,20 @@
 import pytest
 import random
 from ..games.lastcard.game import (
-    LastCardGame, LastCardOptions, LastCardPlayer,
+    LastCardGame,
+    LastCardOptions,
+    LastCardPlayer,
     build_lastcard_deck,
-    COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_YELLOW, COLOR_WILD,
-    RANK_SKIP, RANK_REVERSE, RANK_DRAW_TWO, RANK_WILD, RANK_WILD_DRAW_FOUR,
+    COLOR_RED,
+    COLOR_BLUE,
+    COLOR_GREEN,
+    COLOR_YELLOW,
+    COLOR_WILD,
+    RANK_SKIP,
+    RANK_REVERSE,
+    RANK_DRAW_TWO,
+    RANK_WILD,
+    RANK_WILD_DRAW_FOUR,
 )
 from ..game_utils.cards import Card, Deck
 from server.core.users.bot import Bot
@@ -15,6 +25,7 @@ from server.core.users.bot import Bot
 # ============================================================================
 # Helpers
 # ============================================================================
+
 
 def make_game(**option_overrides) -> LastCardGame:
     """Create a game with optional overrides."""
@@ -42,8 +53,9 @@ def start_game(game: LastCardGame) -> None:
         game.on_tick()
 
 
-def setup_turn(game: LastCardGame, player_index: int, discard_card: Card,
-               color: int | None = None) -> None:
+def setup_turn(
+    game: LastCardGame, player_index: int, discard_card: Card, color: int | None = None
+) -> None:
     """Set up a clean turn state for testing.
 
     Sets the current player, discard pile, clears interrupt states,
@@ -95,6 +107,7 @@ def make_card(card_id: int, rank: int, suit: int) -> Card:
 # Basic game creation and metadata
 # ============================================================================
 
+
 def test_game_creation():
     game = LastCardGame()
     assert game.get_name() == "Last Card"
@@ -130,6 +143,7 @@ def test_leaderboards():
 # Deck building
 # ============================================================================
 
+
 def test_deck_has_108_cards():
     deck = build_lastcard_deck()
     assert deck.size() == 108
@@ -158,6 +172,7 @@ def test_deck_composition():
 # ============================================================================
 # Card playability
 # ============================================================================
+
 
 def test_wild_always_playable():
     game = make_game()
@@ -202,6 +217,7 @@ def test_wd4_always_playable():
 # ============================================================================
 # Basic gameplay
 # ============================================================================
+
 
 def test_play_number_card():
     game = make_game(last_card_callout=False, challenge_wild_draw_four=False, jump_in=False)
@@ -258,8 +274,12 @@ def test_play_reverse_card_3_players():
 
 
 def test_reverse_acts_as_skip_in_2p():
-    game = make_game(reverse_two_players="skip", last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        reverse_two_players="skip",
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -278,8 +298,9 @@ def test_reverse_acts_as_skip_in_2p():
 
 
 def test_draw_two_no_stacking():
-    game = make_game(stacking="off", last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        stacking="off", last_card_callout=False, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -300,6 +321,7 @@ def test_draw_two_no_stacking():
 # ============================================================================
 # Wild cards and color selection
 # ============================================================================
+
 
 def test_wild_requires_color_choice():
     game = make_game(last_card_callout=False, challenge_wild_draw_four=False)
@@ -343,9 +365,11 @@ def test_choose_color_after_wild():
 # Stacking
 # ============================================================================
 
+
 def test_standard_stacking_dt_on_dt():
-    game = make_game(stacking="standard", last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        stacking="standard", last_card_callout=False, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 3)
     start_game(game)
 
@@ -403,8 +427,9 @@ def test_progressive_stacking_dt_on_wd4():
 
 
 def test_cant_stack_forces_draw():
-    game = make_game(stacking="standard", last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        stacking="standard", last_card_callout=False, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -427,6 +452,7 @@ def test_cant_stack_forces_draw():
 # ============================================================================
 # Challenge Wild Draw Four
 # ============================================================================
+
 
 def test_wd4_challenge_window_opens():
     game = make_game(challenge_wild_draw_four=True, last_card_callout=False, jump_in=False)
@@ -525,9 +551,11 @@ def test_wd4_accept_draw():
 # Buzzer / Last Card Callout
 # ============================================================================
 
+
 def test_last_card_callout_window():
-    game = make_game(last_card_callout=True, buzzer_enabled=True,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        last_card_callout=True, buzzer_enabled=True, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -545,8 +573,9 @@ def test_last_card_callout_window():
 
 
 def test_buzzer_self_call_safe():
-    game = make_game(last_card_callout=True, buzzer_enabled=True,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        last_card_callout=True, buzzer_enabled=True, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -568,8 +597,9 @@ def test_buzzer_self_call_safe():
 
 
 def test_buzzer_caught():
-    game = make_game(last_card_callout=True, buzzer_enabled=True,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        last_card_callout=True, buzzer_enabled=True, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -595,9 +625,9 @@ def test_buzzer_caught():
 # Jump-in
 # ============================================================================
 
+
 def test_jump_in_with_exact_match():
-    game = make_game(jump_in=True, last_card_callout=False,
-                     challenge_wild_draw_four=False)
+    game = make_game(jump_in=True, last_card_callout=False, challenge_wild_draw_four=False)
     add_bots(game, 3)
     start_game(game)
 
@@ -624,8 +654,7 @@ def test_jump_in_with_exact_match():
 
 
 def test_jump_in_no_match_fails():
-    game = make_game(jump_in=True, last_card_callout=False,
-                     challenge_wild_draw_four=False)
+    game = make_game(jump_in=True, last_card_callout=False, challenge_wild_draw_four=False)
     add_bots(game, 3)
     start_game(game)
 
@@ -650,9 +679,14 @@ def test_jump_in_no_match_fails():
 # Seven-O rules
 # ============================================================================
 
+
 def test_seven_swap_with_2_players():
-    game = make_game(seven_card_rule="swap_hand", last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        seven_card_rule="swap_hand",
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -677,8 +711,12 @@ def test_seven_swap_with_2_players():
 
 
 def test_zero_rotates_hands():
-    game = make_game(zero_card_rule="rotate_hands", last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        zero_card_rule="rotate_hands",
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 3)
     start_game(game)
 
@@ -710,9 +748,9 @@ def test_zero_rotates_hands():
 # Draw rules
 # ============================================================================
 
+
 def test_draw_once_normal():
-    game = make_game(draw_until_playable=False, force_play=False,
-                     last_card_callout=False)
+    game = make_game(draw_until_playable=False, force_play=False, last_card_callout=False)
     add_bots(game, 2)
     start_game(game)
 
@@ -744,6 +782,7 @@ def test_force_play_blocks_voluntary_draw():
 # Scoring
 # ============================================================================
 
+
 def test_hand_points():
     game = make_game()
     hand = [
@@ -757,9 +796,13 @@ def test_hand_points():
 
 
 def test_classic_scoring():
-    game = make_game(scoring_mode="classic", winning_score=100,
-                     last_card_callout=False, challenge_wild_draw_four=False,
-                     jump_in=False)
+    game = make_game(
+        scoring_mode="classic",
+        winning_score=100,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -780,6 +823,7 @@ def test_classic_scoring():
 # ============================================================================
 # Edge cases
 # ============================================================================
+
 
 def test_deck_reshuffles_from_discard():
     game = make_game()
@@ -810,8 +854,7 @@ def test_max_hand_size_limits_draws():
 
 
 def test_winning_with_wild_card():
-    game = make_game(last_card_callout=False, challenge_wild_draw_four=False,
-                     jump_in=False)
+    game = make_game(last_card_callout=False, challenge_wild_draw_four=False, jump_in=False)
     add_bots(game, 2)
     start_game(game)
 
@@ -828,8 +871,7 @@ def test_winning_with_wild_card():
 
 
 def test_winning_with_wd4():
-    game = make_game(last_card_callout=False, challenge_wild_draw_four=False,
-                     jump_in=False)
+    game = make_game(last_card_callout=False, challenge_wild_draw_four=False, jump_in=False)
     add_bots(game, 2)
     start_game(game)
 
@@ -849,10 +891,12 @@ def test_winning_with_wd4():
 # Bot game completion
 # ============================================================================
 
+
 def test_bot_game_completes():
     random.seed(42)
-    options = LastCardOptions(winning_score=50, last_card_callout=False,
-                              challenge_wild_draw_four=False, jump_in=False)
+    options = LastCardOptions(
+        winning_score=50, last_card_callout=False, challenge_wild_draw_four=False, jump_in=False
+    )
     game = LastCardGame(options=options)
     for i in range(3):
         bot = Bot(f"Bot{i}")
@@ -869,9 +913,13 @@ def test_bot_game_completes():
 
 def test_bot_game_with_stacking():
     random.seed(123)
-    options = LastCardOptions(winning_score=50, stacking="standard",
-                              last_card_callout=False, challenge_wild_draw_four=False,
-                              jump_in=False)
+    options = LastCardOptions(
+        winning_score=50,
+        stacking="standard",
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     game = LastCardGame(options=options)
     for i in range(3):
         bot = Bot(f"Bot{i}")
@@ -889,10 +937,14 @@ def test_bot_game_with_stacking():
 def test_bot_game_with_all_features():
     random.seed(456)
     options = LastCardOptions(
-        winning_score=50, stacking="progressive",
-        last_card_callout=True, buzzer_enabled=True,
-        challenge_wild_draw_four=True, jump_in=True,
-        seven_card_rule="swap_hand", zero_card_rule="rotate_hands",
+        winning_score=50,
+        stacking="progressive",
+        last_card_callout=True,
+        buzzer_enabled=True,
+        challenge_wild_draw_four=True,
+        jump_in=True,
+        seven_card_rule="swap_hand",
+        zero_card_rule="rotate_hands",
     )
     game = LastCardGame(options=options)
     for i in range(4):
@@ -911,6 +963,7 @@ def test_bot_game_with_all_features():
 # ============================================================================
 # Card formatting
 # ============================================================================
+
 
 def test_format_card_number():
     game = make_game()
@@ -947,10 +1000,12 @@ def test_format_card_wd4():
 # Hand clearing between rounds
 # ============================================================================
 
+
 def test_hands_cleared_between_rounds():
     """Verify that player hands are cleared when a round ends (not a game end)."""
-    game = make_game(winning_score=9999, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        winning_score=9999, last_card_callout=False, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -979,10 +1034,12 @@ def test_hands_cleared_between_rounds():
 # Draw penalty info
 # ============================================================================
 
+
 def test_draw_penalty_info():
     """Verify pending_draw_count is correctly tracked for the draw penalty action."""
-    game = make_game(stacking="standard", last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        stacking="standard", last_card_callout=False, challenge_wild_draw_four=False, jump_in=False
+    )
     add_bots(game, 2)
     start_game(game)
 
@@ -997,6 +1054,7 @@ def test_draw_penalty_info():
 # ============================================================================
 # Hand sorting
 # ============================================================================
+
 
 def test_hand_sort_default():
     """Default hand sort is by color."""
@@ -1088,10 +1146,15 @@ def test_cycle_hand_sort():
 # Multiple card play
 # ============================================================================
 
+
 def test_multi_play_toggle_select():
     """Toggle card selection in multi-play mode."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
     p0 = game.players[0]
@@ -1115,8 +1178,12 @@ def test_multi_play_toggle_select():
 
 def test_multi_play_two_number_cards():
     """Play two number cards of the same rank in multi-play mode."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
     p0 = game.players[0]
@@ -1141,8 +1208,12 @@ def test_multi_play_two_number_cards():
 
 def test_multi_play_rejects_different_ranks():
     """Cannot play cards of different ranks together."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
     p0 = game.players[0]
@@ -1163,8 +1234,12 @@ def test_multi_play_rejects_different_ranks():
 
 def test_multi_play_rejects_multiple_wilds():
     """Cannot play multiple Wild cards at once."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
     p0 = game.players[0]
@@ -1185,8 +1260,12 @@ def test_multi_play_rejects_multiple_wilds():
 
 def test_multi_play_single_card_uses_normal_path():
     """Selecting one card and confirming uses the normal play path."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 2)
     start_game(game)
     p0 = game.players[0]
@@ -1205,8 +1284,12 @@ def test_multi_play_single_card_uses_normal_path():
 
 def test_multi_play_double_skip():
     """Two Skip cards = skip two players."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 4)
     start_game(game)
     p0 = game.players[0]
@@ -1230,9 +1313,13 @@ def test_multi_play_double_skip():
 
 def test_multi_play_double_draw_two():
     """Two Draw Twos without stacking = next player draws 4 and is skipped."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False,
-                     stacking="off")
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+        stacking="off",
+    )
     add_bots(game, 3)
     start_game(game)
     p0 = game.players[0]
@@ -1254,9 +1341,13 @@ def test_multi_play_double_draw_two():
 
 def test_multi_play_double_draw_two_stacking():
     """Two Draw Twos with stacking = +4 added to pending draw stack."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False,
-                     stacking="standard")
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+        stacking="standard",
+    )
     add_bots(game, 3)
     start_game(game)
     p0 = game.players[0]
@@ -1281,8 +1372,12 @@ def test_multi_play_double_draw_two_stacking():
 
 def test_multi_play_double_reverse():
     """Two Reverses cancel each other out (direction unchanged)."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+    )
     add_bots(game, 4)
     start_game(game)
     p0 = game.players[0]
@@ -1303,9 +1398,13 @@ def test_multi_play_double_reverse():
 
 def test_multi_play_wins_round():
     """Playing all remaining cards at once wins the round."""
-    game = make_game(allow_multiple_play=True, last_card_callout=False,
-                     challenge_wild_draw_four=False, jump_in=False,
-                     winning_score=9999)
+    game = make_game(
+        allow_multiple_play=True,
+        last_card_callout=False,
+        challenge_wild_draw_four=False,
+        jump_in=False,
+        winning_score=9999,
+    )
     add_bots(game, 2)
     start_game(game)
     p0 = game.players[0]
@@ -1328,8 +1427,10 @@ def test_multi_play_bot_game():
     """Full bot game with multi-play enabled completes."""
     random.seed(789)
     options = LastCardOptions(
-        winning_score=50, allow_multiple_play=True,
-        last_card_callout=True, buzzer_enabled=True,
+        winning_score=50,
+        allow_multiple_play=True,
+        last_card_callout=True,
+        buzzer_enabled=True,
     )
     game = LastCardGame(options=options)
     for i in range(4):
@@ -1349,13 +1450,16 @@ def test_multi_play_bot_game():
 # Prestart validation
 # ============================================================================
 
+
 def test_prestart_validate_too_many_cards():
     """Reject hand sizes that exceed the deck."""
     game = LastCardGame(options=LastCardOptions(hand_size=15))
     for i in range(8):
         game.add_player(f"P{i}", Bot(f"P{i}"))
     errors = game.prestart_validate()
-    assert any("lastcard-error-too-many-cards" in (e[0] if isinstance(e, tuple) else e) for e in errors)
+    assert any(
+        "lastcard-error-too-many-cards" in (e[0] if isinstance(e, tuple) else e) for e in errors
+    )
 
 
 def test_prestart_validate_ok():
@@ -1371,6 +1475,7 @@ def test_prestart_validate_ok():
 # Wild card UI: cards hidden during color choice
 # ============================================================================
 
+
 def test_cards_hidden_during_color_choice():
     """Cards should be hidden when awaiting color choice."""
     game = make_game()
@@ -1379,16 +1484,19 @@ def test_cards_hidden_during_color_choice():
     p = players[0]
 
     # Set up state: player has a wild card
-    p.hand = [Card(id=200, rank=RANK_WILD, suit=COLOR_WILD),
-              Card(id=201, rank=3, suit=COLOR_RED)]
+    p.hand = [Card(id=200, rank=RANK_WILD, suit=COLOR_WILD), Card(id=201, rank=3, suit=COLOR_RED)]
     game.awaiting_color_choice = True
     game._sync_turn_actions(p)
 
     # Check that play_card_ and toggle_card_ actions are hidden
     turn_set = game.get_action_set(p, "turn")
     for action in turn_set.get_visible_actions(game, p):
-        assert not action.action.id.startswith("play_card_"), "play_card should be hidden during color choice"
-        assert not action.action.id.startswith("toggle_card_"), "toggle_card should be hidden during color choice"
+        assert not action.action.id.startswith("play_card_"), (
+            "play_card should be hidden during color choice"
+        )
+        assert not action.action.id.startswith("toggle_card_"), (
+            "toggle_card should be hidden during color choice"
+        )
 
 
 def test_cards_hidden_during_swap_target():
@@ -1403,8 +1511,12 @@ def test_cards_hidden_during_swap_target():
 
     turn_set = game.get_action_set(p, "turn")
     for action in turn_set.get_visible_actions(game, p):
-        assert not action.action.id.startswith("play_card_"), "play_card should be hidden during swap"
-        assert not action.action.id.startswith("toggle_card_"), "toggle_card should be hidden during swap"
+        assert not action.action.id.startswith("play_card_"), (
+            "play_card should be hidden during swap"
+        )
+        assert not action.action.id.startswith("toggle_card_"), (
+            "toggle_card should be hidden during swap"
+        )
 
 
 # ============================================================================
@@ -1415,6 +1527,7 @@ def test_cards_hidden_during_swap_target():
 def test_web_buzzer_visible_during_callout():
     """Web clients see buzzer button during last-card callout."""
     from ..game_utils.actions import Visibility
+
     game = make_game(buzzer_enabled=True, last_card_callout=True)
     players = add_bots(game, 3)
     start_game(game)
@@ -1433,10 +1546,10 @@ def test_web_buzzer_visible_during_callout():
     assert game._is_buzzer_hidden(p) == Visibility.VISIBLE
 
 
-
 def test_web_jump_in_visible_during_window():
     """Web clients see jump-in button during jump-in window."""
     from ..game_utils.actions import Visibility
+
     game = make_game(jump_in=True)
     players = add_bots(game, 3)
     start_game(game)
@@ -1463,10 +1576,10 @@ def test_web_jump_in_visible_during_window():
     assert game._is_jump_in_hidden(cp) == Visibility.HIDDEN
 
 
-
 def test_web_sort_visible_in_turn_menu():
     """Web clients see sort hand button in turn menu."""
     from ..game_utils.actions import Visibility
+
     game = make_game()
     players = add_bots(game, 3)
     start_game(game)
@@ -1481,7 +1594,6 @@ def test_web_sort_visible_in_turn_menu():
     assert game._is_sort_turn_hidden(p) == Visibility.VISIBLE
 
 
-
 def test_web_turn_menu_order():
     """Web turn menu places reaction buttons before cards, utilities after."""
     game = make_game(jump_in=True, buzzer_enabled=True)
@@ -1494,8 +1606,7 @@ def test_web_turn_menu_order():
     bot_user.set_client_type("web")
 
     setup_turn(game, 0, make_card(50, 5, COLOR_RED))
-    p.hand = [Card(id=200, rank=5, suit=COLOR_BLUE),
-              Card(id=201, rank=3, suit=COLOR_RED)]
+    p.hand = [Card(id=200, rank=5, suit=COLOR_BLUE), Card(id=201, rank=3, suit=COLOR_RED)]
     game._sync_turn_actions(p)
 
     turn_set = game.get_action_set(p, "turn")
@@ -1516,5 +1627,3 @@ def test_web_turn_menu_order():
     sort_idx = order.index("cycle_hand_sort_turn")
     assert sort_idx > draw_idx, "sort must be after draw"
     assert sort_idx > pass_idx, "sort must be after pass"
-
-

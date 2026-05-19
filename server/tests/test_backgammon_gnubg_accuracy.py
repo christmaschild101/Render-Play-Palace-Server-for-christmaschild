@@ -22,14 +22,13 @@ from server.games.backgammon.state import (
     remaining_dice_unique,
 )
 
-pytestmark = pytest.mark.skipif(
-    not is_gnubg_available(), reason="gnubg-cli not on PATH"
-)
+pytestmark = pytest.mark.skipif(not is_gnubg_available(), reason="gnubg-cli not on PATH")
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def gnubg():
@@ -57,6 +56,7 @@ def gnubg_2ply():
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_state(
     points: list[int] | None = None,
     bar_red: int = 0,
@@ -71,6 +71,7 @@ def _make_state(
     """Build a game state from explicit parameters."""
     if points is None:
         from server.games.backgammon.state import INITIAL_BOARD
+
         points = list(INITIAL_BOARD)
     gs = BackgammonGameState(
         board=BackgammonBoardState(
@@ -125,16 +126,19 @@ def _goals_are_legal(
     return True
 
 
-def _raw_query(proc: GnubgProcess, state: BackgammonGameState,
-               dice: list[int], hint_count: int = 3) -> list[str]:
+def _raw_query(
+    proc: GnubgProcess, state: BackgammonGameState, dice: list[int], hint_count: int = 3
+) -> list[str]:
     """Send position+dice to GNUBG, return raw hint output lines."""
     pos_id = encode_position_id(state)
-    proc._send_batch([
-        f"set board {pos_id}",
-        "set turn 1",
-        f"set dice {dice[0]} {dice[1]}",
-        f"hint {hint_count}",
-    ])
+    proc._send_batch(
+        [
+            f"set board {pos_id}",
+            "set turn 1",
+            f"set dice {dice[0]} {dice[1]}",
+            f"hint {hint_count}",
+        ]
+    )
     output = proc._read_until_match(
         lambda line: _HINT_RE.match(line) is not None,
         timeout=10.0,
@@ -145,6 +149,7 @@ def _raw_query(proc: GnubgProcess, state: BackgammonGameState,
 # ===========================================================================
 # Position ID round-trip tests
 # ===========================================================================
+
 
 class TestPositionIdRoundTrip:
     """Verify our position encoding matches what GNUBG reports back."""
@@ -186,7 +191,7 @@ class TestPositionIdRoundTrip:
     def test_bar_position_accepted(self, gnubg):
         """A position with checkers on the bar should encode validly."""
         points = [0] * 24
-        points[5] = 12    # Red has 12 on point 6
+        points[5] = 12  # Red has 12 on point 6
         points[18] = -13  # White has 13 on point 19
         gs = _make_state(
             points=points,
@@ -203,9 +208,9 @@ class TestPositionIdRoundTrip:
     def test_bearing_off_position_accepted(self, gnubg):
         """A bearing-off position should encode validly."""
         points = [0] * 24
-        points[0] = 3   # Red on point 1
-        points[2] = 4   # Red on point 3
-        points[4] = 3   # Red on point 5
+        points[0] = 3  # Red on point 1
+        points[2] = 4  # Red on point 3
+        points[4] = 3  # Red on point 5
         points[23] = -5  # White on point 1 (their perspective)
         points[20] = -5  # White on point 4
         gs = _make_state(
@@ -224,6 +229,7 @@ class TestPositionIdRoundTrip:
 # ===========================================================================
 # Move hint accuracy tests
 # ===========================================================================
+
 
 class TestMoveHintAccuracy:
     """Verify that get_move_hint_text returns hints matching raw GNUBG output."""
@@ -295,6 +301,7 @@ class TestMoveHintAccuracy:
 # Goal conversion accuracy tests
 # ===========================================================================
 
+
 class TestGoalConversionAccuracy:
     """Verify hint_to_goals produces goals that match legal board positions."""
 
@@ -306,8 +313,9 @@ class TestGoalConversionAccuracy:
             submoves = parse_hint_line(line)
             if submoves:
                 goals = hint_to_goals(submoves, "red")
-                assert _goals_are_legal(goals, gs, "red"), \
+                assert _goals_are_legal(goals, gs, "red"), (
                     f"Illegal goal sources in {goals} from hint {line}"
+                )
                 break
         else:
             pytest.fail(f"No hint parsed from GNUBG output: {raw}")
@@ -320,8 +328,7 @@ class TestGoalConversionAccuracy:
             submoves = parse_hint_line(line)
             if submoves:
                 goals = hint_to_goals(submoves, "red")
-                assert _goals_are_legal(goals, gs, "red"), \
-                    f"Goals {goals} invalid for hint {line}"
+                assert _goals_are_legal(goals, gs, "red"), f"Goals {goals} invalid for hint {line}"
 
     def test_white_goals_valid(self, gnubg):
         """Goals converted for white should reference white-occupied points."""
@@ -331,13 +338,14 @@ class TestGoalConversionAccuracy:
             submoves = parse_hint_line(line)
             if submoves:
                 goals = hint_to_goals(submoves, "white")
-                assert _goals_are_legal(goals, gs, "white"), \
+                assert _goals_are_legal(goals, gs, "white"), (
                     f"White goals {goals} invalid for hint {line}"
+                )
 
     def test_bar_entry_goals_valid(self, gnubg):
         """When a checker is on the bar, goals should start from -1."""
         points = [0] * 24
-        points[5] = 14   # 14 red on point 6
+        points[5] = 14  # 14 red on point 6
         points[18] = -15  # all white on point 19
         gs = _make_state(
             points=points,
@@ -352,17 +360,16 @@ class TestGoalConversionAccuracy:
                 goals = hint_to_goals(submoves, "red")
                 # At least one goal should come from bar
                 bar_goals = [g for g in goals if g[0] == -1]
-                assert len(bar_goals) >= 1, \
-                    f"Expected bar entry goal, got {goals} from {line}"
+                assert len(bar_goals) >= 1, f"Expected bar entry goal, got {goals} from {line}"
                 assert _goals_are_legal(goals, gs, "red")
                 break
 
     def test_bearing_off_goals_valid(self, gnubg):
         """Bear-off goals should have destination 24."""
         points = [0] * 24
-        points[0] = 5   # Red on point 1
-        points[2] = 5   # Red on point 3
-        points[4] = 5   # Red on point 5
+        points[0] = 5  # Red on point 1
+        points[2] = 5  # Red on point 3
+        points[4] = 5  # Red on point 5
         gs = _make_state(
             points=points,
             off_red=0,
@@ -377,14 +384,14 @@ class TestGoalConversionAccuracy:
                 goals = hint_to_goals(submoves, "red")
                 # At least one goal should bear off (dst=24)
                 bear_off_goals = [g for g in goals if g[1] == 24]
-                assert len(bear_off_goals) >= 1, \
-                    f"Expected bear-off goal, got {goals} from {line}"
+                assert len(bear_off_goals) >= 1, f"Expected bear-off goal, got {goals} from {line}"
                 break
 
 
 # ===========================================================================
 # get_best_move end-to-end tests
 # ===========================================================================
+
 
 class TestGetBestMoveEndToEnd:
     """Verify get_best_move returns goals that can be resolved into legal moves."""
@@ -397,8 +404,7 @@ class TestGetBestMoveEndToEnd:
             goals = gnubg.get_best_move(gs, "red")
             assert goals is not None, f"No goals for dice {d1}-{d2}"
             assert len(goals) >= 1, f"Empty goals for dice {d1}-{d2}"
-            assert _goals_are_legal(goals, gs, "red"), \
-                f"Illegal goals {goals} for dice {d1}-{d2}"
+            assert _goals_are_legal(goals, gs, "red"), f"Illegal goals {goals} for dice {d1}-{d2}"
 
     def test_white_best_move(self, gnubg):
         """get_best_move should work for white too."""
@@ -455,8 +461,8 @@ class TestGetBestMoveEndToEnd:
     def test_best_move_from_bar(self, gnubg):
         """Bar entry position should produce valid goals."""
         points = [0] * 24
-        points[5] = 12    # Red: 12 on point 6
-        points[11] = 2    # Red: 2 on point 12
+        points[5] = 12  # Red: 12 on point 6
+        points[11] = 2  # Red: 2 on point 12
         # Red total: 12 + 2 + 1 bar = 15
         # White: 15 total, leave entry points open for die 4 and 2
         points[18] = -5
@@ -478,6 +484,7 @@ class TestGetBestMoveEndToEnd:
 # get_worst_move (Whackgammon) tests
 # ===========================================================================
 
+
 class TestGetWorstMove:
     """Verify get_worst_move returns valid (but different from best) goals."""
 
@@ -496,8 +503,7 @@ class TestGetWorstMove:
         assert best is not None
         assert worst is not None
         # They should differ (starting 3-1 has many possible moves)
-        assert best != worst, \
-            f"Best and worst are identical: {best}"
+        assert best != worst, f"Best and worst are identical: {best}"
 
     def test_worst_is_truly_last_ranked(self, gnubg):
         """Worst move should match the last hint from a full hint list."""
@@ -509,13 +515,13 @@ class TestGetWorstMove:
             sm = parse_hint_line(line)
             if sm:
                 all_submoves.append(sm)
-        assert len(all_submoves) >= 2, \
-            f"Expected multiple moves, got {len(all_submoves)}"
+        assert len(all_submoves) >= 2, f"Expected multiple moves, got {len(all_submoves)}"
         # The worst move from get_worst_move should match the last ranked
         last_goals = hint_to_goals(all_submoves[-1], "red")
         worst_goals = gnubg.get_worst_move(gs, "red")
-        assert worst_goals == last_goals, \
+        assert worst_goals == last_goals, (
             f"get_worst_move returned {worst_goals}, but last ranked is {last_goals}"
+        )
 
     def test_worst_move_sees_all_moves_doubles(self, gnubg):
         """With doubles, there can be 30+ legal moves. Verify we see them all."""
@@ -535,6 +541,7 @@ class TestGetWorstMove:
 # Cube hint tests
 # ===========================================================================
 
+
 class TestCubeHintAccuracy:
     """Verify cube decisions from GNUBG are parsed correctly."""
 
@@ -542,15 +549,15 @@ class TestCubeHintAccuracy:
         """Starting position cube decision should be valid."""
         gs = _make_state(current_color="red")
         decision = gnubg.get_cube_decision(gs, "red")
-        assert decision in ("no-double", "too-good", "double-take", "double-pass"), \
+        assert decision in ("no-double", "too-good", "double-take", "double-pass"), (
             f"Invalid cube decision: {decision}"
+        )
 
     def test_cube_decision_is_no_double_at_start(self, gnubg):
         """At the starting position, correct play is no double."""
         gs = _make_state(current_color="red")
         decision = gnubg.get_cube_decision(gs, "red")
-        assert decision == "no-double", \
-            f"Expected no-double at start, got {decision}"
+        assert decision == "no-double", f"Expected no-double at start, got {decision}"
 
     def test_cube_hint_text_returns_string(self, gnubg):
         """get_cube_hint_text should return a readable string."""
@@ -562,9 +569,9 @@ class TestCubeHintAccuracy:
     def test_cube_decision_winning_position(self, gnubg):
         """A heavily winning position should recommend double-pass or double-take."""
         points = [0] * 24
-        points[0] = 5   # Red on point 1
-        points[1] = 5   # Red on point 2
-        points[2] = 4   # Red on point 3
+        points[0] = 5  # Red on point 1
+        points[1] = 5  # Red on point 2
+        points[2] = 4  # Red on point 3
         # White far away
         points[23] = -5
         points[22] = -5
@@ -576,25 +583,45 @@ class TestCubeHintAccuracy:
         )
         decision = gnubg.get_cube_decision(gs, "red")
         # Red is way ahead in a race, should recommend doubling
-        assert decision in ("double-take", "double-pass", "too-good"), \
+        assert decision in ("double-take", "double-pass", "too-good"), (
             f"Expected doubling recommendation, got {decision}"
+        )
 
 
 # ===========================================================================
 # Consistency tests: verify our full pipeline matches GNUBG
 # ===========================================================================
 
+
 class TestPipelineConsistency:
     """End-to-end tests: position → GNUBG → parse → goals → legal check."""
 
-    @pytest.mark.parametrize("dice", [
-        [1, 2], [1, 3], [1, 4], [1, 5], [1, 6],
-        [2, 3], [2, 4], [2, 5], [2, 6],
-        [3, 4], [3, 5], [3, 6],
-        [4, 5], [4, 6],
-        [5, 6],
-        [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6],
-    ])
+    @pytest.mark.parametrize(
+        "dice",
+        [
+            [1, 2],
+            [1, 3],
+            [1, 4],
+            [1, 5],
+            [1, 6],
+            [2, 3],
+            [2, 4],
+            [2, 5],
+            [2, 6],
+            [3, 4],
+            [3, 5],
+            [3, 6],
+            [4, 5],
+            [4, 6],
+            [5, 6],
+            [1, 1],
+            [2, 2],
+            [3, 3],
+            [4, 4],
+            [5, 5],
+            [6, 6],
+        ],
+    )
     def test_all_opening_rolls(self, gnubg, dice):
         """For every possible opening roll, the full pipeline should succeed."""
         actual_dice = dice if dice[0] != dice[1] else dice * 2
@@ -608,8 +635,9 @@ class TestPipelineConsistency:
             if submoves:
                 hint_found = True
                 goals = hint_to_goals(submoves, "red")
-                assert _goals_are_legal(goals, gs, "red"), \
+                assert _goals_are_legal(goals, gs, "red"), (
                     f"dice={dice}: illegal goals {goals} from {line}"
+                )
                 # Also verify via get_best_move
                 break
 
@@ -694,14 +722,14 @@ class TestPipelineConsistency:
             if submoves:
                 goals = hint_to_goals(submoves, "red")
                 # In a bear-off race with 6-5, should bear off
-                assert any(g[1] == 24 for g in goals), \
-                    f"Expected bear-off in goals: {goals}"
+                assert any(g[1] == 24 for g in goals), f"Expected bear-off in goals: {goals}"
                 break
 
 
 # ===========================================================================
 # Hint stability test (ply 2)
 # ===========================================================================
+
 
 class TestHintStability:
     """Verify that repeated queries for the same position give the same hint."""
@@ -713,21 +741,20 @@ class TestHintStability:
         hints2 = gnubg_2ply.get_move_hint_text(gs, "red", hint_count=1)
         assert hints1 is not None
         assert hints2 is not None
-        assert hints1 == hints2, \
-            f"Hint changed between queries: {hints1} vs {hints2}"
+        assert hints1 == hints2, f"Hint changed between queries: {hints1} vs {hints2}"
 
     def test_best_move_deterministic(self, gnubg_2ply):
         """get_best_move should be deterministic for the same position."""
         gs = _make_state(dice=[6, 4], current_color="red")
         goals1 = gnubg_2ply.get_best_move(gs, "red")
         goals2 = gnubg_2ply.get_best_move(gs, "red")
-        assert goals1 == goals2, \
-            f"Goals changed between queries: {goals1} vs {goals2}"
+        assert goals1 == goals2, f"Goals changed between queries: {goals1} vs {goals2}"
 
 
 # ===========================================================================
 # Edge case tests
 # ===========================================================================
+
 
 class TestEdgeCases:
     """Test positions that might trip up encoding or parsing."""
@@ -761,8 +788,7 @@ class TestEdgeCases:
         goals = gnubg.get_best_move(gs, "red")
         assert goals is not None
         # All goals must start from bar since we're on bar
-        assert all(g[0] == -1 for g in goals), \
-            f"Expected all bar goals when on bar, got {goals}"
+        assert all(g[0] == -1 for g in goals), f"Expected all bar goals when on bar, got {goals}"
 
     def test_single_checker_left(self, gnubg):
         """Only 1 checker left to bear off."""
@@ -779,8 +805,7 @@ class TestEdgeCases:
         goals = gnubg.get_best_move(gs, "red")
         assert goals is not None
         # Should bear off
-        assert any(g[1] == 24 for g in goals), \
-            f"Expected bear-off with 1 checker left: {goals}"
+        assert any(g[1] == 24 for g in goals), f"Expected bear-off with 1 checker left: {goals}"
 
     def test_completely_blocked_returns_none_or_empty(self, gnubg):
         """When all entries are blocked, GNUBG might return no moves."""

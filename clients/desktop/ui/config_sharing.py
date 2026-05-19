@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config_schemas import ExportedIdentities, OptionsProfile, Server
 
@@ -99,12 +100,14 @@ def find_changed_accounts(
                 if imp_acct.get(field, "") != existing_acct.get(field, ""):
                     changed_fields.append(field)
             if changed_fields:
-                changed_accounts.append({
-                    "imported": imp_acct,
-                    "existing": existing_acct,
-                    "existing_id": existing_id,
-                    "changed_fields": changed_fields,
-                })
+                changed_accounts.append(
+                    {
+                        "imported": imp_acct,
+                        "existing": existing_acct,
+                        "existing_id": existing_id,
+                        "changed_fields": changed_fields,
+                    }
+                )
 
     return new_accounts, changed_accounts
 
@@ -151,7 +154,9 @@ def build_server_info_display(imported: dict, existing: dict) -> str:
     return "\n".join(lines)
 
 
-def append_imported_notes(existing_notes: str, imported_notes: str, description: str, timestamp: int) -> str:
+def append_imported_notes(
+    existing_notes: str, imported_notes: str, description: str, timestamp: int
+) -> str:
     """Append imported notes with a header.
 
     If imported_notes is empty, returns existing_notes unchanged.
@@ -301,16 +306,18 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         if self.mode == self.MODE_EXPORT:
             for server_id, server in existing_servers.items():
                 accounts = server.get("accounts", {})
-                self._server_data.append({
-                    "server_id": server_id,
-                    "server_dict": server,
-                    "name": server.get("name", "Unknown"),
-                    "account_count": len(accounts),
-                    "has_options": has_options_profile_data(server),
-                    "is_new": False,
-                    "info_differs": False,
-                    "existing_id": server_id,
-                })
+                self._server_data.append(
+                    {
+                        "server_id": server_id,
+                        "server_dict": server,
+                        "name": server.get("name", "Unknown"),
+                        "account_count": len(accounts),
+                        "has_options": has_options_profile_data(server),
+                        "is_new": False,
+                        "info_differs": False,
+                        "existing_id": server_id,
+                    }
+                )
         else:
             # Import mode
             imported_servers = self.imported_data.get("servers", [])
@@ -330,20 +337,23 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
                         continue
                     info_differs = server_info_differs(imp_server, existing_server)
                     new_accts, changed_accts = find_changed_accounts(
-                        accounts, existing_server.get("accounts", {}),
+                        accounts,
+                        existing_server.get("accounts", {}),
                     )
                     account_count = len(new_accts) + len(changed_accts)
 
-                self._server_data.append({
-                    "index": i,
-                    "server_dict": imp_server,
-                    "name": imp_server.get("name", "Unknown"),
-                    "account_count": account_count,
-                    "has_options": has_options_profile_data(imp_server),
-                    "is_new": is_new,
-                    "info_differs": info_differs,
-                    "existing_id": existing_id,
-                })
+                self._server_data.append(
+                    {
+                        "index": i,
+                        "server_dict": imp_server,
+                        "name": imp_server.get("name", "Unknown"),
+                        "account_count": account_count,
+                        "has_options": has_options_profile_data(imp_server),
+                        "is_new": is_new,
+                        "info_differs": info_differs,
+                        "existing_id": existing_id,
+                    }
+                )
 
             if not self._server_data:
                 self._no_data = True
@@ -615,8 +625,10 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         show_info = self.TYPE_SERVER_INFO in visible_types
 
         # Check if any control would actually be visible for this server
-        any_visible = show_accounts or show_options or (
-            self.mode == self.MODE_IMPORT and show_info and sdata.get("info_differs", False)
+        any_visible = (
+            show_accounts
+            or show_options
+            or (self.mode == self.MODE_IMPORT and show_info and sdata.get("info_differs", False))
         )
         if not any_visible:
             self._show_panel_message("No included types for this server")
@@ -693,7 +705,9 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         list_pos = event.GetInt()
         if list_pos < len(self._visible_indices):
             data_idx = self._visible_indices[list_pos]
-            self._per_server_state[data_idx]["server_checked"] = self._servers_list.IsChecked(list_pos)
+            self._per_server_state[data_idx]["server_checked"] = self._servers_list.IsChecked(
+                list_pos
+            )
         self._refresh_server_panel()
 
     def _on_server_selection_changed(self, event):
@@ -765,7 +779,9 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
                 return
 
         # Ask for description
-        desc_dlg = wx.TextEntryDialog(self, "Enter a description for this export:", "Export Description")
+        desc_dlg = wx.TextEntryDialog(
+            self, "Enter a description for this export:", "Export Description"
+        )
         while True:
             if desc_dlg.ShowModal() != wx.ID_OK:
                 desc_dlg.Destroy()
@@ -853,7 +869,13 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         snapshot = copy.deepcopy(self.config_manager.identities)
         description = self.imported_data.get("description", "")
         timestamp = self.imported_data.get("timestamp", 0)
-        stats = {"new_servers": 0, "updated_servers": 0, "new_accounts": 0, "updated_accounts": 0, "skipped_accounts": 0}
+        stats = {
+            "new_servers": 0,
+            "updated_servers": 0,
+            "new_accounts": 0,
+            "updated_accounts": 0,
+            "skipped_accounts": 0,
+        }
 
         try:
             self._run_import(selected, description, timestamp, stats)
@@ -920,20 +942,32 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
     def _show_import_summary(self, stats: dict) -> None:
         parts = []
         if stats["new_servers"]:
-            parts.append(f"{stats['new_servers']} new server{'s' if stats['new_servers'] != 1 else ''}")
+            parts.append(
+                f"{stats['new_servers']} new server{'s' if stats['new_servers'] != 1 else ''}"
+            )
         if stats["updated_servers"]:
-            parts.append(f"{stats['updated_servers']} updated server{'s' if stats['updated_servers'] != 1 else ''}")
+            parts.append(
+                f"{stats['updated_servers']} updated server{'s' if stats['updated_servers'] != 1 else ''}"
+            )
         if stats["new_accounts"]:
-            parts.append(f"{stats['new_accounts']} new account{'s' if stats['new_accounts'] != 1 else ''}")
+            parts.append(
+                f"{stats['new_accounts']} new account{'s' if stats['new_accounts'] != 1 else ''}"
+            )
         if stats["updated_accounts"]:
-            parts.append(f"{stats['updated_accounts']} updated account{'s' if stats['updated_accounts'] != 1 else ''}")
+            parts.append(
+                f"{stats['updated_accounts']} updated account{'s' if stats['updated_accounts'] != 1 else ''}"
+            )
         if stats["skipped_accounts"]:
-            parts.append(f"{stats['skipped_accounts']} skipped account{'s' if stats['skipped_accounts'] != 1 else ''}")
+            parts.append(
+                f"{stats['skipped_accounts']} skipped account{'s' if stats['skipped_accounts'] != 1 else ''}"
+            )
 
         summary = "Imported " + ", ".join(parts) + "." if parts else "No changes were made."
         wx.MessageBox(summary, "Import Complete", wx.OK | wx.ICON_INFORMATION, self)
 
-    def _import_new_server(self, imp_server: dict, state: dict, description: str, timestamp: int, stats: dict):
+    def _import_new_server(
+        self, imp_server: dict, state: dict, description: str, timestamp: int, stats: dict
+    ):
         """Import a completely new server."""
         notes = imp_server.get("notes", "")
         server_id = self.config_manager.add_server(
@@ -962,7 +996,9 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             if server:
                 server["options_profile"] = copy.deepcopy(imp_server.get("options_profile", {}))
 
-    def _import_existing_server(self, sdata: dict, state: dict, description: str, timestamp: int, stats: dict):
+    def _import_existing_server(
+        self, sdata: dict, state: dict, description: str, timestamp: int, stats: dict
+    ):
         """Import data into an existing server."""
         imp_server = sdata["server_dict"]
         existing_id = sdata["existing_id"]
@@ -1019,9 +1055,7 @@ class ConfigSharingDialog(wx.Dialog, audio_events.SoundBindingsMixin):
                     stats["skipped_accounts"] += 1
                     continue
                 if update_all:
-                    self._apply_account_update(
-                        existing_id, change, description, timestamp
-                    )
+                    self._apply_account_update(existing_id, change, description, timestamp)
                     stats["updated_accounts"] += 1
                     continue
 

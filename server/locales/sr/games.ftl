@@ -61,14 +61,13 @@ option-selected-count = { $count } { $count ->
     [few] stavke izabrane
     *[other] stavki izabrano
 }.
-+option-deselected-count = { $count } { $count ->
+option-deselected-count = { $count } { $count ->
     [one] stavka nije izabrana
     [few] stavke nisu izabrane
     *[other] stavki nije izabrano
-+}.
+}.
 
 # Status box
-status-box-closed = Informacije o stanju zatvorene.
 
 # Game end
 game-leave = Napusti igru
@@ -82,8 +81,8 @@ round-timer-countdown = Sledeća runda za { $seconds }...
 dice-keeping = Zadržava se { $value }.
 dice-rerolling = Ponovo se baca { $value }.
 dice-locked = Ova kockica je zaključana i ne može se promeniti.
-dice-status-locked = locked
-dice-status-kept = kept
+dice-status-locked = Zaključana
+dice-status-kept = Zadržana
 
 # Dealing (card games)
 game-deal-counter = Deljenje { $current }/{ $total }.
@@ -94,20 +93,46 @@ game-player-deals = { $player } deli karte.
 card-name = { $rank }  { $suit }
 no-cards = Nema karata
 
-# Colors
+# Colors (with gendered forms: m = masculine, f = feminine)
 color-black = Crna
+color-black-m = crni
+color-black-f = crna
 color-blue = Plava
+color-blue-m = plavi
+color-blue-f = plava
 color-brown = Braon
+color-brown-m = braon
+color-brown-f = braon
 color-gray = Siva
+color-gray-m = sivi
+color-gray-f = siva
 color-green = Zelena
+color-green-m = zeleni
+color-green-f = zelena
 color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
 color-orange = Narandžasta
+color-orange-m = narandžasti
+color-orange-f = narandžasta
 color-pink = Ružičasta
+color-pink-m = ružičasti
+color-pink-f = ružičasta
 color-purple = Ljubičasta
+color-purple-m = ljubičasti
+color-purple-f = ljubičasta
 color-red = Crvena
+color-red-m = crveni
+color-red-f = crvena
 color-violet = Ljubičasta
+color-violet-m = ljubičasti
+color-violet-f = ljubičasta
 color-white = Bela
+color-white-m = beli
+color-white-f = bela
 color-yellow = Žuta
+color-yellow-m = žuti
+color-yellow-f = žuta
 
 # Suit names
 suit-diamonds = Karo

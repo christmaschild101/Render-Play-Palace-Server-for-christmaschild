@@ -1,8 +1,9 @@
 """Base game class and player dataclass."""
 
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TYPE_CHECKING, Protocol, runtime_checkable
 from abc import ABC, abstractmethod
+import logging
 import threading
 
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -31,6 +32,7 @@ from ..game_utils.event_handling_mixin import EventHandlingMixin
 from ..game_utils.action_set_creation_mixin import ActionSetCreationMixin
 from ..game_utils.action_execution_mixin import ActionExecutionMixin
 from ..game_utils.action_set_system_mixin import ActionSetSystemMixin
+from ..game_utils.game_status import GameStatus
 from server.core.ui.keybinds import Keybind
 
 
@@ -46,9 +48,16 @@ class ActionContext:
 
     menu_item_id: str | None = None  # ID of selected menu item when keybind pressed
     menu_index: int | None = None  # 1-based index of selected menu item
-    from_keybind: bool = (
-        False  # True if triggered by keybind, False if by menu selection
-    )
+    from_keybind: bool = False  # True if triggered by keybind, False if by menu selection
+
+
+@dataclass
+class TransientDisplayState:
+    """Runtime-only state for an in-game transient display."""
+
+    kind: str
+    path: list[str] = field(default_factory=list)
+    positions: dict[tuple[str, ...], int] = field(default_factory=dict)
 
 
 @dataclass
@@ -82,6 +91,35 @@ class Player(DataClassJSONMixin):
 
 # Re-export GameOptions from options module for backwards compatibility
 GameOptions = DeclarativeGameOptions
+
+
+if TYPE_CHECKING:
+
+    @runtime_checkable
+    class GameProtocol(Protocol):
+        """Protocol documenting the interface that Game mixins expect.
+
+        This is a compile-time-only contract. Each mixin in the Game class
+        assumes these attributes and methods exist on ``self``. Defining them
+        here lets type-checkers verify that the concrete Game class (and its
+        subclasses) satisfy the contract.
+        """
+
+        players: list[Player]
+        status: GameStatus
+        game_active: bool
+        host: str
+        round: int
+        turn_index: int
+        turn_direction: int
+
+        def get_user(self, player: Player) -> User | None: ...
+        def broadcast_l(self, message_id: str, **kwargs: Any) -> None: ...
+        def broadcast_personal_l(
+            self, player: Player, message_id: str, **kwargs: Any
+        ) -> None: ...
+        def advance_turn(self) -> None: ...
+        def finish_game(self) -> None: ...
 
 
 @dataclass
@@ -133,7 +171,7 @@ class Game(
     players: list[Player] = field(default_factory=list)
     round: int = 0
     game_active: bool = False
-    status: str = "waiting"  # waiting, playing, finished
+    status: GameStatus = GameStatus.WAITING
     host: str = ""  # Username of the host
     current_music: str = ""  # Currently playing music track
     current_ambience: str = ""  # Currently playing ambience loop
@@ -147,9 +185,7 @@ class Game(
     round_timer_state: str = "idle"  # idle, counting, paused
     round_timer_ticks: int = 0  # Remaining ticks in countdown
     # Sound scheduler state (serialized for persistence)
-    scheduled_sounds: list = field(
-        default_factory=list
-    )  # [[tick, sound, vol, pan, pitch], ...]
+    scheduled_sounds: list = field(default_factory=list)  # [[tick, sound, vol, pan, pitch], ...]
     sound_scheduler_tick: int = 0  # Current tick counter
     # Event queue state (serialized for persistence)
     event_queue: list[tuple[int, str, dict]] = field(
@@ -169,13 +205,11 @@ class Game(
         self._keybinds: dict[
             str, list[Keybind]
         ] = {}  # key -> list of Keybinds (allows same key for different states)
-        self._pending_actions: dict[
-            str, str
-        ] = {}  # player_id -> action_id (waiting for input)
+        self._pending_actions: dict[str, str] = {}  # player_id -> action_id (waiting for input)
         self._action_context: dict[
             str, ActionContext
         ] = {}  # player_id -> context during action execution
-        self._status_box_open: set[str] = set()  # player_ids with status box open
+        self._transient_display_state: dict[str, TransientDisplayState] = {}
         self._actions_menu_open: set[str] = set()  # player_ids with actions menu open
         self._destroyed: bool = False  # Whether game has been destroyed
         # Duration estimation state
@@ -195,6 +229,25 @@ class Game(
         they do not require rebuilding.
         """
         pass
+
+    def validate_actions(self) -> None:
+        """Verify all action handler/callback strings resolve to methods.
+
+        Logs warnings for any handler strings that cannot be found on the
+        game instance via ``getattr``.  Called after ``on_start()`` so that
+        typos in handler names are caught early during development.
+        """
+        _LOG = logging.getLogger("playpalace.actions")
+        for action_sets in self.player_action_sets.values():
+            for action_set in action_sets:
+                for action in action_set._actions.values():
+                    for attr_name in ("handler", "is_enabled", "is_hidden", "get_label", "get_sound"):
+                        method_name = getattr(action, attr_name, None)
+                        if method_name and getattr(self, method_name, None) is None:
+                            _LOG.warning(
+                                "Action '%s': %s='%s' does not resolve on %s",
+                                action.id, attr_name, method_name, type(self).__name__,
+                            )
 
     # Abstract methods games must implement
 
@@ -368,13 +421,11 @@ class Game(
 
     def _reset_transcripts(self) -> None:
         """Initialize transcript storage for seated players."""
-        self._transcripts = {
-            player.id: []
-            for player in self.players
-            if not player.is_spectator
-        }
+        self._transcripts = {player.id: [] for player in self.players if not player.is_spectator}
 
-    def record_transcript_event(self, player: Player | None, text: str, buffer: str = "table") -> None:
+    def record_transcript_event(
+        self, player: Player | None, text: str, buffer: str = "table"
+    ) -> None:
         """Store a transcript entry for a player."""
         if not player or player.is_spectator:
             return

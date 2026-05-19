@@ -95,9 +95,7 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
     def get_max_players(cls) -> int:
         return 8
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> ThreesPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> ThreesPlayer:
         """Create a new player with Threes-specific state."""
         return ThreesPlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -243,17 +241,13 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
 
         # Turn action keybinds - r/b like Pig
         self.define_keybind("r", "Roll dice", ["roll"], state=KeybindState.ACTIVE)
-        self.define_keybind(
-            "b", "Bank and end turn", ["bank"], state=KeybindState.ACTIVE
-        )
+        self.define_keybind("b", "Bank and end turn", ["bank"], state=KeybindState.ACTIVE)
 
         # Dice toggle keybinds (1-5) - from DiceGameMixin
         self.setup_dice_keybinds()
 
         # Check hand
-        self.define_keybind(
-            "h", "Check hand", ["check_hand"], state=KeybindState.ACTIVE
-        )
+        self.define_keybind("h", "Check hand", ["check_hand"], state=KeybindState.ACTIVE)
 
     def _action_roll(self, player: Player, action_id: str) -> None:
         """Handle rolling dice."""
@@ -347,9 +341,7 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
             self.broadcast_personal_l(player, "threes-you-shot-moon", "threes-shot-moon")
         else:
             self.play_sound("game_pig/bank.ogg")
-            self.broadcast_personal_l(
-                player, "threes-you-scored", "threes-scored", score=score
-            )
+            self.broadcast_personal_l(player, "threes-you-scored", "threes-scored", score=score)
 
         player.turn_score = score
         player.total_score += score
@@ -384,14 +376,10 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
     def _on_round_end(self) -> None:
         """End the current round."""
         # Announce round scores
-        scores = [
-            (p.name, p.total_score) for p in self.players if isinstance(p, ThreesPlayer)
-        ]
+        scores = [(p.name, p.total_score) for p in self.players if isinstance(p, ThreesPlayer)]
         scores.sort(key=lambda x: x[1])  # Sort by score (lowest first)
         scores_str = ", ".join(f"{name}: {score}" for name, score in scores)
-        self.broadcast_l(
-            "threes-round-scores", round=self.round, scores=scores_str
-        )
+        self.broadcast_l("threes-round-scores", round=self.round, scores=scores_str)
 
         # Check if game is over
         if self.round >= self.options.total_rounds:
@@ -415,9 +403,7 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
         """End the game and announce winner."""
         # Only consider active (non-spectator) players when picking winners
         active_players = [
-            p
-            for p in self.players
-            if isinstance(p, ThreesPlayer) and not p.is_spectator
+            p for p in self.players if isinstance(p, ThreesPlayer) and not p.is_spectator
         ]
         if not active_players:
             return
@@ -431,9 +417,7 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
 
         if len(winners) == 1:
             self.play_sound("game_pig/win.ogg")
-            self.broadcast_l(
-                "threes-winner", player=winners[0].name, score=lowest_score
-            )
+            self.broadcast_l("threes-winner", player=winners[0].name, score=lowest_score)
         else:
             winner_names = " and ".join(w.name for w in winners)
             self.broadcast_l("threes-tie", players=winner_names, score=lowest_score)
@@ -444,11 +428,7 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
         """Build the game result with Threes-specific data."""
         # Sorted by score ascending (lowest wins)
         sorted_players = sorted(
-            [
-                p
-                for p in self.players
-                if isinstance(p, ThreesPlayer) and not p.is_spectator
-            ],
+            [p for p in self.players if isinstance(p, ThreesPlayer) and not p.is_spectator],
             key=lambda p: p.total_score,
         )
 
@@ -533,7 +513,7 @@ class ThreesGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
         dice = player.dice
 
         # Clear current kept dice (except locked ones)
-        dice.kept = list(dice.locked)
+        dice.kept = set(dice.locked)
 
         # Group available dice by value
         available: dict[int, list[int]] = {}  # value -> list of indices

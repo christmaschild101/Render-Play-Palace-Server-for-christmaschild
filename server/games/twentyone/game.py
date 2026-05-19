@@ -13,6 +13,7 @@ from ...game_utils.bot_helper import BotHelper
 from ...game_utils.cards import Card, Deck, card_name
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from .bot import bot_think as compute_bot_think
 from server.core.ui.keybinds import KeybindState
 
@@ -140,13 +141,11 @@ MODIFIER_DRAW_WEIGHTS.update(
 )
 
 MODIFIER_LABELS = {
-    modifier: f"twentyone-modifier-label-{modifier.replace('_', '-')}"
-    for modifier in MODIFIER_POOL
+    modifier: f"twentyone-modifier-label-{modifier.replace('_', '-')}" for modifier in MODIFIER_POOL
 }
 MODIFIER_HELP = tuple(MODIFIER_POOL)
 MODIFIER_HELP_MAP = {
-    modifier: f"twentyone-modifier-help-{modifier.replace('_', '-')}"
-    for modifier in MODIFIER_POOL
+    modifier: f"twentyone-modifier-help-{modifier.replace('_', '-')}" for modifier in MODIFIER_POOL
 }
 
 TABLE_EFFECT_MODIFIERS = {
@@ -277,10 +276,6 @@ class TwentyOneGame(ActionGuardMixin, Game):
     @classmethod
     def get_name(cls) -> str:
         return "21 (Survival Rules)"
-
-    @classmethod
-    def get_name_key(cls) -> str:
-        return "21"
 
     @classmethod
     def get_type(cls) -> str:
@@ -442,8 +437,12 @@ class TwentyOneGame(ActionGuardMixin, Game):
 
     def setup_keybinds(self) -> None:
         super().setup_keybinds()
-        self.define_keybind("1", Localization.get("en", "blackjack-hit"), ["hit"], state=KeybindState.ACTIVE)
-        self.define_keybind("2", Localization.get("en", "blackjack-stand"), ["stand"], state=KeybindState.ACTIVE)
+        self.define_keybind(
+            "1", Localization.get("en", "blackjack-hit"), ["hit"], state=KeybindState.ACTIVE
+        )
+        self.define_keybind(
+            "2", Localization.get("en", "blackjack-stand"), ["stand"], state=KeybindState.ACTIVE
+        )
         self.define_keybind(
             "3",
             Localization.get("en", "twentyone-play-change-card"),
@@ -608,7 +607,7 @@ class TwentyOneGame(ActionGuardMixin, Game):
         if not card:
             self._play_sound_for_player(p, SOUND_ACTION_FAIL)
             self.broadcast_l("twentyone-deck-empty-stay")
-            self.rebuild_all_menus()
+            self._resolve_stand(p, announce=True, play_feedback=False)
             return
 
         self.play_sound(SOUND_HIT, volume=80)
@@ -616,7 +615,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
         self._add_card_to_hand(
             p,
             card,
-            announce_source=lambda locale: Localization.get(locale, "twentyone-player-draws", player=p.name),
+            announce_source=lambda locale: Localization.get(
+                locale, "twentyone-player-draws", player=p.name
+            ),
             reveal_to_others=True,
         )
         p.stand_pending = False
@@ -632,17 +633,7 @@ class TwentyOneGame(ActionGuardMixin, Game):
         if not p:
             return
 
-        self._play_sound_for_player(p, SOUND_STAND)
-        self._play_opponent_stand_sound(p)
-        p.stand_pending = True
-        self.broadcast_l("twentyone-player-stands", player=p.name)
-
-        if self._both_players_standing():
-            self.play_sound(SOUND_ROUND_RESOLVE, volume=65)
-            self._settle_round()
-            return
-
-        self._advance_turn_after_action()
+        self._resolve_stand(p, announce=True, play_feedback=True)
 
     def _action_play_modifier(self, player: Player, selected: str, action_id: str) -> None:
         p = player if isinstance(player, TwentyOnePlayer) else None
@@ -730,7 +721,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
         opponent = self._opponent_of(p)
         if opponent:
             shown_cards = self._opponent_visible_cards(opponent)
-            shown_text = ", ".join(str(card.rank) for card in shown_cards) if shown_cards else none_text
+            shown_text = (
+                ", ".join(str(card.rank) for card in shown_cards) if shown_cards else none_text
+            )
             shown_total = sum(card.rank for card in shown_cards)
             user.speak_l(
                 "twentyone-check-status-opponent",
@@ -755,7 +748,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
         for modifier_id in MODIFIER_HELP:
             name = self._render_modifier(locale, modifier_id)
             description = self._modifier_help(locale, modifier_id)
-            user.speak_l("twentyone-change-card-guide-entry", "table", name=name, description=description)
+            user.speak_l(
+                "twentyone-change-card-guide-entry", "table", name=name, description=description
+            )
         user.speak_l("twentyone-change-card-guide-footer", "table")
 
     def _action_read_opponent_face_up(self, player: Player, action_id: str) -> None:
@@ -772,9 +767,13 @@ class TwentyOneGame(ActionGuardMixin, Game):
             return
 
         shown_cards = self._opponent_visible_cards(opponent)
-        shown_text = ", ".join(str(card.rank) for card in shown_cards) if shown_cards else Localization.get(
-            self._player_locale(p),
-            "twentyone-none",
+        shown_text = (
+            ", ".join(str(card.rank) for card in shown_cards)
+            if shown_cards
+            else Localization.get(
+                self._player_locale(p),
+                "twentyone-none",
+            )
         )
         shown_total = sum(card.rank for card in shown_cards)
         user.speak_l(
@@ -793,11 +792,17 @@ class TwentyOneGame(ActionGuardMixin, Game):
         if not user:
             return
 
-        hand_text = ", ".join(str(card.rank) for card in p.hand) if p.hand else Localization.get(
-            self._player_locale(p),
-            "twentyone-none",
+        hand_text = (
+            ", ".join(str(card.rank) for card in p.hand)
+            if p.hand
+            else Localization.get(
+                self._player_locale(p),
+                "twentyone-none",
+            )
         )
-        user.speak_l("twentyone-read-hand-response", "table", hand=hand_text, total=self._hand_total(p))
+        user.speak_l(
+            "twentyone-read-hand-response", "table", hand=hand_text, total=self._hand_total(p)
+        )
 
     def _action_read_current_bets(self, player: Player, action_id: str) -> None:
         p = player if isinstance(player, TwentyOnePlayer) else None
@@ -835,7 +840,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
         my_effects = self._render_modifier_list(locale, p.table_modifiers)
         opponent = self._opponent_of(p)
         if not opponent:
-            user.speak_l("twentyone-active-effects-single", "table", player=p.name, effects=my_effects)
+            user.speak_l(
+                "twentyone-active-effects-single", "table", player=p.name, effects=my_effects
+            )
             return
 
         opponent_effects = self._render_modifier_list(locale, opponent.table_modifiers)
@@ -849,7 +856,7 @@ class TwentyOneGame(ActionGuardMixin, Game):
         )
 
     def on_start(self) -> None:
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.phase = "turns"
         self.round_number = 0
@@ -924,20 +931,26 @@ class TwentyOneGame(ActionGuardMixin, Game):
             player.stand_pending = False
             player.last_drawn_card_id = None
             player.turn_modifier_plays = 0
-            self._give_random_modifiers(player, self.options.starting_modifiers_per_round, announce=False)
+            self._give_random_modifiers(
+                player, self.options.starting_modifiers_per_round, announce=False
+            )
 
         for deal_round in range(2):
             for player in alive:
                 card = self._draw_card()
                 if card:
                     reveal = deal_round > 0
-                    self._add_card_to_hand(player, card, announce_source=None, reveal_to_others=reveal)
+                    self._add_card_to_hand(
+                        player, card, announce_source=None, reveal_to_others=reveal
+                    )
         self.play_sound(SOUND_ROUND_DEAL, volume=60)
 
         self.set_turn_players(alive, reset_index=True)
         self.turn_index = self.round_starter_index
 
-        self.broadcast_l("twentyone-round-begins", round=self.round_number, target=self._current_target())
+        self.broadcast_l(
+            "twentyone-round-begins", round=self.round_number, target=self._current_target()
+        )
         for player in alive:
             shown = self._peek_last_drawn_card(player)
             if shown:
@@ -966,9 +979,7 @@ class TwentyOneGame(ActionGuardMixin, Game):
                         rank=shown.rank,
                     )
                 user.speak_l("twentyone-your-total", "table", total=self._hand_total(player))
-                modifiers_text = (
-                    self._render_modifier_list(user.locale, player.modifiers)
-                )
+                modifiers_text = self._render_modifier_list(user.locale, player.modifiers)
                 user.speak_l("twentyone-your-change-cards", "table", cards=modifiers_text)
 
         current = self.current_player
@@ -1153,7 +1164,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
             self._play_sound_for_player(loser, SOUND_DAMAGE_HEAVY)
         else:
             self._play_sound_for_player(loser, SOUND_DAMAGE)
-        self.broadcast_l("twentyone-player-takes-damage", player=loser.name, damage=damage, hp=loser.hp)
+        self.broadcast_l(
+            "twentyone-player-takes-damage", player=loser.name, damage=damage, hp=loser.hp
+        )
 
     def _end_game(self, winner: TwentyOnePlayer | None) -> None:
         self.phase = "finished"
@@ -1192,7 +1205,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
         self._play_sound_for_player(p1, SOUND_ROUND_DRAW)
         self._play_sound_for_player(p2, SOUND_ROUND_DRAW)
 
-    def _play_sound_for_player(self, player: TwentyOnePlayer, sound_name: str, *, volume: int = 100) -> None:
+    def _play_sound_for_player(
+        self, player: TwentyOnePlayer, sound_name: str, *, volume: int = 100
+    ) -> None:
         user = self.get_user(player)
         if user:
             user.play_sound(sound_name, volume=volume)
@@ -1247,7 +1262,12 @@ class TwentyOneGame(ActionGuardMixin, Game):
         if modifier in TARGET_VALUE_MODIFIERS:
             self._play_target_change_sound(modifier)
             return
-        if modifier in (MODIFIER_REDRAFT, MODIFIER_REDRAFT_PLUS, MODIFIER_SHARED_CACHE, MODIFIER_ARCANE_CACHE):
+        if modifier in (
+            MODIFIER_REDRAFT,
+            MODIFIER_REDRAFT_PLUS,
+            MODIFIER_SHARED_CACHE,
+            MODIFIER_ARCANE_CACHE,
+        ):
             self.play_sound(SOUND_MOD_REFRESH, volume=75)
             return
         if modifier in (
@@ -1344,9 +1364,15 @@ class TwentyOneGame(ActionGuardMixin, Game):
         target = self._current_target()
         total = self._hand_total(player)
         estimated_opp_total = self._bot_estimate_opponent_total(player, opponent)
-        likely_losing = self._bot_is_likely_losing(player, opponent, total, estimated_opp_total, target)
-        confident_winning = self._bot_is_confident_winning(player, opponent, total, estimated_opp_total, target)
-        needs_new_cards = self._bot_needs_new_change_cards(player, playable, likely_losing, confident_winning)
+        likely_losing = self._bot_is_likely_losing(
+            player, opponent, total, estimated_opp_total, target
+        )
+        confident_winning = self._bot_is_confident_winning(
+            player, opponent, total, estimated_opp_total, target
+        )
+        needs_new_cards = self._bot_needs_new_change_cards(
+            player, playable, likely_losing, confident_winning
+        )
 
         best_modifier: str | None = None
         best_score = 0.0
@@ -1366,14 +1392,18 @@ class TwentyOneGame(ActionGuardMixin, Game):
                 best_modifier = modifier
         return best_modifier
 
-    def _bot_estimate_opponent_total(self, player: TwentyOnePlayer, opponent: TwentyOnePlayer) -> float:
+    def _bot_estimate_opponent_total(
+        self, player: TwentyOnePlayer, opponent: TwentyOnePlayer
+    ) -> float:
         visible_cards = self._opponent_visible_cards(opponent)
         visible_total = float(sum(card.rank for card in visible_cards))
         if not opponent.hand:
             return visible_total
         return visible_total + self._bot_expected_hidden_rank(player, opponent)
 
-    def _bot_expected_hidden_rank(self, player: TwentyOnePlayer, opponent: TwentyOnePlayer) -> float:
+    def _bot_expected_hidden_rank(
+        self, player: TwentyOnePlayer, opponent: TwentyOnePlayer
+    ) -> float:
         counts = {rank: max(0, self.options.deck_count) for rank in range(1, 12)}
         for card in player.hand:
             if counts.get(card.rank, 0) > 0:
@@ -1528,7 +1558,14 @@ class TwentyOneGame(ActionGuardMixin, Game):
         if modifier == MODIFIER_PRIME_DRAW:
             return 7.5 if gap > 0 else -4.0
 
-        if modifier in (MODIFIER_DRAW_2, MODIFIER_DRAW_3, MODIFIER_DRAW_4, MODIFIER_DRAW_5, MODIFIER_DRAW_6, MODIFIER_DRAW_7):
+        if modifier in (
+            MODIFIER_DRAW_2,
+            MODIFIER_DRAW_3,
+            MODIFIER_DRAW_4,
+            MODIFIER_DRAW_5,
+            MODIFIER_DRAW_6,
+            MODIFIER_DRAW_7,
+        ):
             rank = int(modifier.split("_")[1])
             if gap <= 0:
                 return -6.0
@@ -1630,14 +1667,18 @@ class TwentyOneGame(ActionGuardMixin, Game):
         if modifier == MODIFIER_BREAK_SHIELDS:
             removed_count = self._remove_guard_effects(player, limit=3)
             if removed_count > 0:
-                self.broadcast_l("twentyone-remove-defend-effects", player=player.name, count=removed_count)
+                self.broadcast_l(
+                    "twentyone-remove-defend-effects", player=player.name, count=removed_count
+                )
             self._place_table_effect(player, modifier)
             return
 
         if modifier == MODIFIER_BREAK_SHIELDS_PLUS:
             removed_count = self._remove_guard_effects(player, limit=2)
             if removed_count > 0:
-                self.broadcast_l("twentyone-remove-defend-effects", player=player.name, count=removed_count)
+                self.broadcast_l(
+                    "twentyone-remove-defend-effects", player=player.name, count=removed_count
+                )
             self._place_table_effect(player, modifier)
             return
 
@@ -1646,7 +1687,14 @@ class TwentyOneGame(ActionGuardMixin, Game):
             self._give_random_modifiers(opponent, 1, announce=True)
             return
 
-        if modifier in (MODIFIER_DRAW_2, MODIFIER_DRAW_3, MODIFIER_DRAW_4, MODIFIER_DRAW_5, MODIFIER_DRAW_6, MODIFIER_DRAW_7):
+        if modifier in (
+            MODIFIER_DRAW_2,
+            MODIFIER_DRAW_3,
+            MODIFIER_DRAW_4,
+            MODIFIER_DRAW_5,
+            MODIFIER_DRAW_6,
+            MODIFIER_DRAW_7,
+        ):
             if self._draws_locked_for(player):
                 self._play_sound_for_player(player, SOUND_ACTION_FAIL)
                 self.broadcast_l("twentyone-cannot-draw-cards", player=player.name)
@@ -1657,7 +1705,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
                 self._add_card_to_hand(
                     player,
                     card,
-                    announce_source=lambda locale: Localization.get(locale, "twentyone-player-draws", player=player.name),
+                    announce_source=lambda locale: Localization.get(
+                        locale, "twentyone-player-draws", player=player.name
+                    ),
                     reveal_to_others=True,
                 )
                 player.stand_pending = False
@@ -1941,10 +1991,7 @@ class TwentyOneGame(ActionGuardMixin, Game):
                 self.broadcast_l("twentyone-aid-rival-none")
 
     def _alive_players(self) -> list[TwentyOnePlayer]:
-        return [
-            p for p in self.get_active_players()
-            if isinstance(p, TwentyOnePlayer) and p.hp > 0
-        ]
+        return [p for p in self.get_active_players() if isinstance(p, TwentyOnePlayer) and p.hp > 0]
 
     def _opponent_of(self, player: TwentyOnePlayer) -> TwentyOnePlayer | None:
         for other in self._alive_players():
@@ -1957,6 +2004,23 @@ class TwentyOneGame(ActionGuardMixin, Game):
         if len(players) < 2:
             return False
         return all(p.stand_pending for p in players)
+
+    def _resolve_stand(
+        self, player: TwentyOnePlayer, *, announce: bool, play_feedback: bool
+    ) -> None:
+        if play_feedback:
+            self._play_sound_for_player(player, SOUND_STAND)
+            self._play_opponent_stand_sound(player)
+        player.stand_pending = True
+        if announce:
+            self.broadcast_l("twentyone-player-stands", player=player.name)
+
+        if self._both_players_standing():
+            self.play_sound(SOUND_ROUND_RESOLVE, volume=65)
+            self._settle_round()
+            return
+
+        self._advance_turn_after_action()
 
     def _clear_pending_stands(self) -> None:
         players = self._alive_players()
@@ -2033,7 +2097,11 @@ class TwentyOneGame(ActionGuardMixin, Game):
         return MODIFIER_LOCKDOWN in opponent.table_modifiers
 
     def _playable_modifiers(self, player: TwentyOnePlayer) -> list[str]:
-        return [modifier for modifier in player.modifiers if self._is_single_modifier_playable(player, modifier)]
+        return [
+            modifier
+            for modifier in player.modifiers
+            if self._is_single_modifier_playable(player, modifier)
+        ]
 
     def _is_single_modifier_playable(self, player: TwentyOnePlayer, modifier: str) -> bool:
         if self._modifiers_locked_for(player):
@@ -2085,7 +2153,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
     def _place_table_effect(self, player: TwentyOnePlayer, modifier: str) -> None:
         if modifier in TARGET_VALUE_MODIFIERS:
             for p in self._alive_players():
-                p.table_modifiers = [t for t in p.table_modifiers if t not in TARGET_VALUE_MODIFIERS]
+                p.table_modifiers = [
+                    t for t in p.table_modifiers if t not in TARGET_VALUE_MODIFIERS
+                ]
 
         player.table_modifiers.append(modifier)
         while len(player.table_modifiers) > TABLE_EFFECT_LIMIT:
@@ -2131,14 +2201,17 @@ class TwentyOneGame(ActionGuardMixin, Game):
     @staticmethod
     def _count_defense_effects(player: TwentyOnePlayer) -> int:
         return sum(
-            1 for effect in player.table_modifiers
+            1
+            for effect in player.table_modifiers
             if effect in (MODIFIER_GUARD, MODIFIER_GUARD_PLUS)
         )
 
     def _draw_highest_card(self) -> Card | None:
         if not self.deck or self.deck.is_empty():
             return None
-        highest_index = max(range(len(self.deck.cards)), key=lambda index: self.deck.cards[index].rank)
+        highest_index = max(
+            range(len(self.deck.cards)), key=lambda index: self.deck.cards[index].rank
+        )
         return self.deck.cards.pop(highest_index)
 
     def _handle_mind_tax_break(self, actor: TwentyOnePlayer) -> None:
@@ -2170,7 +2243,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
                 )
             )
 
-    def _apply_round_end_change_card_effects(self, p1: TwentyOnePlayer, p2: TwentyOnePlayer) -> None:
+    def _apply_round_end_change_card_effects(
+        self, p1: TwentyOnePlayer, p2: TwentyOnePlayer
+    ) -> None:
         for owner, target in ((p1, p2), (p2, p1)):
             if MODIFIER_MIND_TAX_PLUS in owner.table_modifiers and target.modifiers:
                 count = len(target.modifiers)
@@ -2299,7 +2374,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
             user.speak(text, "table")
 
     def _speak_private_l(self, player: TwentyOnePlayer, message_id: str, **kwargs) -> None:
-        self._speak_private(player, Localization.get(self._player_locale(player), message_id, **kwargs))
+        self._speak_private(
+            player, Localization.get(self._player_locale(player), message_id, **kwargs)
+        )
 
     def _return_card_to_top_of_deck(self, card: Card) -> None:
         if not self.deck:
@@ -2326,7 +2403,9 @@ class TwentyOneGame(ActionGuardMixin, Game):
                 return removed
         return None
 
-    def _give_random_modifiers(self, player: TwentyOnePlayer, count: int, *, announce: bool) -> None:
+    def _give_random_modifiers(
+        self, player: TwentyOnePlayer, count: int, *, announce: bool
+    ) -> None:
         for _ in range(max(0, count)):
             modifier = self._draw_weighted_modifier()
             player.modifiers.append(modifier)
@@ -2371,10 +2450,7 @@ class TwentyOneGame(ActionGuardMixin, Game):
                 team.total_score = player.hp
 
     def build_game_result(self) -> GameResult:
-        players = [
-            p for p in self.players
-            if isinstance(p, TwentyOnePlayer) and not p.is_spectator
-        ]
+        players = [p for p in self.players if isinstance(p, TwentyOnePlayer) and not p.is_spectator]
         winner = max(players, key=lambda p: p.hp, default=None)
         final_hp = {p.name: p.hp for p in players}
 

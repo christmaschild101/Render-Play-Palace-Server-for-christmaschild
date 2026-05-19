@@ -77,6 +77,11 @@ class User(ABC):
         ...
 
     @property
+    def is_bot(self) -> bool:
+        """Whether this user is a bot. Overridden by Bot subclass."""
+        return False
+
+    @property
     def trust_level(self) -> TrustLevel:
         """The user's trust level. Defaults to USER if not overridden."""
         return TrustLevel.USER
@@ -112,9 +117,7 @@ class User(ABC):
         self.speak(text, buffer)
 
     @abstractmethod
-    def play_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
         """
         Play a sound effect.
 
@@ -227,6 +230,7 @@ class User(ABC):
         *,
         multiline: bool = False,
         read_only: bool = False,
+        content_format: str = "text",
     ) -> None:
         """
         Display an editbox to the user.
@@ -237,6 +241,9 @@ class User(ABC):
             default_value: Default text in the editbox.
             multiline: Whether to use a multiline editbox.
             read_only: Whether the editbox is read-only.
+            content_format: How the client should render the content.
+                "text" for a plain text control, "markdown" for a
+                rendered markdown viewer.
         """
         ...
 

@@ -88,9 +88,7 @@ class MidnightGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
     def get_max_players(cls) -> int:
         return 6
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> MidnightPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> MidnightPlayer:
         """Create a new player with Midnight-specific state."""
         return MidnightPlayer(
             id=player_id,
@@ -177,9 +175,7 @@ class MidnightGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
     def _is_roll_hidden(self, player: Player) -> Visibility:
         """Roll is visible during play for current player."""
         midnight_player: MidnightPlayer = player  # type: ignore
-        can_reroll = not (
-            midnight_player.dice.has_rolled and midnight_player.dice.all_decided
-        )
+        can_reroll = not (midnight_player.dice.has_rolled and midnight_player.dice.all_decided)
         return self.turn_action_visibility(
             player, extra_condition=midnight_player.dice.unlocked_count > 0 and can_reroll
         )
@@ -207,9 +203,7 @@ class MidnightGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
         self._apply_dice_values_defaults(midnight_player)
 
         # Format rerolled dice only (first roll announces all dice).
-        result_text = ", ".join(
-            str(midnight_player.dice.values[i]) for i in rolled_indices
-        )
+        result_text = ", ".join(str(midnight_player.dice.values[i]) for i in rolled_indices)
 
         # Announce results
         self.broadcast_personal_l(
@@ -469,9 +463,7 @@ class MidnightGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
                 winner.round_wins += 1
                 self._team_manager.add_to_team_score(winner.name, 1)
                 self.play_sound("game_pig/bank.ogg")
-                self.broadcast_l(
-                    "midnight-round-winner", player=winner.name
-                )
+                self.broadcast_l("midnight-round-winner", player=winner.name)
             else:
                 # Tie
                 names = [w.name for w in winners]
@@ -483,9 +475,7 @@ class MidnightGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
                     user = self.get_user(player)
                     if user:
                         names_str = Localization.format_list_and(user.locale, names)
-                        user.speak_l(
-                            "midnight-round-tie", players=names_str
-                        )
+                        user.speak_l("midnight-round-tie", players=names_str)
 
         # Check if game is over
         if self.round >= self.options.rounds:
@@ -505,9 +495,7 @@ class MidnightGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
         if len(winners) == 1:
             # Single game winner
             self.play_sound("game_pig/win.ogg")
-            self.broadcast_l(
-                "midnight-game-winner", player=winners[0].name, wins=max_wins
-            )
+            self.broadcast_l("midnight-game-winner", player=winners[0].name, wins=max_wins)
         else:
             # Game tie
             names = [w.name for w in winners]
@@ -515,16 +503,16 @@ class MidnightGame(ActionGuardMixin, RoundBasedGameMixin, Game, DiceGameMixin):
                 user = self.get_user(player)
                 if user:
                     names_str = Localization.format_list_and(user.locale, names)
-                    user.speak_l("midnight-game-tie", players=names_str, wins=max_wins, buffer="table")
+                    user.speak_l(
+                        "midnight-game-tie", players=names_str, wins=max_wins, buffer="table"
+                    )
 
         self.finish_game()
 
     def build_game_result(self) -> GameResult:
         """Build the game result with Midnight-specific data."""
         active_players = self.get_active_players()
-        sorted_players = sorted(
-            active_players, key=lambda p: p.round_wins, reverse=True
-        )
+        sorted_players = sorted(active_players, key=lambda p: p.round_wins, reverse=True)
         winner = sorted_players[0] if sorted_players else None
 
         # Build final standings

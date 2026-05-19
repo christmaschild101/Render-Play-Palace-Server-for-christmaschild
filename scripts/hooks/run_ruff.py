@@ -5,6 +5,7 @@ The script intentionally limits the linting rule set to the most critical
 runtime errors (configured in ruff.toml) so it can run quickly during
 pre-commit without forcing a full repo cleanup.
 """
+
 from __future__ import annotations
 
 import shutil

@@ -86,7 +86,9 @@ def test_load_tables_handles_missing_game_class_and_restores(monkeypatch, tmp_pa
     srv._db = StubDB(tables)  # type: ignore[assignment]
 
     # patch GameRegistry lookups
-    monkeypatch.setattr("server.core.server.get_game_class", lambda gt: StubGameClass() if gt == "stub" else None)
+    monkeypatch.setattr(
+        "server.core.server.get_game_class", lambda gt: StubGameClass() if gt == "stub" else None
+    )
 
     srv._load_tables()
 

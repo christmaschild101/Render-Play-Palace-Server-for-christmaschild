@@ -39,7 +39,6 @@ option-on = aktif
 option-off = nonaktif
 
 # Status box
-status-box-closed = Informasi status ditutup.
 
 # Game end
 game-leave = Tinggalkan permainan
@@ -64,6 +63,47 @@ game-player-deals = { $player } membagikan kartu.
 # Card names
 card-name = { $rank } { $suit }
 no-cards = Tidak ada kartu
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = hitam
+color-black-m = hitam
+color-black-f = hitam
+color-blue = biru
+color-blue-m = biru
+color-blue-f = biru
+color-brown = cokelat
+color-brown-m = cokelat
+color-brown-f = cokelat
+color-gray = abu-abu
+color-gray-m = abu-abu
+color-gray-f = abu-abu
+color-green = hijau
+color-green-m = hijau
+color-green-f = hijau
+color-indigo = nila
+color-indigo-m = nila
+color-indigo-f = nila
+color-orange = oranye
+color-orange-m = oranye
+color-orange-f = oranye
+color-pink = merah muda
+color-pink-m = merah muda
+color-pink-f = merah muda
+color-purple = ungu
+color-purple-m = ungu
+color-purple-f = ungu
+color-red = merah
+color-red-m = merah
+color-red-f = merah
+color-violet = violet
+color-violet-m = violet
+color-violet-f = violet
+color-white = putih
+color-white-m = putih
+color-white-f = putih
+color-yellow = kuning
+color-yellow-m = kuning
+color-yellow-f = kuning
 
 # Suit names
 suit-diamonds = wajik

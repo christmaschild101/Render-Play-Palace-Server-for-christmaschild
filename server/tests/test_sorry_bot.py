@@ -56,7 +56,7 @@ def test_bot_prefers_capture_over_plain_progress() -> None:
     p2 = state.player_states["p2"]
 
     _set_track(p1.pawns[0], 10)  # non-capture move with +3
-    _set_track(p1.pawns[1], 0)   # capture move with +3
+    _set_track(p1.pawns[1], 0)  # capture move with +3
     _set_track(p2.pawns[0], 3)
 
     moves = generate_legal_moves(state, p1, "3", Classic00390Rules())
@@ -120,7 +120,7 @@ def test_bot_on_tick_uses_heuristic_not_first_slot() -> None:
     # Create two forward-3 moves where slot 1 is non-capture (pawn 1),
     # but heuristic should choose capture with pawn 2.
     _set_track(p1.pawns[0], 10)  # action_id forward3_p1
-    _set_track(p1.pawns[1], 0)   # action_id forward3_p2 (capture)
+    _set_track(p1.pawns[1], 0)  # action_id forward3_p2 (capture)
     _set_track(p2.pawns[0], 3)
 
     game.game_state.turn_phase = "choose_move"

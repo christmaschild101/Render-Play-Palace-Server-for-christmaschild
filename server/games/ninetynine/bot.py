@@ -63,9 +63,7 @@ def _bot_choose_card(game: "NinetyNineGame", player: "NinetyNinePlayer") -> str 
     return f"card_slot_{best_slot + 1}"
 
 
-def _bot_evaluate_card(
-    game: "NinetyNineGame", player: "NinetyNinePlayer", card: Card
-) -> int:
+def _bot_evaluate_card(game: "NinetyNineGame", player: "NinetyNinePlayer", card: Card) -> int:
     """Evaluate a card's value for playing."""
     current_count = game.count
     rank = card.rank
@@ -164,15 +162,11 @@ def _bot_evaluate_count(
 
     alive_count = len(game.alive_players)
     is_two_player = alive_count == 2
-    milestone_score = _score_quentin_milestone_transition(
-        current_count, new_count, is_rs_games
-    )
+    milestone_score = _score_quentin_milestone_transition(current_count, new_count, is_rs_games)
     if milestone_score is not None:
         return milestone_score
 
-    is_skip_card = (rank == 11 and not is_rs_games) or (
-        rank == RS_RANK_SKIP and is_rs_games
-    )
+    is_skip_card = (rank == 11 and not is_rs_games) or (rank == RS_RANK_SKIP and is_rs_games)
 
     two_player_score = _score_two_player_setup(
         is_rs_games, is_two_player, is_skip_card, current_count, new_count
@@ -255,9 +249,7 @@ def _score_setup_zones(is_rs_games: bool, new_count: int) -> int | None:
     return None
 
 
-def _score_quentin_trap_avoidance(
-    player: "NinetyNinePlayer", new_count: int
-) -> int | None:
+def _score_quentin_trap_avoidance(player: "NinetyNinePlayer", new_count: int) -> int | None:
     """Avoid trap setups if holding multiple +10 cards."""
     if new_count not in (23, 56, 89):
         return None
@@ -267,9 +259,7 @@ def _score_quentin_trap_avoidance(
     return None
 
 
-def _score_special_card_usage(
-    is_rs_games: bool, current_count: int, rank: int
-) -> int:
+def _score_special_card_usage(is_rs_games: bool, current_count: int, rank: int) -> int:
     """Score special card usage relative to danger zones."""
     score = 0
     if is_rs_games:
@@ -293,9 +283,7 @@ def _score_special_card_usage(
         return score
 
     in_danger_zone = (
-        (28 <= current_count <= 32)
-        or (61 <= current_count <= 65)
-        or current_count >= 88
+        (28 <= current_count <= 32) or (61 <= current_count <= 65) or current_count >= 88
     )
     if not in_danger_zone:
         if rank == 1:
@@ -316,9 +304,7 @@ def _score_special_card_usage(
     return score
 
 
-def _score_count_ranges(
-    is_rs_games: bool, current_count: int, new_count: int
-) -> int:
+def _score_count_ranges(is_rs_games: bool, current_count: int, new_count: int) -> int:
     """Score counts based on safety ranges."""
     score = 0
     if is_rs_games:
@@ -359,6 +345,7 @@ def _get_card_value(rank: int) -> int:
 # =============================================================================
 # Jack Chain Evaluation (2-player only)
 # =============================================================================
+
 
 def _evaluate_jack_chain(
     game: "NinetyNineGame", count_after_jack: int, remaining_hand: list["Card"]

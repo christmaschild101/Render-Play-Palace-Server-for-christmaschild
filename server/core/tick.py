@@ -1,12 +1,13 @@
 """Tick scheduler for game updates."""
 
 import asyncio
+import logging
 import sys
 from pathlib import Path
 from typing import Callable
 
+LOG = logging.getLogger("playpalace.tick")
 
-# Default tick interval
 DEFAULT_TICK_INTERVAL_MS = 50
 
 
@@ -30,10 +31,7 @@ def load_server_config(path: str | Path | None = None) -> dict:
     if not path.exists():
         return {}
 
-    try:
-        import tomllib
-    except ImportError:
-        import tomli as tomllib
+    import tomllib
 
     try:
         with open(path, "rb") as f:
@@ -59,9 +57,7 @@ class TickScheduler:
     or passed directly to the constructor.
     """
 
-    def __init__(
-        self, on_tick: Callable[[], None], tick_interval_ms: int | None = None
-    ):
+    def __init__(self, on_tick: Callable[[], None], tick_interval_ms: int | None = None):
         """
         Initialize the tick scheduler.
 
@@ -73,7 +69,6 @@ class TickScheduler:
         self._running = False
         self._task: asyncio.Task | None = None
 
-        # Set tick interval
         if tick_interval_ms is None:
             tick_interval_ms = DEFAULT_TICK_INTERVAL_MS
         self.tick_interval_ms = tick_interval_ms
@@ -98,10 +93,8 @@ class TickScheduler:
         """Main tick loop."""
         while self._running:
             try:
-                # Call tick callback synchronously
                 self._on_tick()
-            except Exception as e:
-                print(f"Error in tick: {e}")
+            except Exception:
+                LOG.exception("Error in tick callback")
 
-            # Sleep for tick interval
             await asyncio.sleep(self.tick_interval_s)

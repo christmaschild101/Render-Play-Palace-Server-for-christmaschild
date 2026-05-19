@@ -128,7 +128,6 @@ class TestAuthIntegration:
 
     def test_register_and_authenticate(self):
         """Test user registration and authentication."""
-        # Register
         assert self.auth.register("newuser", "password123")
         assert not self.auth.register("newuser", "different")  # Already exists
 
@@ -137,9 +136,23 @@ class TestAuthIntegration:
         assert self.auth.authenticate("newuser", "wrongpassword") == AuthResult.WRONG_PASSWORD
         assert self.auth.authenticate("nonexistent", "password") == AuthResult.USER_NOT_FOUND
 
+    def test_register_auto_approved(self):
+        """Test that approved=True stores the user as approved in the DB."""
+        assert self.auth.register("approveduser", "password123", approved=True)
+        user = self.db.get_user("approveduser")
+        assert user is not None
+        assert user.approved is True
+
+    def test_register_not_approved(self):
+        """Test that approved=False (default) stores the user as unapproved."""
+        assert self.auth.register("pendinguser", "password123")
+        user = self.db.get_user("pendinguser")
+        assert user is not None
+        assert user.approved is False
+
     def test_session_management(self):
         """Test session token creation and validation."""
-        self.auth.register("sessionuser", "pass")
+        self.auth.register("sessionuser", "pass", approved=True)
 
         # Create session
         token, _expires_at = self.auth.create_session("sessionuser", 60)
@@ -152,6 +165,19 @@ class TestAuthIntegration:
         # Invalidate
         self.auth.invalidate_session(token)
         assert self.auth.validate_session(token) is None
+
+    def test_reset_password_invalidates_existing_sessions_and_refresh_tokens(self):
+        """Resetting a password revokes old credentials and accepts the new password."""
+        self.auth.register("resetuser", "oldpass", approved=True)
+        session_token, _ = self.auth.create_session("resetuser", 60)
+        refresh_token, _ = self.auth.create_refresh_token("resetuser", 60)
+
+        assert self.auth.reset_password("resetuser", "newpass") is True
+
+        assert self.auth.validate_session(session_token) is None
+        assert self.auth.refresh_session(refresh_token, 60, 60) is None
+        assert self.auth.authenticate("resetuser", "oldpass") == AuthResult.WRONG_PASSWORD
+        assert self.auth.authenticate("resetuser", "newpass") == AuthResult.SUCCESS
 
 
 class TestTableManagerIntegration:

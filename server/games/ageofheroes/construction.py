@@ -15,9 +15,7 @@ if TYPE_CHECKING:
     from .game import AgeOfHeroesGame, AgeOfHeroesPlayer
 
 
-def get_affordable_buildings(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> list[str]:
+def get_affordable_buildings(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> list[str]:
     """Get list of buildings the player can afford to build."""
     if not player.tribe_state:
         return []
@@ -31,9 +29,7 @@ def get_affordable_buildings(
     return affordable
 
 
-def can_build(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, building_type: str
-) -> bool:
+def can_build(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, building_type: str) -> bool:
     """Check if a player can build a specific building."""
     if not player.tribe_state:
         return False
@@ -56,9 +52,7 @@ def can_build(
     return True
 
 
-def has_supply(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, building_type: str
-) -> bool:
+def has_supply(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, building_type: str) -> bool:
     """Check if the building supply has available units."""
     if building_type == BuildingType.ARMY:
         return game.army_supply > 0
@@ -135,9 +129,7 @@ def has_road_target(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> bool:
     return False
 
 
-def get_road_targets(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> list[tuple[int, str]]:
+def get_road_targets(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> list[tuple[int, str]]:
     """Get list of valid road targets (player_index, direction).
 
     Excludes targets that have declined during this construction action.
@@ -218,9 +210,7 @@ def spend_resources(
     return spent
 
 
-def build(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, building_type: str
-) -> bool:
+def build(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, building_type: str) -> bool:
     """Build a building, spending resources and updating supply."""
     if not can_build(game, player, building_type):
         return False
@@ -309,9 +299,7 @@ def build_road(
     builder_tribe = get_building_name(builder.tribe_state.tribe, "en")
     target_tribe = get_building_name(target.tribe_state.tribe, "en")
 
-    game.broadcast_l(
-        "ageofheroes-road-built", tribe1=builder.name, tribe2=target.name
-    )
+    game.broadcast_l("ageofheroes-road-built", tribe1=builder.name, tribe2=target.name)
 
     return True
 
@@ -336,9 +324,7 @@ def get_construction_menu_items(
                 count = required.count(resource)
                 from ...messages.localization import Localization
 
-                resource_name = Localization.get(
-                    locale, f"ageofheroes-resource-{resource}"
-                )
+                resource_name = Localization.get(locale, f"ageofheroes-resource-{resource}")
                 if count > 1:
                     cost_parts.append(f"{count}x {resource_name}")
                 else:

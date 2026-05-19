@@ -35,6 +35,8 @@ whose-turn = 誰のターン
 whos-at-table = テーブルにいる人
 check-scores = スコアを確認
 check-scores-detailed = 詳細スコア
+check-game-options = ゲームオプションを確認
+no-game-options = ゲームオプションはありません。
 
 # ターンメッセージ
 game-player-skipped = { $player }はスキップされました。
@@ -153,7 +155,6 @@ game-leave = 退出
 game-over = ゲームオーバー
 game-final-scores = 最終スコア
 game-points = { $count }点
-status-box-closed = 閉じられました。
 play = プレイ
 
 # リーダーボード
@@ -251,6 +252,30 @@ account-banned = あなたのアカウントは禁止されておりアクセス
 incorrect-username = 入力されたユーザー名は存在しません。
 incorrect-password = 入力されたパスワードが正しくありません。
 already-logged-in = このアカウントは既にログインしています。
+
+# 認証情報の検証
+credential-username-length = ユーザー名は{ $min }文字以上{ $max }文字以下にしてください。
+credential-password-length = パスワードは{ $min }文字以上{ $max }文字以下にしてください。
+
+# レート制限
+rate-limit-login-ip = このアドレスからのログイン試行が多すぎます。しばらくお待ちの上、再試行してください。
+rate-limit-login-user = このユーザー名でのログイン失敗が多すぎます。しばらくお待ちの上、再試行してください。
+rate-limit-registration = このアドレスからの登録試行が多すぎます。しばらくお待ちの上、再試行してください。
+rate-limit-refresh = このアドレスからの更新試行が多すぎます。しばらくお待ちの上、再試行してください。
+
+# セッション/認証エラー
+account-not-found = アカウントが見つかりません。
+session-expired = セッションが期限切れです。再度ログインしてください。
+session-token-mismatch = セッショントークンがユーザー名と一致しません。
+refresh-token-expired = 更新トークンが期限切れです。再度ログインしてください。
+refresh-token-mismatch = 更新トークンがユーザー名と一致しません。
+
+# 登録
+registration-success = 登録が完了しました。アカウントは承認待ちです。
+registration-username-taken = このユーザー名は既に使用されています。別のユーザー名を選んでください。
+
+# 設定のデフォルト値
+pref-invalid-value = 無効な選択です。デフォルト値を使用します。
 
 # 拒否理由
 decline-reason-prompt = 拒否理由を入力してください(キャンセルするにはEscapeを押してください):

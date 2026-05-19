@@ -18,6 +18,7 @@ class PokerBettingRound(DataClassJSONMixin):
         bets: Per-player bet amounts for this round.
         acted_since_raise: Players who have acted since the last raise.
     """
+
     order: list[str]
     max_raises: int | None = None
     current_bet: int = 0

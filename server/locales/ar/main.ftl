@@ -35,6 +35,8 @@ whose-turn = دور من
 whos-at-table = من على الطاولة
 check-scores = تحقق من النتائج
 check-scores-detailed = نتائج مفصلة
+check-game-options = تحقق من خيارات اللعبة
+no-game-options = لا توجد خيارات للعبة
 
 # رسائل الدور
 game-player-skipped = تم تخطي { $player }.
@@ -202,7 +204,6 @@ game-points = { $count } { $count ->
     [many] نقطة
    *[other] نقطة
 }
-status-box-closed = مغلق.
 play = العب
 
 # لوحات الصدارة
@@ -321,6 +322,30 @@ account-banned = حسابك محظور ولا يمكن الوصول إليه.
 incorrect-username = اسم المستخدم الذي أدخلته غير موجود.
 incorrect-password = كلمة المرور التي أدخلتها غير صحيحة.
 already-logged-in = هذا الحساب مسجل دخول بالفعل.
+
+# التحقق من صحة بيانات الاعتماد
+credential-username-length = يجب أن يتراوح اسم المستخدم بين { $min } و{ $max } حرفاً.
+credential-password-length = يجب أن تتراوح كلمة المرور بين { $min } و{ $max } حرفاً.
+
+# تقييد معدل الطلبات
+rate-limit-login-ip = محاولات تسجيل دخول كثيرة جداً من هذا العنوان. يرجى الانتظار والمحاولة مرة أخرى.
+rate-limit-login-user = محاولات تسجيل دخول فاشلة كثيرة جداً لاسم المستخدم هذا. يرجى الانتظار والمحاولة مرة أخرى.
+rate-limit-registration = محاولات تسجيل كثيرة جداً من هذا العنوان. يرجى الانتظار والمحاولة مرة أخرى.
+rate-limit-refresh = محاولات تحديث كثيرة جداً من هذا العنوان. يرجى الانتظار والمحاولة مرة أخرى.
+
+# أخطاء الجلسة والمصادقة
+account-not-found = الحساب غير موجود.
+session-expired = انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.
+session-token-mismatch = رمز الجلسة لا يطابق اسم المستخدم.
+refresh-token-expired = انتهت صلاحية رمز التحديث. يرجى تسجيل الدخول مرة أخرى.
+refresh-token-mismatch = رمز التحديث لا يطابق اسم المستخدم.
+
+# التسجيل
+registration-success = تم التسجيل بنجاح! حسابك في انتظار الموافقة.
+registration-username-taken = اسم المستخدم مأخوذ بالفعل. يرجى اختيار اسم مستخدم مختلف.
+
+# الرجوع إلى الإعداد الافتراضي للتفضيلات
+pref-invalid-value = اختيار غير صالح، سيتم استخدام الإعداد الافتراضي.
 
 # سبب الرفض
 decline-reason-prompt = أدخل سبب الرفض (أو اضغط Escape للإلغاء):

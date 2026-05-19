@@ -135,7 +135,10 @@ class BuffSkill(CooldownSkill):
         if not self.is_unlocked(player):
             return False, f"Requires level {self.required_level}"
         if self.is_active(player):
-            return False, f"{self.name} is already active ({self.get_active(player)} turns remaining)"
+            return (
+                False,
+                f"{self.name} is already active ({self.get_active(player)} turns remaining)",
+            )
         if self.is_on_cooldown(player):
             return False, f"{self.name} is on cooldown ({self.get_cooldown(player)} turns)"
         return True, None
@@ -189,20 +192,19 @@ class SailorsInstinctSkill(Skill):
         game.play_sound(f"game_pirates/instinct{sound_num}.ogg", volume=60)
 
         ocean_index = (player.position - 1) // 10
-        ocean_name = game.selected_oceans[ocean_index] if ocean_index < len(game.selected_oceans) else "Unknown"
+        ocean_name = (
+            game.selected_oceans[ocean_index]
+            if ocean_index < len(game.selected_oceans)
+            else "Unknown"
+        )
 
-        lines = [
-            f"Your position: {player.position} in {ocean_name}",
-            "",
-            "Map Sectors:"
-        ]
+        lines = [f"Your position: {player.position} in {ocean_name}", "", "Map Sectors:"]
 
         for sector in range(1, 9):
             sector_start = (sector - 1) * 5 + 1
             sector_end = sector * 5
             charted_count = sum(
-                1 for i in range(sector_start, sector_end + 1)
-                if game.charted_tiles.get(i, False)
+                1 for i in range(sector_start, sector_end + 1) if game.charted_tiles.get(i, False)
             )
 
             if charted_count == 5:
@@ -280,6 +282,7 @@ class GemSeekerSkill(Skill):
         game.play_sound(f"game_pirates/gemseeker{sound_num}.ogg", volume=60)
 
         from .gems import GEM_NAMES
+
         for pos, gem_type in game.gem_positions.items():
             if gem_type != -1:
                 gem_name = GEM_NAMES.get(gem_type, "unknown gem")
@@ -319,7 +322,9 @@ class SwordFighterSkill(BuffSkill):
                 turns=self.get_active(player),
                 buffer="table",
             )
-        game.broadcast_l("pirates-skill-activated", player=player.name, skill=self.name, exclude=player)
+        game.broadcast_l(
+            "pirates-skill-activated", player=player.name, skill=self.name, exclude=player
+        )
 
         return "end_turn"
 
@@ -343,7 +348,9 @@ class PushSkill(BuffSkill):
         user = game.get_user(player)
         if user:
             user.speak_l("pirates-push-activated", turns=self.get_active(player), buffer="table")
-        game.broadcast_l("pirates-skill-activated", player=player.name, skill=self.name, exclude=player)
+        game.broadcast_l(
+            "pirates-skill-activated", player=player.name, skill=self.name, exclude=player
+        )
 
         return "end_turn"
 
@@ -371,7 +378,9 @@ class SkilledCaptainSkill(BuffSkill):
                 turns=self.get_active(player),
                 buffer="table",
             )
-        game.broadcast_l("pirates-skill-activated", player=player.name, skill=self.name, exclude=player)
+        game.broadcast_l(
+            "pirates-skill-activated", player=player.name, skill=self.name, exclude=player
+        )
 
         return "end_turn"
 
@@ -434,7 +443,9 @@ class DoubleDevastationSkill(BuffSkill):
                 turns=self.get_active(player),
                 buffer="table",
             )
-        game.broadcast_l("pirates-skill-activated", player=player.name, skill=self.name, exclude=player)
+        game.broadcast_l(
+            "pirates-skill-activated", player=player.name, skill=self.name, exclude=player
+        )
 
         return "end_turn"
 

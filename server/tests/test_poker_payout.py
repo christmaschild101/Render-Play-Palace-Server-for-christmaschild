@@ -37,9 +37,11 @@ def test_resolve_pot_orders_winners_for_odd_chip_distribution():
 
     assert best_score == (2, (10,))
     assert [player.id for player in winners] == ["left_1", "left_2", "button"]
-    assert [
-        (player.id, payout) for player, payout in compute_ordered_payouts(5, winners)
-    ] == [("left_1", 2), ("left_2", 2), ("button", 1)]
+    assert [(player.id, payout) for player, payout in compute_ordered_payouts(5, winners)] == [
+        ("left_1", 2),
+        ("left_2", 2),
+        ("button", 1),
+    ]
 
 
 def test_resolve_pots_with_payouts_applies_awards_in_order():

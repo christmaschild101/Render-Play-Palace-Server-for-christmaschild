@@ -12,11 +12,13 @@ import random
 from ..base import Game, Player
 from ..registry import register_game
 from ...game_utils.actions import Action, ActionSet, MenuInput, Visibility
+from ...core.users.base import MenuItem, EscapeBehavior
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.round_timer import RoundTransitionTimer
 from ...game_utils.teams import Team, TeamManager
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 from .cards import (
@@ -48,15 +50,15 @@ class MileByMileGame(Game):
     permanent protection. First team to reach the winning score wins.
     """
 
+    relevant_preferences = ["confirm_destructive_actions"]
+
     players: list[MileByMilePlayer] = field(default_factory=list)
     options: MileByMileOptions = field(default_factory=MileByMileOptions)
 
     # Game state
     deck: Deck = field(default_factory=Deck)
     discard_pile: list[Card] = field(default_factory=list)
-    protections_pile: list[Card] = field(
-        default_factory=list
-    )  # Safeties, never reshuffled
+    protections_pile: list[Card] = field(default_factory=list)  # Safeties, never reshuffled
     race_states: list[RaceState] = field(default_factory=list)  # Per-team race state
     current_race: int = 0
     race_winner_team_index: int | None = None
@@ -74,11 +76,13 @@ class MileByMileGame(Game):
         """Initialize runtime state."""
         super().__post_init__()
         self._round_timer = RoundTransitionTimer(self, delay_seconds=10.0)
+        self._pending_discard_slot: dict[str, int] = {}
 
     def rebuild_runtime_state(self) -> None:
         """Rebuild non-serialized state after deserialization."""
         super().rebuild_runtime_state()
         self._round_timer = RoundTransitionTimer(self, delay_seconds=10.0)
+        self._pending_discard_slot: dict[str, int] = {}
 
     @classmethod
     def get_name(cls) -> str:
@@ -100,9 +104,7 @@ class MileByMileGame(Game):
     def get_max_players(cls) -> int:
         return 9
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> MileByMilePlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> MileByMilePlayer:
         """Create a new player."""
         return MileByMilePlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -275,20 +277,14 @@ class MileByMileGame(Game):
         )
 
         # Dirty trick keybind
-        self.define_keybind(
-            "d", "Play dirty trick", ["dirty_trick"], state=KeybindState.ACTIVE
-        )
+        self.define_keybind("d", "Play dirty trick", ["dirty_trick"], state=KeybindState.ACTIVE)
 
         # Number keys for card slots (1-6)
         # Number keybinds for card slots removed (menu/arrow selection only)
 
         # Shift+Enter or Backspace to discard the selected card
-        self.define_keybind(
-            "shift+enter", "Discard card", ["junk_card"], state=KeybindState.ACTIVE
-        )
-        self.define_keybind(
-            "backspace", "Discard card", ["junk_card"], state=KeybindState.ACTIVE
-        )
+        self.define_keybind("shift+enter", "Discard card", ["junk_card"], state=KeybindState.ACTIVE)
+        self.define_keybind("backspace", "Discard card", ["junk_card"], state=KeybindState.ACTIVE)
 
     def _update_card_actions(self, player: MileByMilePlayer) -> None:
         """Update card slot actions based on player's hand."""
@@ -510,9 +506,7 @@ class MileByMileGame(Game):
             return Localization.get(locale, "milebymile-reason-no-speed-limit")
         if remedy == RemedyType.ROLL:
             if race_state.has_safety(SafetyType.RIGHT_OF_WAY):
-                return Localization.get(
-                    locale, "milebymile-reason-has-right-of-way"
-                )
+                return Localization.get(locale, "milebymile-reason-has-right-of-way")
             if not race_state.has_problem(HazardType.STOP):
                 return Localization.get(locale, "milebymile-reason-already-moving")
             problem = self._first_blocking_problem(race_state, locale)
@@ -639,9 +633,7 @@ class MileByMileGame(Game):
                 return True
         return False
 
-    def _can_play_hazard_on_team(
-        self, hazard: str, target: RaceState, attacker: RaceState
-    ) -> bool:
+    def _can_play_hazard_on_team(self, hazard: str, target: RaceState, attacker: RaceState) -> bool:
         """Check if hazard can be played on a specific team."""
         # Check if target has blocking safety
         blocking_safety = HAZARD_TO_SAFETY.get(hazard)
@@ -693,9 +685,7 @@ class MileByMileGame(Game):
         hazard = remedy_to_hazard.get(remedy)
         return hazard and race_state.has_problem(hazard)
 
-    def _get_valid_hazard_targets(
-        self, player: MileByMilePlayer, hazard: str
-    ) -> list[int]:
+    def _get_valid_hazard_targets(self, player: MileByMilePlayer, hazard: str) -> list[int]:
         """Get list of team indices that can be targeted by a hazard."""
         attacker_state = self.get_player_race_state(player)
         if not attacker_state:
@@ -728,7 +718,11 @@ class MileByMileGame(Game):
             name = self.get_team_name(team_idx)
 
             # Get score
-            team = self._team_manager.teams[team_idx] if team_idx < len(self._team_manager.teams) else None
+            team = (
+                self._team_manager.teams[team_idx]
+                if team_idx < len(self._team_manager.teams)
+                else None
+            )
             score = team.total_score if team else 0
 
             if race_state.problems:
@@ -769,7 +763,11 @@ class MileByMileGame(Game):
             name = self.get_team_name(team_idx)
 
             # Get score
-            team = self._team_manager.teams[team_idx] if team_idx < len(self._team_manager.teams) else None
+            team = (
+                self._team_manager.teams[team_idx]
+                if team_idx < len(self._team_manager.teams)
+                else None
+            )
             score = team.total_score if team else 0
 
             # Format problems
@@ -789,7 +787,9 @@ class MileByMileGame(Game):
                 safeties_str = none_str
 
             # Add team status line (one line per team)
-            lines.append(f"{name}: {score} points, {race_state.miles} miles, Problems: {problems_str}, Safeties: {safeties_str}")
+            lines.append(
+                f"{name}: {score} points, {race_state.miles} miles, Problems: {problems_str}, Safeties: {safeties_str}"
+            )
 
         self.status_box(player, lines)
 
@@ -868,9 +868,7 @@ class MileByMileGame(Game):
                 options.append(f"Team {team_idx + 1}: {members} ({race_state.miles} miles)")
         return options
 
-    def _bot_select_hazard_target(
-        self, player: Player, options: list[str]
-    ) -> str | None:
+    def _bot_select_hazard_target(self, player: Player, options: list[str]) -> str | None:
         """Bot selects hazard target - picks team with most miles."""
         if not isinstance(player, MileByMilePlayer):
             return None
@@ -943,15 +941,24 @@ class MileByMileGame(Game):
         if self._can_play_card(player, card):
             self._play_card(player, slot, card, input_value)
         else:
-            # Can't play - tell human players why, bots auto-discard
+            # Can't play - bots auto-discard; humans get a yes/no prompt if
+            # they've enabled confirm_destructive_actions for this game.
             if player.is_bot:
                 self._discard_card(player, slot, card)
+                return
+            user = self.get_user(player)
+            if not user:
+                return
+            reason = self._get_unplayable_reason(player, card, user.locale)
+            card_name = self._get_localized_card_name(card, user.locale)
+            user.speak_l("milebymile-cant-play", card=card_name, reason=reason)
+            wants_confirm = user.preferences.get_effective(
+                "confirm_destructive_actions", game_type=self.get_type()
+            )
+            if wants_confirm:
+                self._show_discard_confirm(player, slot, user)
             else:
-                user = self.get_user(player)
-                if user:
-                    reason = self._get_unplayable_reason(player, card, user.locale)
-                    card_name = self._get_localized_card_name(card, user.locale)
-                    user.speak_l("milebymile-cant-play", card=card_name, reason=reason)
+                self._discard_card(player, slot, card)
 
     def _action_junk_card(self, player: Player, action_id: str) -> None:
         """Handle discarding the currently selected card (shift+enter or backspace keybind)."""
@@ -992,6 +999,59 @@ class MileByMileGame(Game):
                 return
 
         self._discard_card(player, slot, card)
+
+    def rebuild_player_menu(self, player, *, position: int | None = None) -> None:
+        """Skip rebuilding if this player has a pending discard confirmation."""
+        if self._pending_actions.get(player.id) == "discard_confirm":
+            return
+        super().rebuild_player_menu(player, position=position)
+
+    def _show_discard_confirm(self, player: MileByMilePlayer, slot: int, user) -> None:
+        """Show a yes/no confirmation to discard the unplayable card."""
+        self._pending_discard_slot[player.id] = slot
+        self._pending_actions[player.id] = "discard_confirm"
+        user.speak_l("milebymile-discard-confirm")
+        items = [
+            MenuItem(text=Localization.get(user.locale, "confirm-yes"), id="yes"),
+            MenuItem(text=Localization.get(user.locale, "confirm-no"), id="no"),
+        ]
+        user.show_menu(
+            "discard_confirm",
+            items,
+            multiletter=False,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+
+    def _handle_menu_event(self, player: "Player", event: dict) -> None:
+        """Handle menu events, routing discard confirmation."""
+        menu_id = event.get("menu_id")
+        if menu_id == "discard_confirm":
+            self._handle_discard_confirm(player, event)
+        else:
+            super()._handle_menu_event(player, event)
+
+    def _handle_discard_confirm(self, player: "Player", event: dict) -> None:
+        """Handle the discard confirmation menu response."""
+        self._pending_actions.pop(player.id, None)
+        slot = self._pending_discard_slot.pop(player.id, None)
+        if not isinstance(player, MileByMilePlayer):
+            self.rebuild_all_menus()
+            return
+        selection_id = event.get("selection_id", "")
+        if not selection_id:
+            selection = event.get("selection", 1) - 1
+            selection_id = "yes" if selection == 0 else "no"
+        if selection_id == "yes" and slot is not None and slot < len(player.hand):
+            card = player.hand[slot]
+            if not self.options.always_allow_discarding and self._can_play_card(player, card):
+                user = self.get_user(player)
+                if user:
+                    user.speak_l("milebymile-cant-discard-playable")
+                self.rebuild_all_menus()
+                return
+            self._discard_card(player, slot, card)
+            return
+        self.rebuild_all_menus()
 
     def _play_card(
         self,
@@ -1069,13 +1129,9 @@ class MileByMileGame(Game):
                     )
             else:
                 if self.is_individual_mode():
-                    self.broadcast_l(
-                        "milebymile-journey-complete-individual", player=player.name
-                    )
+                    self.broadcast_l("milebymile-journey-complete-individual", player=player.name)
                 else:
-                    self.broadcast_l(
-                        "milebymile-journey-complete-team", team=player.team_index + 1
-                    )
+                    self.broadcast_l("milebymile-journey-complete-team", team=player.team_index + 1)
 
             self.play_sound("game_milebymile/winround.ogg")
             self.race_winner_team_index = player.team_index
@@ -1099,9 +1155,7 @@ class MileByMileGame(Game):
             self._notify_no_hazard_targets(player)
             return
 
-        target_idx = self._resolve_hazard_target(
-            target_indices, target_selection
-        )
+        target_idx = self._resolve_hazard_target(target_indices, target_selection)
         if target_idx is None:
             return
 
@@ -1165,9 +1219,7 @@ class MileByMileGame(Game):
             else:
                 if target_selection.startswith("Team "):
                     try:
-                        team_num = int(
-                            target_selection.split(":")[0].replace("Team ", "")
-                        )
+                        team_num = int(target_selection.split(":")[0].replace("Team ", ""))
                         for idx in target_indices:
                             if idx + 1 == team_num:
                                 return idx
@@ -1457,7 +1509,7 @@ class MileByMileGame(Game):
         """Called when the game starts."""
         # Always set up teams with current player list
         self._setup_teams()
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.current_race = 0
 
@@ -1509,6 +1561,12 @@ class MileByMileGame(Game):
 
     def _start_turn(self) -> None:
         """Start a player's turn."""
+        # Clean up any leftover discard confirmation state
+        self._pending_discard_slot.clear()
+        for pid in list(self._pending_actions):
+            if self._pending_actions.get(pid) == "discard_confirm":
+                del self._pending_actions[pid]
+
         player = self.current_player
         if not player or not isinstance(player, MileByMilePlayer):
             return
@@ -1661,9 +1719,7 @@ class MileByMileGame(Game):
 
                 # Build localized bonus descriptions
                 bonus_descriptions = [
-                    Localization.get(
-                        locale, "milebymile-from-distance", miles=base_miles
-                    )
+                    Localization.get(locale, "milebymile-from-distance", miles=base_miles)
                 ]
                 for key, params in bonus_parts:
                     bonus_descriptions.append(Localization.get(locale, key, **params))
@@ -1681,7 +1737,9 @@ class MileByMileGame(Game):
         self.broadcast_l("milebymile-total-scores")
         for team_idx in range(self.get_num_teams()):
             name = self.get_team_name(team_idx)
-            self.broadcast_l("milebymile-team-score", name=name, score=self.get_team_score(team_idx))
+            self.broadcast_l(
+                "milebymile-team-score", name=name, score=self.get_team_score(team_idx)
+            )
 
     def _check_game_winner(self) -> int | None:
         """Check if any team has won the game. Returns team index or None."""
@@ -1706,9 +1764,7 @@ class MileByMileGame(Game):
             self.broadcast_l("milebymile-wins-individual", player=winner_team.members[0])
         else:
             members_str = ", ".join(winner_team.members)
-            self.broadcast_l(
-                "milebymile-wins-team", team=winner_idx + 1, members=members_str
-            )
+            self.broadcast_l("milebymile-wins-team", team=winner_idx + 1, members=members_str)
         self.broadcast_l("milebymile-final-score", score=winner_score)
 
         self.finish_game()
@@ -1854,9 +1910,7 @@ class MileByMileGame(Game):
                         buffer="table",
                     )
 
-    def _announce_false_virtue(
-        self, player: MileByMilePlayer, team_idx: int
-    ) -> None:
+    def _announce_false_virtue(self, player: MileByMilePlayer, team_idx: int) -> None:
         """Announce when a player plays False Virtue to regain karma."""
         if self.is_individual_mode():
             for p in self.players:
@@ -1967,10 +2021,7 @@ class MileByMileGame(Game):
                 blocking_safety = HAZARD_TO_SAFETY.get(hazard) if hazard else None
                 if blocking_safety:
                     for card in player.hand:
-                        if (
-                            card.card_type == CardType.SAFETY
-                            and card.value == blocking_safety
-                        ):
+                        if card.card_type == CardType.SAFETY and card.value == blocking_safety:
                             return "dirty_trick"
 
         # Not our turn? Skip
@@ -1998,9 +2049,7 @@ class MileByMileGame(Game):
         best_priority = -1
 
         for i, card in enumerate(player.hand):
-            priority = self._bot_score_card(
-                player, card, race_state, distance_needed, is_endgame
-            )
+            priority = self._bot_score_card(player, card, race_state, distance_needed, is_endgame)
             if priority > best_priority:
                 best_priority = priority
                 best_slot = i
@@ -2057,9 +2106,7 @@ class MileByMileGame(Game):
         if card.value == RemedyType.ROLL and race_state.has_problem(HazardType.STOP):
             if not race_state.has_safety(SafetyType.RIGHT_OF_WAY):
                 return 3000
-        if card.value == RemedyType.END_OF_LIMIT and race_state.has_problem(
-            HazardType.SPEED_LIMIT
-        ):
+        if card.value == RemedyType.END_OF_LIMIT and race_state.has_problem(HazardType.SPEED_LIMIT):
             return 2800
         if self._can_play_card(player, card):
             return 2500

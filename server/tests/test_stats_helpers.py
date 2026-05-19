@@ -50,15 +50,11 @@ def test_leaderboard_helper_aggregations_and_bot_filtering():
     def score_extractor(result, player_id):
         return result.custom_data["scores"].get(player_id)
 
-    entries = LeaderboardHelper.build_from_results(
-        results, score_extractor, aggregate="sum"
-    )
+    entries = LeaderboardHelper.build_from_results(results, score_extractor, aggregate="sum")
     assert [entry.player_id for entry in entries] == ["h1", "h2", "v1"]
     assert entries[0].value == 14
 
-    avg_entries = LeaderboardHelper.build_from_results(
-        results, score_extractor, aggregate="avg"
-    )
+    avg_entries = LeaderboardHelper.build_from_results(results, score_extractor, aggregate="avg")
     avg_map = {entry.player_id: entry.value for entry in avg_entries}
     assert avg_map["h1"] == 7  # Alice: (10 + 4)/2
     assert avg_map["h2"] == 8
@@ -99,9 +95,7 @@ class DummyDB:
 
     def get_rating_leaderboard(self, game_type, limit):
         rows = [
-            (pid, mu, sigma)
-            for (pid, gt), (mu, sigma) in self.store.items()
-            if gt == game_type
+            (pid, mu, sigma) for (pid, gt), (mu, sigma) in self.store.items() if gt == game_type
         ]
         rows.sort(key=lambda row: row[1] - 3 * row[2], reverse=True)
         return rows[:limit]

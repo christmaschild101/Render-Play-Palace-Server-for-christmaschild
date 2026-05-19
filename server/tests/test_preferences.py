@@ -18,6 +18,7 @@ from server.core.users.preferences import (
 # Basic field access and defaults
 # ---------------------------------------------------------------------------
 
+
 class TestDefaults:
     def test_default_values(self):
         prefs = UserPreferences()
@@ -55,6 +56,7 @@ class TestDefaults:
 # ---------------------------------------------------------------------------
 # Serialization
 # ---------------------------------------------------------------------------
+
 
 class TestSerialization:
     def test_to_dict_defaults(self):
@@ -122,6 +124,7 @@ class TestSerialization:
 # Per-game overrides
 # ---------------------------------------------------------------------------
 
+
 class TestGameOverrides:
     def test_get_effective_no_override(self):
         prefs = UserPreferences()
@@ -169,6 +172,7 @@ class TestGameOverrides:
 # Reset
 # ---------------------------------------------------------------------------
 
+
 class TestReset:
     def test_reset_all(self):
         prefs = UserPreferences()
@@ -215,6 +219,7 @@ class TestReset:
 # Introspection
 # ---------------------------------------------------------------------------
 
+
 class TestIntrospection:
     def test_get_pref_meta(self):
         meta = UserPreferences.get_pref_meta("play_turn_sound")
@@ -227,16 +232,19 @@ class TestIntrospection:
 
     def test_relevant_games_from_registry(self):
         from server.games.registry import GameRegistry
+
         games = GameRegistry.get_games_for_preference("clear_kept_on_roll")
         assert "yahtzee" in games
 
     def test_play_turn_sound_no_relevant_games(self):
         from server.games.registry import GameRegistry
+
         games = GameRegistry.get_games_for_preference("play_turn_sound")
         assert games == []  # global-only
 
     def test_brief_announcements_relevant_games(self):
         from server.games.registry import GameRegistry
+
         games = GameRegistry.get_games_for_preference("brief_announcements")
         assert "backgammon" in games
 
@@ -251,6 +259,7 @@ class TestIntrospection:
 # ---------------------------------------------------------------------------
 # DiceKeepingStyle enum
 # ---------------------------------------------------------------------------
+
 
 class TestDiceKeepingStyle:
     def test_from_str_valid(self):

@@ -37,13 +37,23 @@ class ClientConnection:
             payload = packet_model.model_dump(exclude_none=True)
         except ValidationError as exc:
             identifier = self.username or self.address
-            PACKET_LOGGER.warning("Refusing to send invalid packet to %s: %s", identifier, exc)
+            PACKET_LOGGER.warning(
+                "Refusing to send invalid packet (type=%s) to %s: %s",
+                packet.get("type", "?"),
+                identifier,
+                exc,
+            )
             return
 
         try:
             await self.websocket.send(json.dumps(payload))
         except websockets.exceptions.ConnectionClosed:
-            pass
+            identifier = self.username or self.address
+            PACKET_LOGGER.debug(
+                "Dropped packet type=%s to disconnected client %s",
+                payload.get("type", "?"),
+                identifier,
+            )
 
     async def close(self) -> None:
         """Close this connection."""
@@ -78,6 +88,7 @@ class WebSocketServer:
         self._on_disconnect = on_disconnect
         self._on_message = on_message
         self._clients: dict[str, ClientConnection] = {}
+        self._username_index: dict[str, ClientConnection] = {}
         self._server = None
         self._running = False
         self._ssl_context = None
@@ -145,6 +156,7 @@ class WebSocketServer:
         for client in list(self._clients.values()):
             await client.close()
         self._clients.clear()
+        self._username_index.clear()
 
     async def _handle_client(self, websocket: ServerConnection) -> None:
         """Handle a client connection."""
@@ -162,7 +174,8 @@ class WebSocketServer:
                     if self._on_message:
                         await self._on_message(client, packet)
                 except json.JSONDecodeError:
-                    pass  # Ignore malformed messages
+                    identifier = client.username or client.address
+                    PACKET_LOGGER.warning("Malformed JSON from %s", identifier)
                 except Exception:
                     # Safety net: log and continue so the connection survives.
                     # The server layer should catch and handle errors before
@@ -175,30 +188,37 @@ class WebSocketServer:
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:
+            if client.username:
+                if self._username_index.get(client.username) is client:
+                    self.unregister_username(client.username)
             if address in self._clients:
                 del self._clients[address]
             if self._on_disconnect:
                 await self._on_disconnect(client)
 
-    async def broadcast(
-        self, packet: dict, exclude: ClientConnection | None = None
-    ) -> None:
+    async def broadcast(self, packet: dict, exclude: ClientConnection | None = None) -> None:
         """Broadcast a packet to all authenticated clients."""
         for client in self._clients.values():
             if client.authenticated and client != exclude:
                 await client.send(packet)
 
+    def register_username(self, client: ClientConnection) -> None:
+        """Register a client in the username index for O(1) lookup."""
+        if client.username:
+            self._username_index[client.username] = client
+
+    def unregister_username(self, username: str) -> None:
+        """Remove a username from the index."""
+        self._username_index.pop(username, None)
+
     async def send_to_user(self, username: str, packet: dict) -> bool:
         """Send a packet to a specific user."""
-        for client in self._clients.values():
-            if client.username == username:
-                await client.send(packet)
-                return True
+        client = self._username_index.get(username)
+        if client:
+            await client.send(packet)
+            return True
         return False
 
     def get_client_by_username(self, username: str) -> ClientConnection | None:
         """Get a client by username."""
-        for client in self._clients.values():
-            if client.username == username:
-                return client
-        return None
+        return self._username_index.get(username)

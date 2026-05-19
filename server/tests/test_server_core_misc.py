@@ -168,14 +168,14 @@ default_locale = "es"
 
 def test_check_registration_rate_limit_blocked(monkeypatch, server):
     monkeypatch.setattr(server, "_allow_attempt", lambda *args, **kwargs: False)
-    msg = server._check_registration_rate_limit("1.2.3.4")
-    assert "Too many registration attempts" in msg
+    msg = server._check_registration_rate_limit("1.2.3.4", locale="en")
+    assert "registration attempts" in msg
 
 
 def test_check_refresh_rate_limit_blocked(monkeypatch, server):
     monkeypatch.setattr(server, "_allow_attempt", lambda *args, **kwargs: False)
-    msg = server._check_refresh_rate_limit("1.2.3.4")
-    assert "Too many refresh attempts" in msg
+    msg = server._check_refresh_rate_limit("1.2.3.4", locale="en")
+    assert "refresh attempts" in msg
 
 
 @pytest.mark.asyncio
@@ -202,8 +202,10 @@ async def test_preload_locales_if_requested_runs(monkeypatch, server):
 async def test_start_localization_warmup_schedules(monkeypatch, server):
     server._preload_locales = False
     server._localization_warmup_task = None
+
     async def dummy():
         return None
+
     monkeypatch.setattr(server, "_warm_locales_async", dummy)
     loop = FakeLoop()
     monkeypatch.setattr(asyncio, "get_running_loop", lambda: loop)

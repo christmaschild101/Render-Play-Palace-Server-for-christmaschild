@@ -33,6 +33,7 @@ from ...game_utils.cards import (
 )
 from ...game_utils.options import BoolOption, IntOption, MenuOption, option_field
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 from .bot import bot_think as _bot_think, evaluate_count as _evaluate_count
 
@@ -169,9 +170,7 @@ class NinetyNineGame(Game):
     def get_max_players(cls) -> int:
         return 6
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> NinetyNinePlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> NinetyNinePlayer:
         """Create a new player with Ninety Nine-specific state."""
         return NinetyNinePlayer(
             id=player_id,
@@ -183,10 +182,7 @@ class NinetyNineGame(Game):
     @property
     def alive_players(self) -> list[NinetyNinePlayer]:
         """Get players who still have tokens."""
-        return [
-            p for p in self.players
-            if p.id in self.alive_player_ids and not p.is_spectator
-        ]
+        return [p for p in self.players if p.id in self.alive_player_ids and not p.is_spectator]
 
     @property
     def is_quentin_c(self) -> bool:
@@ -315,12 +311,8 @@ class NinetyNineGame(Game):
         # Number keybinds for card slots removed (menu/arrow selection only)
 
         # Draw card (Space or D)
-        self.define_keybind(
-            "space", "Draw card", ["draw_card"], state=KeybindState.ACTIVE
-        )
-        self.define_keybind(
-            "d", "Draw card", ["draw_card"], state=KeybindState.ACTIVE
-        )
+        self.define_keybind("space", "Draw card", ["draw_card"], state=KeybindState.ACTIVE)
+        self.define_keybind("d", "Draw card", ["draw_card"], state=KeybindState.ACTIVE)
 
         # Count check
         self.define_keybind(
@@ -494,9 +486,7 @@ class NinetyNineGame(Game):
             ]
         return []
 
-    def _bot_select_card_choice(
-        self, player: Player, options: list[str]
-    ) -> str | None:
+    def _bot_select_card_choice(self, player: Player, options: list[str]) -> str | None:
         """Bot selects card choice for ace or ten."""
         if not isinstance(player, NinetyNinePlayer):
             return None
@@ -531,7 +521,7 @@ class NinetyNineGame(Game):
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 0
 
@@ -569,9 +559,7 @@ class NinetyNineGame(Game):
         self.discard_pile = []
 
         # Update alive players list
-        self.alive_player_ids = [
-            p.id for p in self.get_active_players() if p.tokens > 0
-        ]
+        self.alive_player_ids = [p.id for p in self.get_active_players() if p.tokens > 0]
 
         # Deal cards to alive players
         for player in self.alive_players:
@@ -634,9 +622,7 @@ class NinetyNineGame(Game):
         """Handle RS Games auto-lose when player has no safe cards."""
         self.broadcast_l("ninetynine-no-valid-cards", player=player.name)
 
-        self._play_sound_for_player(
-            player, "game_ninetynine/lose2.ogg", "game_pig/win.ogg"
-        )
+        self._play_sound_for_player(player, "game_ninetynine/lose2.ogg", "game_pig/win.ogg")
 
         player.tokens = max(0, player.tokens - PENALTY_BUST_RS)
         self._announce_token_loss(player, PENALTY_BUST_RS)
@@ -722,9 +708,7 @@ class NinetyNineGame(Game):
 
         old_count = self.count
 
-        handled = self._apply_menu_choice_value(
-            player, slot, card, old_count, input_value, locale
-        )
+        handled = self._apply_menu_choice_value(player, slot, card, old_count, input_value, locale)
         if handled:
             return
 
@@ -900,16 +884,12 @@ class NinetyNineGame(Game):
 
         return False
 
-    def _others_lose_tokens(
-        self, player: NinetyNinePlayer, amount: int, milestone: str
-    ) -> None:
+    def _others_lose_tokens(self, player: NinetyNinePlayer, amount: int, milestone: str) -> None:
         """All other players lose tokens (milestone bonus for player)."""
         others = [p for p in self.alive_players if p != player]
 
         if milestone == "99":
-            self._play_sound_for_player(
-                player, "game_pig/win.ogg", "game_ninetynine/lose2.ogg"
-            )
+            self._play_sound_for_player(player, "game_pig/win.ogg", "game_ninetynine/lose2.ogg")
         else:
             self._play_sound_for_player(
                 player, "game_ninetynine/lose1_you.ogg", "game_ninetynine/lose1_other.ogg"
@@ -922,9 +902,7 @@ class NinetyNineGame(Game):
             if other.tokens <= 0:
                 self._eliminate_player(other)
 
-    def _player_loses_tokens(
-        self, player: NinetyNinePlayer, amount: int, reason: str
-    ) -> None:
+    def _player_loses_tokens(self, player: NinetyNinePlayer, amount: int, reason: str) -> None:
         """Player loses tokens (passing through milestone or busting)."""
         self._play_sound_for_player(
             player, "game_ninetynine/lose1_other.ogg", "game_ninetynine/lose1_you.ogg"
@@ -938,9 +916,7 @@ class NinetyNineGame(Game):
 
     def _player_busts(self, player: NinetyNinePlayer) -> None:
         """Player went over 99."""
-        self._play_sound_for_player(
-            player, "game_ninetynine/lose2.ogg", "game_pig/win.ogg"
-        )
+        self._play_sound_for_player(player, "game_ninetynine/lose2.ogg", "game_pig/win.ogg")
 
         amount = PENALTY_BUST if self.is_quentin_c else PENALTY_BUST_RS
         player.tokens = max(0, player.tokens - amount)
@@ -951,9 +927,7 @@ class NinetyNineGame(Game):
 
     def _player_out_of_cards(self, player: NinetyNinePlayer) -> None:
         """Player has no cards on their turn."""
-        self._play_sound_for_player(
-            player, "game_ninetynine/lose2.ogg", "game_pig/win.ogg"
-        )
+        self._play_sound_for_player(player, "game_ninetynine/lose2.ogg", "game_pig/win.ogg")
 
         player.tokens = max(0, player.tokens - PENALTY_NO_CARDS)
         self._announce_token_loss(player, PENALTY_NO_CARDS)
@@ -975,7 +949,12 @@ class NinetyNineGame(Game):
             if listener == player:
                 user.speak_l("ninetynine-you-lose-tokens", amount=amount, buffer="table")
             else:
-                user.speak_l("ninetynine-player-loses-tokens", player=player.name, amount=amount, buffer="table")
+                user.speak_l(
+                    "ninetynine-player-loses-tokens",
+                    player=player.name,
+                    amount=amount,
+                    buffer="table",
+                )
         self._sync_team_scores()
 
     def _sync_team_scores(self) -> None:
@@ -1029,9 +1008,7 @@ class NinetyNineGame(Game):
 
     def build_game_result(self) -> GameResult:
         """Build the game result with NinetyNine-specific data."""
-        sorted_players = sorted(
-            self.get_active_players(), key=lambda p: p.tokens, reverse=True
-        )
+        sorted_players = sorted(self.get_active_players(), key=lambda p: p.tokens, reverse=True)
 
         # Build final tokens
         final_tokens = {}
@@ -1095,9 +1072,7 @@ class NinetyNineGame(Game):
 
             user = self.get_user(player)
             if user:
-                user.speak_l(
-                    "ninetynine-you-draw", card=card_name_with_article(drawn)
-                )
+                user.speak_l("ninetynine-you-draw", card=card_name_with_article(drawn))
             # Announce to others that this player drew a card
             self.broadcast_l(
                 "ninetynine-player-draws",

@@ -93,6 +93,7 @@ class Identities(BaseModel):
 
 class ExportedIdentities(BaseModel):
     """Schema for the exported/imported identities JSON file."""
+
     model_config = ConfigDict(extra="ignore")
 
     description: str

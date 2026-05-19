@@ -13,6 +13,7 @@ class PokerPot(DataClassJSONMixin):
         amount: Total chips in this pot.
         eligible_player_ids: Players eligible to win this pot.
     """
+
     amount: int
     eligible_player_ids: set[str] = field(default_factory=set)
 

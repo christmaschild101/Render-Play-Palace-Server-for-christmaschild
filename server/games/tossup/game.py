@@ -113,9 +113,7 @@ class TossUpGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Ga
     def get_max_players(cls) -> int:
         return 8
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> TossUpPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> TossUpPlayer:
         """Create a new player with TossUp-specific state."""
         return TossUpPlayer(
             id=player_id,
@@ -146,14 +144,10 @@ class TossUpGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Ga
 
         if tossup_player.turn_points == 0:
             # First roll of turn
-            return Localization.get(
-                locale, "tossup-roll-first", count=tossup_player.dice_count
-            )
+            return Localization.get(locale, "tossup-roll-first", count=tossup_player.dice_count)
         else:
             # Subsequent rolls
-            return Localization.get(
-                locale, "tossup-roll-remaining", count=tossup_player.dice_count
-            )
+            return Localization.get(locale, "tossup-roll-remaining", count=tossup_player.dice_count)
 
     def _is_bank_enabled(self, player: Player) -> str | None:
         """Check if bank action is enabled."""
@@ -168,9 +162,7 @@ class TossUpGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Ga
     def _is_bank_hidden(self, player: Player) -> Visibility:
         """Bank is hidden until player has rolled at least once."""
         tossup_player: TossUpPlayer = player  # type: ignore
-        return self.turn_action_visibility(
-            player, extra_condition=tossup_player.turn_points > 0
-        )
+        return self.turn_action_visibility(player, extra_condition=tossup_player.turn_points > 0)
 
     def _get_bank_label(self, player: Player, action_id: str) -> str:
         """Get dynamic label for bank action showing current points."""
@@ -467,9 +459,7 @@ class TossUpGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Ga
         if len(winners) == 1:
             # Single winner!
             self.play_sound("game_pig/win.ogg")
-            self.broadcast_l(
-                "tossup-winner", player=winners[0].name, score=high_score
-            )
+            self.broadcast_l("tossup-winner", player=winners[0].name, score=high_score)
             self.finish_game()
         elif len(winners) > 1:
             # Tiebreaker!
@@ -492,9 +482,7 @@ class TossUpGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Ga
 
     def build_game_result(self) -> GameResult:
         """Build the game result with TossUp-specific data."""
-        sorted_teams, winner, final_scores = TeamResultBuilder.summarize(
-            self._team_manager
-        )
+        sorted_teams, winner, final_scores = TeamResultBuilder.summarize(self._team_manager)
 
         return GameResult(
             game_type=self.get_type(),
@@ -510,9 +498,7 @@ class TossUpGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Ga
                 for p in self.get_active_players()
             ],
             custom_data={
-                "winner_name": self._team_manager.get_team_name(winner)
-                if winner
-                else None,
+                "winner_name": self._team_manager.get_team_name(winner) if winner else None,
                 "winner_score": winner.total_score if winner else 0,
                 "final_scores": final_scores,
                 "rounds_played": self.round,

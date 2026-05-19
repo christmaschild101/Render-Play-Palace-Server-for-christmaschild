@@ -78,9 +78,7 @@ def show_yes_no_menu(
         MenuItem(text=Localization.get(user.locale, "confirm-no"), id="no"),
     ]
     if include_cancel:
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel"))
 
     # Resolve 1-based position from the requested focus target.
     if isinstance(initial_focus, int):
@@ -92,9 +90,7 @@ def show_yes_no_menu(
     if position != 1:
         user.speak(question)
 
-    escape = (
-        EscapeBehavior.SELECT_LAST if allow_escape else EscapeBehavior.KEYBIND
-    )
+    escape = EscapeBehavior.SELECT_LAST if allow_escape else EscapeBehavior.KEYBIND
     user.show_menu(
         menu_id,
         items,
@@ -150,17 +146,12 @@ def show_language_menu(
         on_label = Localization.get(user.locale, "option-on")
         off_label = Localization.get(user.locale, "option-off")
         all_codes = Localization.get_available_locale_codes()
-        status_labels = {
-            code: on_label if code in selected else off_label
-            for code in all_codes
-        }
+        status_labels = {code: on_label if code in selected else off_label for code in all_codes}
 
     # Native names (each language in its own script)
     native_names = Localization.get_available_languages(fallback=user.locale)
     # Localized names (all names in the user's locale)
-    localized_names = Localization.get_available_languages(
-        user.locale, fallback=user.locale
-    )
+    localized_names = Localization.get_available_languages(user.locale, fallback=user.locale)
 
     # Filter to requested codes, preserving the full-dict order.
     if lang_codes is not None:
@@ -185,16 +176,10 @@ def show_language_menu(
             selected_position = index
 
     if multi_select:
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "done"), id="done")
-        )
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "done"), id="done"))
+        items.append(MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel"))
     else:
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "back"), id="back")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
     # Store callbacks / state for the handler.
     if multi_select and selected is not None:
@@ -229,9 +214,7 @@ async def _invoke(callback, *args):
             await result
 
 
-async def handle_language_menu_selection(
-    user: NetworkUser, selection_id: str
-) -> None:
+async def handle_language_menu_selection(user: NetworkUser, selection_id: str) -> None:
     """Dispatch a language-menu selection to the stored callbacks."""
     multi = _language_menu_multi.pop(user.username, None)
     if multi is not None:
@@ -262,9 +245,7 @@ async def handle_language_menu_selection(
             await _invoke(multi["on_cancel"], user)
         return
 
-    on_select, on_back = _language_menu_callbacks.pop(
-        user.username, (None, None)
-    )
+    on_select, on_back = _language_menu_callbacks.pop(user.username, (None, None))
     if selection_id.startswith("lang_"):
         lang_code = selection_id[5:]
         await _invoke(on_select, user, lang_code)

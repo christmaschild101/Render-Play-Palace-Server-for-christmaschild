@@ -15,6 +15,7 @@ from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.options import IntOption, option_field, GameOptions
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 
@@ -96,9 +97,7 @@ class LightTurretGame(Game):
     def get_max_players(cls) -> int:
         return 4
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> LightTurretPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> LightTurretPlayer:
         """Create a new player with Light Turret-specific state."""
         return LightTurretPlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -142,9 +141,7 @@ class LightTurretGame(Game):
         super().setup_keybinds()
 
         # Turn action keybinds
-        self.define_keybind(
-            "space", "Shoot turret", ["shoot"], state=KeybindState.ACTIVE
-        )
+        self.define_keybind("space", "Shoot turret", ["shoot"], state=KeybindState.ACTIVE)
         self.define_keybind("u", "Buy upgrade", ["upgrade"], state=KeybindState.ACTIVE)
         self.define_keybind(
             "c",
@@ -238,9 +235,7 @@ class LightTurretGame(Game):
         if lt_player.coins < 10:
             user = self.get_user(player)
             if user:
-                user.speak_l(
-                    "lightturret-not-enough-coins", have=lt_player.coins, need=10
-                )
+                user.speak_l("lightturret-not-enough-coins", have=lt_player.coins, need=10)
             return
 
         # Deduct coins
@@ -292,9 +287,7 @@ class LightTurretGame(Game):
                         coins=p.coins,
                     )
                 else:
-                    user.speak_l(
-                        "lightturret-stats-eliminated", player=p.name, light=p.light
-                    )
+                    user.speak_l("lightturret-stats-eliminated", player=p.name, light=p.light)
 
     def _eliminate_player(self, player: LightTurretPlayer) -> None:
         """Eliminate a player from the game. Sound is scheduled by caller."""
@@ -303,7 +296,7 @@ class LightTurretGame(Game):
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 0
 
@@ -340,9 +333,7 @@ class LightTurretGame(Game):
 
         # Refresh turn order to only include alive players
         alive_players = [
-            p
-            for p in self.get_active_players()
-            if isinstance(p, LightTurretPlayer) and p.alive
+            p for p in self.get_active_players() if isinstance(p, LightTurretPlayer) and p.alive
         ]
         self.set_turn_players(alive_players)
 
@@ -434,11 +425,7 @@ class LightTurretGame(Game):
         max_light = 0
         winner = None
         for p in self.players:
-            if (
-                isinstance(p, LightTurretPlayer)
-                and not p.is_spectator
-                and p.light > max_light
-            ):
+            if isinstance(p, LightTurretPlayer) and not p.is_spectator and p.light > max_light:
                 max_light = p.light
                 winner = p
         return winner
@@ -447,7 +434,7 @@ class LightTurretGame(Game):
         """End the game and announce results."""
         # Mark status as finished to disable turn actions, but keep game_active
         # True until sounds finish playing (so ticks continue)
-        self.status = "finished"
+        self.status = GameStatus.FINISHED
 
         self.broadcast_l("lightturret-game-over")
 
@@ -455,20 +442,13 @@ class LightTurretGame(Game):
         max_light = 0
         winners = []
         for p in self.players:
-            if (
-                not isinstance(p, LightTurretPlayer)
-                or p.is_spectator
-            ):
+            if not isinstance(p, LightTurretPlayer) or p.is_spectator:
                 continue
             # Announce each player's result
             if p.alive:
-                self.broadcast_l(
-                    "lightturret-final-alive", player=p.name, light=p.light
-                )
+                self.broadcast_l("lightturret-final-alive", player=p.name, light=p.light)
             else:
-                self.broadcast_l(
-                    "lightturret-final-eliminated", player=p.name, light=p.light
-                )
+                self.broadcast_l("lightturret-final-eliminated", player=p.name, light=p.light)
 
             if p.light > max_light:
                 max_light = p.light
@@ -481,9 +461,7 @@ class LightTurretGame(Game):
             self.broadcast_l("lightturret-tie", light=max_light)
         elif len(winners) == 1:
             self.play_sound("game_pig/win.ogg")
-            self.broadcast_l(
-                "lightturret-winner", player=winners[0].name, light=max_light
-            )
+            self.broadcast_l("lightturret-winner", player=winners[0].name, light=max_light)
 
         # Update actions to reflect game ended state
         self.rebuild_all_menus()
@@ -503,11 +481,7 @@ class LightTurretGame(Game):
     def build_game_result(self) -> GameResult:
         """Build the game result with LightTurret-specific data."""
         sorted_players = sorted(
-            [
-                p
-                for p in self.players
-                if isinstance(p, LightTurretPlayer) and not p.is_spectator
-            ],
+            [p for p in self.players if isinstance(p, LightTurretPlayer) and not p.is_spectator],
             key=lambda p: p.light,
             reverse=True,
         )

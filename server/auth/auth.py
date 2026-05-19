@@ -19,6 +19,7 @@ class AuthResult(Enum):
     USER_NOT_FOUND = auto()
     WRONG_PASSWORD = auto()
 
+
 if TYPE_CHECKING:
     from ..persistence.database import Database, UserRecord
 
@@ -46,7 +47,9 @@ class AuthManager:
 
     def _is_legacy_hash(self, password_hash: str) -> bool:
         """Check if a hash is a legacy SHA-256 hash (64 hex characters)."""
-        return len(password_hash) == 64 and all(c in '0123456789abcdef' for c in password_hash.lower())
+        return len(password_hash) == 64 and all(
+            c in "0123456789abcdef" for c in password_hash.lower()
+        )
 
     def verify_password(self, password: str, password_hash: str) -> bool:
         """Verify a password against its hash (supports both Argon2 and legacy SHA-256)."""
@@ -87,12 +90,13 @@ class AuthManager:
 
         return AuthResult.SUCCESS
 
-    def register(self, username: str, password: str, locale: str = "en") -> bool:
+    def register(self, username: str, password: str, *, approved: bool = False, locale: str = "en") -> bool:
         """Register a new user.
 
         Args:
             username: Username to create.
             password: Plaintext password.
+            approved: Whether the account is pre-approved (skips admin approval).
             locale: Preferred locale.
 
         Returns:
@@ -102,7 +106,6 @@ class AuthManager:
             return False
 
         trust_level = TrustLevel.USER
-        approved = False
 
         password_hash = self.hash_password(password)
         self._db.create_user(username, password_hash, locale, trust_level, approved)
@@ -124,6 +127,8 @@ class AuthManager:
 
         password_hash = self.hash_password(new_password)
         self._db.update_user_password(username, password_hash)
+        self.invalidate_user_sessions(username)
+        self._db.revoke_user_refresh_tokens(username, int(time.time()))
         return True
 
     def get_user(self, username: str) -> "UserRecord | None":
@@ -190,14 +195,14 @@ class AuthManager:
         if not record:
             return None
 
-        username = record["username"]
+        username = record.username
         if not self._db.user_exists(username):
             return None
 
         now = int(time.time())
-        if record["revoked_at"] is not None or record["replaced_by"]:
+        if record.revoked_at is not None or record.replaced_by:
             return None
-        if record["expires_at"] <= now:
+        if record.expires_at <= now:
             self._db.revoke_refresh_token(refresh_token, now)
             return None
 

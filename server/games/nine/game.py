@@ -11,6 +11,7 @@ from ...game_utils.actions import Action, ActionSet, MenuInput, Visibility
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from ...core.ui.keybinds import KeybindState
 from ...game_utils.cards import (
     Card,
@@ -52,8 +53,15 @@ NINE_RANK_ORDER = {
 
 # Ordered list of ranks for easy iteration and checking adjacency
 NINE_RANKS_IN_ORDER = [
-    RANK_SIX, RANK_SEVEN, RANK_EIGHT, RANK_NINE,
-    RANK_TEN, RANK_JACK, RANK_QUEEN, RANK_KING, RANK_ACE
+    RANK_SIX,
+    RANK_SEVEN,
+    RANK_EIGHT,
+    RANK_NINE,
+    RANK_TEN,
+    RANK_JACK,
+    RANK_QUEEN,
+    RANK_KING,
+    RANK_ACE,
 ]
 
 # Map standard ranks to localization keys
@@ -82,7 +90,8 @@ SUIT_KEYS = {
 @register_game
 class NineGame(Game):
     "nine-description"
-#    Nine - A card game where players form sequences.
+
+    #    Nine - A card game where players form sequences.
 
     players: list[NinePlayer] = field(default_factory=list)
     nine_state: NineState = field(default_factory=NineState)
@@ -92,7 +101,7 @@ class NineGame(Game):
 
     # Game state variables
     game_active: bool = False
-    first_turn_player_id: Optional[str] = None # Player who has the nine of clubs
+    first_turn_player_id: Optional[str] = None  # Player who has the nine of clubs
 
     def __post_init__(self):
         """Initialize runtime state."""
@@ -122,9 +131,7 @@ class NineGame(Game):
     def get_max_players(cls) -> int:
         return 6
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> NinePlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> NinePlayer:
         """Create a new player."""
         return NinePlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -147,21 +154,21 @@ class NineGame(Game):
 
     def _get_card_nine_value(self, card: Card) -> int:
         """Get the internal value of a card for Nine game logic (Ace is highest)."""
-        return NINE_RANK_ORDER.get(card.rank, 0) # Default to 0 for unknown ranks
+        return NINE_RANK_ORDER.get(card.rank, 0)  # Default to 0 for unknown ranks
 
     def _get_localized_rank_name(self, rank: int, locale: str = "en") -> str:
         """Get localized name for a card rank specific to Nine."""
         key = NINE_RANK_KEYS.get(rank)
         if key:
             return Localization.get(locale, key)
-        return str(rank) # Fallback to number if not found
+        return str(rank)  # Fallback to number if not found
 
     def _get_localized_suit_name(self, suit: int, locale: str = "en") -> str:
         """Get localized name for a card suit."""
         key = SUIT_KEYS.get(suit)
         if key:
             return Localization.get(locale, key)
-        return str(suit) # Fallback to number if not found
+        return str(suit)  # Fallback to number if not found
 
     def _get_localized_card_name(self, card: Card, locale: str = "en") -> str:
         """Get localized full card name (e.g., 'Nine of Clubs')."""
@@ -197,28 +204,31 @@ class NineGame(Game):
             user = self.get_user(p)
             if not user:
                 continue
-            
+
             target_locale = user.locale
-            
-            final_message_key = f"nine-player-{message_key}" # Default to player version
+
+            final_message_key = f"nine-player-{message_key}"  # Default to player version
 
             if sending_player and p == sending_player:
                 # Check if a specific "you" version exists for this message key
                 you_version_key = f"nine-you-{message_key}"
                 if Localization.get(target_locale, you_version_key, silent=True):
                     final_message_key = you_version_key
-            
-            
+
             # Make a mutable copy of kwargs for localization per recipient
-            msg_kwargs = dict(kwargs) 
+            msg_kwargs = dict(kwargs)
 
             # Localize card object if present in kwargs before speaking
             if "card" in msg_kwargs and isinstance(msg_kwargs["card"], Card):
-                msg_kwargs["card"] = self._get_localized_card_name(msg_kwargs["card"], target_locale)
-            
+                msg_kwargs["card"] = self._get_localized_card_name(
+                    msg_kwargs["card"], target_locale
+                )
+
             # Localize suit if present in kwargs before speaking (expecting int suit ID)
             if "suit" in msg_kwargs and isinstance(msg_kwargs["suit"], int):
-                msg_kwargs["suit"] = self._get_localized_suit_name(msg_kwargs["suit"], target_locale)
+                msg_kwargs["suit"] = self._get_localized_suit_name(
+                    msg_kwargs["suit"], target_locale
+                )
 
             user.speak_l(final_message_key, **msg_kwargs)
 
@@ -231,16 +241,16 @@ class NineGame(Game):
         errors = super().prestart_validate()
 
         num_players = len(self.get_active_players())
-        if num_players == 5: # Only 5 players is specifically invalid for Nine
+        if num_players == 5:  # Only 5 players is specifically invalid for Nine
             errors.append(Localization.get("en", "nine-error-invalid-player-count"))
-        
+
         return errors
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
-        self.nine_state = NineState() # Reset game state for new game
+        self.nine_state = NineState()  # Reset game state for new game
 
         # Initialize turn order
         active_players = self.get_active_players()
@@ -263,19 +273,25 @@ class NineGame(Game):
                 if p.id == self.first_turn_player_id:
                     first_player_obj = p
                     break
-            
+
             if first_player_obj:
                 self.current_player = first_player_obj
                 self._broadcast_nine_message(
-                    "start-player-announcement", player=first_player_obj.name, sending_player=first_player_obj
+                    "start-player-announcement",
+                    player=first_player_obj.name,
+                    sending_player=first_player_obj,
                 )
         else:
             # This should ideally not happen if deck is built correctly
             self.broadcast("Error: Nine of Clubs not found in any hand. Aborting game.")
             self.finish_game()
             return
-        
-        self.play_sound(random.choice(["game_cards/shuffle1.ogg", "game_cards/shuffle2.ogg", "game_cards/shuffle3.ogg"]))
+
+        self.play_sound(
+            random.choice(
+                ["game_cards/shuffle1.ogg", "game_cards/shuffle2.ogg", "game_cards/shuffle3.ogg"]
+            )
+        )
 
         self._start_turn()
 
@@ -306,8 +322,17 @@ class NineGame(Game):
                     player.hand.append(card)
             # Sort hand after dealing all cards
             player.hand = self._sort_player_hand(player.hand)
-        
-        self.play_sound(random.choice(["game_cards/draw1.ogg", "game_cards/draw2.ogg", "game_cards/draw3.ogg", "game_cards/draw4.ogg"]))
+
+        self.play_sound(
+            random.choice(
+                [
+                    "game_cards/draw1.ogg",
+                    "game_cards/draw2.ogg",
+                    "game_cards/draw3.ogg",
+                    "game_cards/draw4.ogg",
+                ]
+            )
+        )
 
     def _find_nine_of_clubs_player(self) -> Optional[str]:
         """Find the player who has the Nine of Clubs."""
@@ -340,7 +365,7 @@ class NineGame(Game):
     def _auto_skip_current_player_turn(self, player: NinePlayer) -> None:
         """Execute the logic for automatically skipping a player's turn."""
         self._broadcast_nine_message("skips-turn", sending_player=player, player=player.name)
-#To do: Add skip sound.         self.play_sound("sound.ogg")
+        # To do: Add skip sound.         self.play_sound("sound.ogg")
         self._end_turn()
 
     def _end_turn(self) -> None:
@@ -372,7 +397,9 @@ class NineGame(Game):
                 break
 
         if winner_obj:
-            self._broadcast_nine_message("wins-game", sending_player=winner_obj, player=winner_obj.name)
+            self._broadcast_nine_message(
+                "wins-game", sending_player=winner_obj, player=winner_obj.name
+            )
             self._broadcast_nine_message("game-ended")
 
         self.finish_game()
@@ -385,14 +412,14 @@ class NineGame(Game):
             player_results.append(
                 (p.id, p.name, len(p.hand), p.is_bot, getattr(p, "is_virtual_bot", False))
             )
-        sorted_player_results = sorted(player_results, key=lambda x: x[2]) # Sort by cards left
+        sorted_player_results = sorted(player_results, key=lambda x: x[2])  # Sort by cards left
 
         final_scores = {}
         for p_id, p_name, cards_left, _, _ in sorted_player_results:
             final_scores[p_name] = cards_left
 
         winner_name = sorted_player_results[0][1] if sorted_player_results else "N/A"
-        
+
         return GameResult(
             game_type=self.get_type(),
             timestamp=datetime.now().isoformat(),
@@ -409,7 +436,7 @@ class NineGame(Game):
             custom_data={
                 "winner_name": winner_name,
                 "final_scores": final_scores,
-                "rounds_played": 1, # Nine is usually one round
+                "rounds_played": 1,  # Nine is usually one round
             },
         )
 
@@ -425,7 +452,7 @@ class NineGame(Game):
 
         # Sort players by score (cards left) for a consistent display order
         sorted_players = sorted(final_scores.items(), key=lambda item: item[1])
-        
+
         for name, cards_left in sorted_players:
             if name == winner_name:
                 # Announce the winner by name
@@ -433,10 +460,11 @@ class NineGame(Game):
                 lines.append(Localization.get(locale, "nine-final-score", score=cards_left))
             else:
                 # Announce other players' scores
-                lines.append(Localization.get(locale, "game-eliminated", player=name, score=cards_left))
-        
-        return lines
+                lines.append(
+                    Localization.get(locale, "game-eliminated", player=name, score=cards_left)
+                )
 
+        return lines
 
     # ==========================================================================
     # Action Sets and Keybinds
@@ -453,7 +481,7 @@ class NineGame(Game):
     def create_standard_action_set(self, player: NinePlayer) -> ActionSet:
         """Create the standard action set for Nine."""
         action_set = super().create_standard_action_set(player)
-        
+
         # Add a custom status action
         action_set.add(
             Action(
@@ -462,8 +490,8 @@ class NineGame(Game):
                 handler="_action_check_sequences_status",
                 is_enabled="_is_check_sequences_status_enabled",
                 is_hidden="_is_check_sequences_status_hidden",
-                get_label="_get_localized_check_sequences_label", # Use get_label for dynamic localization
-                show_in_actions_menu=True, # Set to True to make visible in general menu
+                get_label="_get_localized_check_sequences_label",  # Use get_label for dynamic localization
+                show_in_actions_menu=True,  # Set to True to make visible in general menu
             )
         )
 
@@ -529,7 +557,7 @@ class NineGame(Game):
             return
 
         # Clear existing card actions
-        for i in range(1, len(player.hand) + 2): # Account for potential new cards
+        for i in range(1, len(player.hand) + 2):  # Account for potential new cards
             action_id = f"play_card_slot_{i}"
             if turn_set.get_action(action_id):
                 turn_set.remove(action_id)
@@ -539,14 +567,14 @@ class NineGame(Game):
         # Add actions for cards in hand
         for i, card in enumerate(player.hand, 1):
             action_id = f"play_card_slot_{i}"
-            
+
             # Check if card is playable
             is_playable, _ = self._can_play_card(player, card, check_only=True)
 
             turn_set.add(
                 Action(
                     id=action_id,
-                    label="", # Dynamic label will be set
+                    label="",  # Dynamic label will be set
                     handler="_action_play_card",
                     is_enabled=(None if is_playable else "nine-reason-generic"),
                     is_hidden=Visibility.VISIBLE,
@@ -578,7 +606,6 @@ class NineGame(Game):
         """Update card actions for all players."""
         for player in self.players:
             self._update_turn_actions(player)
-
 
     # ==========================================================================
     # Declarative Action Callbacks
@@ -629,16 +656,18 @@ class NineGame(Game):
             sequence_state = self.nine_state.sequences.get(suit)
             if sequence_state and sequence_state.low_card and sequence_state.high_card:
                 low_card_name = self._get_localized_rank_name(sequence_state.low_card.rank, locale)
-                high_card_name = self._get_localized_rank_name(sequence_state.high_card.rank, locale)
+                high_card_name = self._get_localized_rank_name(
+                    sequence_state.high_card.rank, locale
+                )
                 sequence_str = f"{low_card_name} - {high_card_name}"
                 lines.append(
-                    Localization.get(locale, "nine-status-sequence", suit=suit_name, sequence=sequence_str)
+                    Localization.get(
+                        locale, "nine-status-sequence", suit=suit_name, sequence=sequence_str
+                    )
                 )
             else:
-                lines.append(
-                    Localization.get(locale, "nine-status-no-sequence", suit=suit_name)
-                )
-        
+                lines.append(Localization.get(locale, "nine-status-no-sequence", suit=suit_name))
+
         self.status_box(player, lines)
 
     def _get_localized_check_hand_counts_label(self, player: Player, action_id: str) -> str:
@@ -672,7 +701,7 @@ class NineGame(Game):
         """Handle skipping a turn."""
         if not isinstance(player, NinePlayer):
             return
-        
+
         # All checks should have happened before this point, if this action is still callable,
         # it means a player wants to skip when they legitimately have no moves.
         self._auto_skip_current_player_turn(player)
@@ -684,7 +713,8 @@ class NineGame(Game):
 
         if self.current_player != player:
             user = self.get_user(player)
-            if user: user.speak_l("nine-reason-not-your-turn")
+            if user:
+                user.speak_l("nine-reason-not-your-turn")
             return
 
         # Extract slot number from action_id (e.g., "play_card_slot_1" -> 0)
@@ -706,13 +736,15 @@ class NineGame(Game):
             user = self.get_user(player)
             if user:
                 card_name = self._get_localized_card_name(card_to_play, user.locale)
-                user.speak_l(reason, card=card_name) # reason contains localized message key
+                user.speak_l(reason, card=card_name)  # reason contains localized message key
 
     # ==========================================================================
     # Card Play Logic
     # ==========================================================================
 
-    def _can_play_card(self, player: NinePlayer, card: Card, check_only: bool = False) -> tuple[bool, str]:
+    def _can_play_card(
+        self, player: NinePlayer, card: Card, check_only: bool = False
+    ) -> tuple[bool, str]:
         """
         Check if a card can be played.
         Returns (bool, reason_message_key)
@@ -724,15 +756,15 @@ class NineGame(Game):
         if not self.nine_state.nine_of_clubs_played:
             if not (card.rank == RANK_NINE and card.suit == SUIT_CLUBS):
                 return False, Localization.get(locale, "nine-reason-must-play-nine-clubs")
-            return True, "" # Nine of Clubs is always playable as first card
+            return True, ""  # Nine of Clubs is always playable as first card
 
         # Rule 2: Play any nine to start forming the sequence of that suit.
         if card.rank == RANK_NINE:
             if card.suit not in self.nine_state.sequences:
-                return True, "" # Can start a new sequence with this nine
+                return True, ""  # Can start a new sequence with this nine
             else:
-                pass 
-        
+                pass
+
         # Rule 3: Extend an already existing sequence.
         # Check if the suit has a sequence
         if card.suit in self.nine_state.sequences:
@@ -741,27 +773,35 @@ class NineGame(Game):
                 card_nine_value = self._get_card_nine_value(card)
                 low_nine_value = self._get_card_nine_value(sequence.low_card)
                 high_nine_value = self._get_card_nine_value(sequence.high_card)
-                
+
                 # Check if card is one lower than current low or one higher than current high
-                
-                is_one_lower = (card_nine_value == low_nine_value - 1)
-                is_one_higher = (card_nine_value == high_nine_value + 1)
+
+                is_one_lower = card_nine_value == low_nine_value - 1
+                is_one_higher = card_nine_value == high_nine_value + 1
                 if is_one_lower or is_one_higher:
                     return True, ""
-        
+
         # If none of the above, it's not a valid move (unless skipping is an option)
-        if not check_only: # If this is a real play attempt, return reason
+        if not check_only:  # If this is a real play attempt, return reason
             # Determine a more specific reason if possible
             if not self._has_valid_move(player):
-                 return False, Localization.get(locale, "nine-reason-must-skip")
+                return False, Localization.get(locale, "nine-reason-must-skip")
             elif card.rank == RANK_NINE and card.suit in self.nine_state.sequences:
                 # Trying to play a nine, but sequence already exists, and it's not a direct extension
-                return False, Localization.get(locale, "nine-reason-cannot-extend", suit=self._get_localized_suit_name(card.suit, locale))
+                return False, Localization.get(
+                    locale,
+                    "nine-reason-cannot-extend",
+                    suit=self._get_localized_suit_name(card.suit, locale),
+                )
             elif card.suit in self.nine_state.sequences:
-                return False, Localization.get(locale, "nine-reason-cannot-extend", suit=self._get_localized_suit_name(card.suit, locale))
+                return False, Localization.get(
+                    locale,
+                    "nine-reason-cannot-extend",
+                    suit=self._get_localized_suit_name(card.suit, locale),
+                )
             else:
                 return False, Localization.get(locale, "nine-reason-generic")
-        return False, "" # For check_only, if not playable, return False with empty reason
+        return False, ""  # For check_only, if not playable, return False with empty reason
 
     def _play_card(self, player: NinePlayer, slot: int, card: Card) -> None:
         """Execute playing a card."""
@@ -769,13 +809,15 @@ class NineGame(Game):
         locale = user.locale if user else "en"
 
         player.hand.pop(slot)
-        player.hand = self._sort_player_hand(player.hand) # Sort hand after card is played
+        player.hand = self._sort_player_hand(player.hand)  # Sort hand after card is played
 
         if not self.nine_state.nine_of_clubs_played:
             # Must be Nine of Clubs
             self.nine_state.nine_of_clubs_played = True
             self.nine_state.sequences[card.suit] = SequenceState(low_card=card, high_card=card)
-            self._broadcast_nine_message("plays-nine-clubs", sending_player=player, player=player.name)
+            self._broadcast_nine_message(
+                "plays-nine-clubs", sending_player=player, player=player.name
+            )
         elif card.rank == RANK_NINE:
             # Playing a nine to start a new sequence
             self.nine_state.sequences[card.suit] = SequenceState(low_card=card, high_card=card)
@@ -783,29 +825,44 @@ class NineGame(Game):
                 "plays-nine-suit",
                 sending_player=player,
                 player=player.name,
-                card=card, # Pass raw Card object
-                suit=card.suit, # Pass raw suit integer
+                card=card,  # Pass raw Card object
+                suit=card.suit,  # Pass raw suit integer
             )
         else:
             # Extending an existing sequence
             sequence = self.nine_state.sequences[card.suit]
             card_nine_value = self._get_card_nine_value(card)
-            
-            if sequence.low_card and self._get_card_nine_value(sequence.low_card) == card_nine_value + 1:
+
+            if (
+                sequence.low_card
+                and self._get_card_nine_value(sequence.low_card) == card_nine_value + 1
+            ):
                 sequence.low_card = card
-            elif sequence.high_card and self._get_card_nine_value(sequence.high_card) == card_nine_value - 1:
+            elif (
+                sequence.high_card
+                and self._get_card_nine_value(sequence.high_card) == card_nine_value - 1
+            ):
                 sequence.high_card = card
-            
+
             self._broadcast_nine_message(
                 "extend-sequence",
                 sending_player=player,
                 player=player.name,
-                card=card, # Pass raw Card object
-                suit=card.suit, # Pass raw suit integer
+                card=card,  # Pass raw Card object
+                suit=card.suit,  # Pass raw suit integer
             )
 
         self.discard_pile.append(card)
-        self.play_sound(random.choice(["game_cards/play1.ogg", "game_cards/play2.ogg", "game_cards/play3.ogg", "game_cards/play4.ogg"]))
+        self.play_sound(
+            random.choice(
+                [
+                    "game_cards/play1.ogg",
+                    "game_cards/play2.ogg",
+                    "game_cards/play3.ogg",
+                    "game_cards/play4.ogg",
+                ]
+            )
+        )
         self._end_turn()
 
     # ==========================================================================
@@ -830,26 +887,32 @@ class NineGame(Game):
         if not self.nine_state.nine_of_clubs_played:
             for i, card in enumerate(player.hand):
                 if card.rank == RANK_NINE and card.suit == SUIT_CLUBS:
-                    return f"play_card_slot_{i+1}"
-        
+                    return f"play_card_slot_{i + 1}"
+
         # Try to play a Nine to start a new sequence
         for i, card in enumerate(player.hand):
             if card.rank == RANK_NINE and card.suit not in self.nine_state.sequences:
-                return f"play_card_slot_{i+1}"
+                return f"play_card_slot_{i + 1}"
 
         # Try to extend an existing sequence
         for i, card in enumerate(player.hand):
             if card.suit in self.nine_state.sequences:
                 sequence = self.nine_state.sequences[card.suit]
                 card_nine_value = self._get_card_nine_value(card)
-                
-                if sequence.low_card and self._get_card_nine_value(sequence.low_card) == card_nine_value + 1:
-                    return f"play_card_slot_{i+1}"
-                elif sequence.high_card and self._get_card_nine_value(sequence.high_card) == card_nine_value - 1:
-                    return f"play_card_slot_{i+1}"
-        
+
+                if (
+                    sequence.low_card
+                    and self._get_card_nine_value(sequence.low_card) == card_nine_value + 1
+                ):
+                    return f"play_card_slot_{i + 1}"
+                elif (
+                    sequence.high_card
+                    and self._get_card_nine_value(sequence.high_card) == card_nine_value - 1
+                ):
+                    return f"play_card_slot_{i + 1}"
+
         # If no valid moves, skip turn
         if not self._has_valid_move(player):
             return "skip_turn"
 
-        return None # No move decided, wait for next tick or user input
+        return None  # No move decided, wait for next tick or user input

@@ -37,7 +37,8 @@ Localization.init(_locales_dir)
 
 
 def make_game(
-    start: bool = False, **option_overrides,
+    start: bool = False,
+    **option_overrides,
 ) -> BattleshipGame:
     game = BattleshipGame(options=BattleshipOptions(**option_overrides))
     game.setup_keybinds()
@@ -50,7 +51,8 @@ def make_game(
 
 
 def make_game_with_bot(
-    start: bool = False, **option_overrides,
+    start: bool = False,
+    **option_overrides,
 ) -> BattleshipGame:
     game = BattleshipGame(options=BattleshipOptions(**option_overrides))
     game.setup_keybinds()
@@ -89,10 +91,13 @@ def fire_and_resolve(game: BattleshipGame, bp: BattleshipPlayer, row: int, col: 
 def choose_orientation(game: BattleshipGame, player: BattleshipPlayer, horizontal: bool) -> None:
     """Simulate selecting orientation from the orient sub-menu."""
     selection = "horizontal" if horizontal else "vertical"
-    game._handle_menu_event(player, {
-        "menu_id": "orient_menu",
-        "selection_id": selection,
-    })
+    game._handle_menu_event(
+        player,
+        {
+            "menu_id": "orient_menu",
+            "selection_id": selection,
+        },
+    )
 
 
 def get_bp(game: BattleshipGame, name: str) -> BattleshipPlayer:
@@ -575,13 +580,13 @@ class TestFleetStatus:
         game._action_read_fleet(alice, "read_fleet")
         user = game.get_user(alice)
         # Status box should be open
-        assert alice.id in game._status_box_open
+        assert game._get_transient_display_state(alice) is not None
 
     def test_read_enemy_fleet(self) -> None:
         game = make_game(start=True, placement_mode="auto")
         alice = get_bp(game, "Alice")
         game._action_read_enemy_fleet(alice, "read_enemy_fleet")
-        assert alice.id in game._status_box_open
+        assert game._get_transient_display_state(alice) is not None
 
 
 # ------------------------------------------------------------------ #
@@ -637,6 +642,7 @@ class TestSoundTiming:
 
     def test_result_deferred_by_10_ticks(self) -> None:
         from ..games.battleship.game import FIRE_DELAY_TICKS
+
         game = make_game(start=True, placement_mode="auto")
         current = game._as_bp(game.current_player)
         opponent = _get_opponent(game, current)
@@ -742,7 +748,9 @@ class TestBotAI:
         game.on_start()
 
         completed = advance_until(
-            game, lambda: game.status == "finished", max_ticks=30000,
+            game,
+            lambda: game.status == "finished",
+            max_ticks=30000,
         )
         assert completed, "Bot vs bot game did not complete within 10000 ticks"
 
@@ -858,5 +866,3 @@ class TestEdgeCases:
         game = make_game(start=True, grid_size="12", placement_mode="auto")
         assert game.phase == "battling"
         assert game.grid_rows == 12
-
-

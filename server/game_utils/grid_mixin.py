@@ -72,17 +72,13 @@ class GridGameMixin:
         if not hasattr(self, "grid_row_labels") or not self.grid_row_labels:
             self.grid_row_labels = [str(i + 1) for i in range(self.grid_rows)]
         if not hasattr(self, "grid_col_labels") or not self.grid_col_labels:
-            self.grid_col_labels = [
-                chr(ord("A") + i) for i in range(self.grid_cols)
-            ]
+            self.grid_col_labels = [chr(ord("A") + i) for i in range(self.grid_cols)]
 
     # ------------------------------------------------------------------ #
     # Abstract — subclasses MUST override                                 #
     # ------------------------------------------------------------------ #
 
-    def get_cell_label(
-        self, row: int, col: int, player: "Player", locale: str
-    ) -> str:
+    def get_cell_label(self, row: int, col: int, player: "Player", locale: str) -> str:
         """Return the display label for one grid cell.
 
         This is what appears as the menu item text **and** what the
@@ -108,9 +104,7 @@ class GridGameMixin:
         """
         pass
 
-    def is_grid_cell_enabled(
-        self, player: "Player", row: int, col: int
-    ) -> str | None:
+    def is_grid_cell_enabled(self, player: "Player", row: int, col: int) -> str | None:
         """Return ``None`` if the cell is selectable, or a disabled-reason
         localization key if not.  Default: all cells enabled during play.
         """
@@ -120,9 +114,7 @@ class GridGameMixin:
             return "action-spectator"
         return None
 
-    def is_grid_cell_hidden(
-        self, player: "Player", row: int, col: int
-    ) -> Visibility:
+    def is_grid_cell_hidden(self, player: "Player", row: int, col: int) -> Visibility:
         """Return cell visibility.  Default: all cells visible during play."""
         if self.status != "playing":
             return Visibility.HIDDEN
@@ -158,9 +150,7 @@ class GridGameMixin:
     # Navigation actions (server-side spatial keybinds)                   #
     # ------------------------------------------------------------------ #
 
-    def _action_grid_move(
-        self, player: "Player", action_id: str
-    ) -> None:
+    def _action_grid_move(self, player: "Player", action_id: str) -> None:
         cursor = self._get_cursor(player)
         direction = action_id.removeprefix("grid_move_")
 
@@ -182,13 +172,9 @@ class GridGameMixin:
             locale = user.locale
             label = self.get_cell_label(cursor.row, cursor.col, player, locale)
             user.speak(label, buffer="game")
-        self.update_player_menu(
-            player, selection_id=self._cursor_cell_id(cursor)
-        )
+        self.update_player_menu(player, selection_id=self._cursor_cell_id(cursor))
 
-    def _action_grid_select(
-        self, player: "Player", action_id: str
-    ) -> None:
+    def _action_grid_select(self, player: "Player", action_id: str) -> None:
         cursor = self._get_cursor(player)
         self.on_grid_select(player, cursor.row, cursor.col)
 
@@ -221,9 +207,7 @@ class GridGameMixin:
     # Cell action callbacks (per-cell, dispatched by action_id)           #
     # ------------------------------------------------------------------ #
 
-    def _action_grid_cell(
-        self, player: "Player", action_id: str
-    ) -> None:
+    def _action_grid_cell(self, player: "Player", action_id: str) -> None:
         """Handler for tapping / clicking a grid cell (web / touch)."""
         coords = parse_grid_cell_id(action_id)
         if coords is None:
@@ -245,9 +229,7 @@ class GridGameMixin:
             return "action-not-available"
         return self.is_grid_cell_enabled(player, coords[0], coords[1])
 
-    def _is_grid_cell_hidden(
-        self, player: "Player", *, action_id: str | None = None
-    ) -> Visibility:
+    def _is_grid_cell_hidden(self, player: "Player", *, action_id: str | None = None) -> Visibility:
         if not action_id:
             return Visibility.HIDDEN
         coords = parse_grid_cell_id(action_id)
@@ -255,9 +237,7 @@ class GridGameMixin:
             return Visibility.HIDDEN
         return self.is_grid_cell_hidden(player, coords[0], coords[1])
 
-    def _get_grid_cell_label(
-        self, player: "Player", action_id: str
-    ) -> str:
+    def _get_grid_cell_label(self, player: "Player", action_id: str) -> str:
         coords = parse_grid_cell_id(action_id)
         if coords is None:
             return action_id
@@ -281,7 +261,9 @@ class GridGameMixin:
         from server.core.ui.keybinds import KeybindState
 
         self.define_keybind(
-            "enter", "Select cell", ["grid_select"],
+            "enter",
+            "Select cell",
+            ["grid_select"],
             state=KeybindState.ACTIVE,
         )
 
@@ -358,16 +340,8 @@ class GridGameMixin:
 
     def _grid_cell_coordinate(self, row: int, col: int) -> str:
         """Return the human-readable coordinate label, e.g. 'A1'."""
-        col_label = (
-            self.grid_col_labels[col]
-            if col < len(self.grid_col_labels)
-            else str(col)
-        )
-        row_label = (
-            self.grid_row_labels[row]
-            if row < len(self.grid_row_labels)
-            else str(row)
-        )
+        col_label = self.grid_col_labels[col] if col < len(self.grid_col_labels) else str(col)
+        row_label = self.grid_row_labels[row] if row < len(self.grid_row_labels) else str(row)
         return f"{col_label}{row_label}"
 
 

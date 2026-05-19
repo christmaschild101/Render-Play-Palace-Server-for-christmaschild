@@ -35,6 +35,8 @@ whose-turn = نوبت کیست
 whos-at-table = چه کسانی پشت میز هستند
 check-scores = بررسی امتیازها
 check-scores-detailed = امتیازهای تفصیلی
+check-game-options = بررسی گزینه‌های بازی
+no-game-options = هیچ گزینه‌ای برای بازی وجود ندارد.
 
 # Turn messages
 game-player-skipped = { $player } رد شد.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] امتیاز
    *[other] امتیاز
 }
-status-box-closed = بسته شد.
 play = بازی
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = حساب شما مسدود شده و قابل دسترسی نی
 incorrect-username = نام کاربری وارد شده وجود ندارد.
 incorrect-password = رمز عبور وارد شده نادرست است.
 already-logged-in = این حساب قبلاً وارد شده است.
+
+# اعتبارسنجی اطلاعات ورود
+credential-username-length = نام کاربری باید بین { $min } تا { $max } کاراکتر باشد.
+credential-password-length = رمز عبور باید بین { $min } تا { $max } کاراکتر باشد.
+
+# محدودیت نرخ درخواست
+rate-limit-login-ip = تعداد زیادی تلاش برای ورود از این آدرس. لطفاً صبر کنید و دوباره امتحان کنید.
+rate-limit-login-user = تعداد زیادی تلاش ناموفق برای ورود با این نام کاربری. لطفاً صبر کنید و دوباره امتحان کنید.
+rate-limit-registration = تعداد زیادی تلاش برای ثبت‌نام از این آدرس. لطفاً صبر کنید و دوباره امتحان کنید.
+rate-limit-refresh = تعداد زیادی تلاش برای بازآوری از این آدرس. لطفاً صبر کنید و دوباره امتحان کنید.
+
+# خطاهای جلسه و احراز هویت
+account-not-found = حساب یافت نشد.
+session-expired = جلسه منقضی شده است. لطفاً دوباره وارد شوید.
+session-token-mismatch = توکن جلسه با نام کاربری مطابقت ندارد.
+refresh-token-expired = توکن بازآوری منقضی شده است. لطفاً دوباره وارد شوید.
+refresh-token-mismatch = توکن بازآوری با نام کاربری مطابقت ندارد.
+
+# ثبت‌نام
+registration-success = ثبت‌نام موفقیت‌آمیز بود! حساب شما در انتظار تأیید است.
+registration-username-taken = این نام کاربری قبلاً گرفته شده است. لطفاً نام کاربری دیگری انتخاب کنید.
+
+# مقدار پیش‌فرض تنظیمات
+pref-invalid-value = انتخاب نامعتبر است، از مقدار پیش‌فرض استفاده می‌شود.
 
 # Decline reason
 decline-reason-prompt = دلیل رد را وارد کنید (یا Escape را فشار دهید تا لغو شود):

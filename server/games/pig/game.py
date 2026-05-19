@@ -118,9 +118,7 @@ class PigGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Game)
     def get_max_players(cls) -> int:
         return 4
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> PigPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> PigPlayer:
         """Create a new player with Pig-specific state."""
         return PigPlayer(id=player_id, name=name, is_bot=is_bot, round_score=0)
 
@@ -217,9 +215,7 @@ class PigGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Game)
         if roll == 1:
             # Bust!
             self.play_sound("game_pig/lose.ogg")
-            self.broadcast_l(
-                "pig-bust", player=player.name, points=pig_player.round_score
-            )
+            self.broadcast_l("pig-bust", player=player.name, points=pig_player.round_score)
             pig_player.round_score = 0
             self.end_turn()
         else:
@@ -240,9 +236,7 @@ class PigGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Game)
         total = team.total_score if team else 0
 
         pig_player.round_score = 0
-        self.broadcast_l(
-            "pig-bank-action", player=player.name, points=banked, total=total
-        )
+        self.broadcast_l("pig-bank-action", player=player.name, points=banked, total=total)
 
         self.end_turn()
 
@@ -388,9 +382,7 @@ class PigGame(PushYourLuckBotMixin, ActionGuardMixin, RoundBasedGameMixin, Game)
 
     def build_game_result(self) -> GameResult:
         """Build the game result with Pig-specific data."""
-        sorted_teams, winner, final_scores = TeamResultBuilder.summarize(
-            self._team_manager
-        )
+        sorted_teams, winner, final_scores = TeamResultBuilder.summarize(self._team_manager)
 
         return GameResult(
             game_type=self.get_type(),

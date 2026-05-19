@@ -19,6 +19,7 @@ from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.options import IntOption, MultiSelectOption, multi_select_field, option_field
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 
@@ -39,8 +40,6 @@ def load_ball_packs() -> dict[str, dict[str, int]]:
 def get_pack_names() -> list[str]:
     """Get available pack IDs."""
     return list(load_ball_packs().keys())
-
-
 
 
 @dataclass
@@ -164,9 +163,7 @@ class RollingBallsGame(ActionGuardMixin, Game):
     def get_max_players(cls) -> int:
         return 4
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> RollingBallsPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> RollingBallsPlayer:
         """Create a new player with Rolling Balls state."""
         return RollingBallsPlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -242,7 +239,6 @@ class RollingBallsGame(ActionGuardMixin, Game):
             self.pipe.append({"value": value, "description": description})
         return total_balls
 
-
     # ==========================================================================
     # Action set creation
     # ==========================================================================
@@ -260,9 +256,7 @@ class RollingBallsGame(ActionGuardMixin, Game):
             action_set.add(
                 Action(
                     id="view_pipe",
-                    label=Localization.get(
-                        locale, "rb-view-pipe-action", remaining=remaining
-                    ),
+                    label=Localization.get(locale, "rb-view-pipe-action", remaining=remaining),
                     handler="_action_view_pipe",
                     is_enabled="_is_view_pipe_enabled",
                     is_hidden="_is_view_pipe_hidden",
@@ -277,9 +271,7 @@ class RollingBallsGame(ActionGuardMixin, Game):
             action_set.add(
                 Action(
                     id="reshuffle",
-                    label=Localization.get(
-                        locale, "rb-reshuffle-action", remaining=remaining
-                    ),
+                    label=Localization.get(locale, "rb-reshuffle-action", remaining=remaining),
                     handler="_action_reshuffle",
                     is_enabled="_is_reshuffle_enabled",
                     is_hidden="_is_reshuffle_hidden",
@@ -307,15 +299,9 @@ class RollingBallsGame(ActionGuardMixin, Game):
 
         for n in range(1, 6):
             label = f"Take {n} ball{'s' if n != 1 else ''}"
-            self.define_keybind(
-                str(n), label, [f"take_{n}"], state=KeybindState.ACTIVE
-            )
-        self.define_keybind(
-            "d", "Reshuffle pipe", ["reshuffle"], state=KeybindState.ACTIVE
-        )
-        self.define_keybind(
-            "p", "View pipe", ["view_pipe"], state=KeybindState.ACTIVE
-        )
+            self.define_keybind(str(n), label, [f"take_{n}"], state=KeybindState.ACTIVE)
+        self.define_keybind("d", "Reshuffle pipe", ["reshuffle"], state=KeybindState.ACTIVE)
+        self.define_keybind("p", "View pipe", ["view_pipe"], state=KeybindState.ACTIVE)
 
     # ==========================================================================
     # is_enabled callbacks
@@ -362,9 +348,7 @@ class RollingBallsGame(ActionGuardMixin, Game):
 
     def _is_take_hidden(self, player: Player, action_id: str) -> Visibility:
         count = int(action_id.removeprefix("take_"))
-        return self.turn_action_visibility(
-            player, extra_condition=len(self.pipe) >= count
-        )
+        return self.turn_action_visibility(player, extra_condition=len(self.pipe) >= count)
 
     def _is_reshuffle_hidden(self, player: Player) -> Visibility:
         rb_player: RollingBallsPlayer = player  # type: ignore
@@ -417,10 +401,8 @@ class RollingBallsGame(ActionGuardMixin, Game):
         """Take balls from the pipe, queuing reveals for on_tick."""
         rb_player: RollingBallsPlayer = player  # type: ignore
 
-        self.broadcast_personal_l(
-            player, "rb-you-take", "rb-player-takes", count=count
-        )
-        self.play_sound(f"game_rollingballs/take{random.randint(1,3)}.ogg")
+        self.broadcast_personal_l(player, "rb-you-take", "rb-player-takes", count=count)
+        self.play_sound(f"game_rollingballs/take{random.randint(1, 3)}.ogg")
 
         # Pop balls from pipe and queue them for reveal
         balls = []
@@ -456,15 +438,15 @@ class RollingBallsGame(ActionGuardMixin, Game):
         value = ball["value"]
         description = ball["description"]
         abs_value = abs(value)
-        sound_value = abs_value if abs_value <=5 else 5
+        sound_value = abs_value if abs_value <= 5 else 5
 
         # Play takeball sound immediately, schedule value sound 1 tick later
         self.play_sound("game_rollingballs/takeball.ogg")
         if value > 0:
-            self.schedule_sound(f"game_rollingballs/plus{sound_value}.ogg", delay_ticks=1, volume=80)
-            self.broadcast_l(
-                "rb-ball-plus", num=ball_num, description=description, value=abs_value
+            self.schedule_sound(
+                f"game_rollingballs/plus{sound_value}.ogg", delay_ticks=1, volume=80
             )
+            self.broadcast_l("rb-ball-plus", num=ball_num, description=description, value=abs_value)
         elif value < 0:
             self.schedule_sound(f"game_rollingballs/minus{sound_value}.ogg", delay_ticks=1)
             self.broadcast_l(
@@ -496,9 +478,7 @@ class RollingBallsGame(ActionGuardMixin, Game):
         """Reshuffle a portion of the pipe."""
         rb_player: RollingBallsPlayer = player  # type: ignore
 
-        self.broadcast_personal_l(
-            player, "rb-you-reshuffle", "rb-player-reshuffles"
-        )
+        self.broadcast_personal_l(player, "rb-you-reshuffle", "rb-player-reshuffles")
         self.play_sound(
             f"game_rollingballs/disrupt{random.randint(1, 2)}.ogg"  # nosec B311
         )
@@ -613,7 +593,7 @@ class RollingBallsGame(ActionGuardMixin, Game):
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 0
 
@@ -734,10 +714,12 @@ class RollingBallsGame(ActionGuardMixin, Game):
             if i < player.bot_pipe_memory:
                 perceived.append(ball)
             else:
-                perceived.append({
-                    **ball,
-                    "value": random.randint(-5, 5),  # nosec B311
-                })
+                perceived.append(
+                    {
+                        **ball,
+                        "value": random.randint(-5, 5),  # nosec B311
+                    }
+                )
         return perceived
 
     def bot_think(self, player: RollingBallsPlayer) -> str | None:
@@ -766,9 +748,7 @@ class RollingBallsGame(ActionGuardMixin, Game):
         best_take = min_take
         best_value = -999
         for test_take in range(min_take, max_take + 1):
-            cumulative = sum(
-                perceived_pipe[i]["value"] for i in range(test_take)
-            )
+            cumulative = sum(perceived_pipe[i]["value"] for i in range(test_take))
             if cumulative > best_value or (
                 cumulative == best_value and random.randint(0, 1) == 0  # nosec B311
             ):

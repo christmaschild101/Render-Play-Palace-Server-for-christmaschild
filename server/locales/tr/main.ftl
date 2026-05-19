@@ -35,6 +35,8 @@ whose-turn = Kimin turu
 whos-at-table = Masada kim var
 check-scores = Skorları kontrol et
 check-scores-detailed = Detaylı skorlar
+check-game-options = Oyun seçeneklerini kontrol et
+no-game-options = Oyun seçeneği yok.
 
 # Tur mesajları
 game-player-skipped = { $player } atlanıyor.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] puan
    *[other] puan
 }
-status-box-closed = Kapatıldı.
 play = Oyna
 
 # Lider tabloları
@@ -260,6 +261,30 @@ account-banned = Hesabınız yasaklandı ve erişilemez.
 incorrect-username = Girdiğiniz kullanıcı adı mevcut değil.
 incorrect-password = Girdiğiniz şifre yanlış.
 already-logged-in = Bu hesap zaten giriş yapmış.
+
+# Credential validation
+credential-username-length = Kullanıcı adı { $min } ile { $max } karakter arasında olmalıdır.
+credential-password-length = Şifre { $min } ile { $max } karakter arasında olmalıdır.
+
+# Rate limiting
+rate-limit-login-ip = Bu adresten çok fazla giriş denemesi yapıldı. Lütfen bekleyip tekrar deneyin.
+rate-limit-login-user = Bu kullanıcı adı için çok fazla başarısız giriş denemesi yapıldı. Lütfen bekleyip tekrar deneyin.
+rate-limit-registration = Bu adresten çok fazla kayıt denemesi yapıldı. Lütfen bekleyip tekrar deneyin.
+rate-limit-refresh = Bu adresten çok fazla yenileme denemesi yapıldı. Lütfen bekleyip tekrar deneyin.
+
+# Session/auth errors
+account-not-found = Hesap bulunamadı.
+session-expired = Oturum süresi doldu. Lütfen tekrar giriş yapın.
+session-token-mismatch = Oturum tokeni kullanıcı adıyla eşleşmiyor.
+refresh-token-expired = Yenileme tokeni süresi doldu. Lütfen tekrar giriş yapın.
+refresh-token-mismatch = Yenileme tokeni kullanıcı adıyla eşleşmiyor.
+
+# Registration
+registration-success = Kayıt başarılı! Hesabınız onay bekliyor.
+registration-username-taken = Bu kullanıcı adı zaten alınmış. Lütfen farklı bir kullanıcı adı seçin.
+
+# Preference fallback
+pref-invalid-value = Geçersiz seçim, varsayılan kullanılıyor.
 
 # Reddetme nedeni
 decline-reason-prompt = Reddetme sebebini girin (veya iptal etmek için Escape'e basın):

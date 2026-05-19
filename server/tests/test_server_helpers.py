@@ -57,7 +57,6 @@ def server(tmp_path):
 
 
 @pytest.mark.asyncio
-
 async def test_flush_user_messages_sends_only_to_connected_clients(server):
     alice = DummyNetworkUser()
     bob = DummyNetworkUser()
@@ -74,7 +73,6 @@ async def test_flush_user_messages_sends_only_to_connected_clients(server):
 
     assert alice_client.sent == [{"type": "ping"}]
     assert bob.get_queued_messages() == []  # queue already drained
-
 
 
 def test_broadcast_helpers_respect_approval(server):
@@ -183,7 +181,6 @@ def test_on_client_disconnect_removes_last_member(server):
 
     assert table.game.called
     assert members == []
-
 
 
 def test_send_game_list_includes_all_games(server):

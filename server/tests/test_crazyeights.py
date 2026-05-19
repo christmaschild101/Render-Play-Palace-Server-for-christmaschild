@@ -64,7 +64,9 @@ def test_crazyeights_add_bot_uses_available_name():
     assert "game_crazyeights/botsit.ogg" in host_user.get_sounds_played()
 
 
-def test_crazyeights_add_bot_without_available_names_notifies_player(monkeypatch: pytest.MonkeyPatch):
+def test_crazyeights_add_bot_without_available_names_notifies_player(
+    monkeypatch: pytest.MonkeyPatch,
+):
     monkeypatch.setattr("server.game_utils.lobby_actions_mixin.BOT_NAMES", ["Robo"])
     game, host_player, host_user = create_game_with_host()
 
@@ -127,7 +129,9 @@ def test_crazyeights_perform_leave_game_reassigns_host_when_waiting():
 
     assert host_player not in game.players
     assert game.host == guest_player.name
-    expected_host_message = Localization.get(guest_user.locale, "new-host", player=guest_player.name)
+    expected_host_message = Localization.get(
+        guest_user.locale, "new-host", player=guest_player.name
+    )
     assert expected_host_message in guest_user.get_spoken_messages()
     assert "game_crazyeights/personleave.ogg" in guest_user.get_sounds_played()
     assert not game._destroyed
@@ -214,8 +218,8 @@ def test_crazyeights_start_new_hand_uses_number_start_card(monkeypatch: pytest.M
                 (10, 4),
                 (2, 2),
                 (3, 3),
-                (8, 1),   # first start candidate (wild)
-                (5, 2),   # actual start card
+                (8, 1),  # first start candidate (wild)
+                (5, 2),  # actual start card
                 (6, 3),
             ]
         )
@@ -397,7 +401,9 @@ def test_crazyeights_end_round_triggers_game_end():
 
     assert game.status == "finished"
     assert not game.game_active
-    expected = Localization.get(host_user.locale, "crazyeights-you-win-game", score=host_player.score)
+    expected = Localization.get(
+        host_user.locale, "crazyeights-you-win-game", score=host_player.score
+    )
     assert host_user.get_spoken_messages()[-1] == expected
 
 
@@ -425,9 +431,10 @@ def test_crazyeights_turn_loop_controls_ambience():
     host_user.clear_messages()
 
     game._start_turn_loop(host_player)
-    assert ("play_ambience", {"loop": "game_crazyeights/yourturn.ogg", "intro": "", "outro": ""}) in [
-        (m.type, m.data) for m in host_user.messages
-    ]
+    assert (
+        "play_ambience",
+        {"loop": "game_crazyeights/yourturn.ogg", "intro": "", "outro": ""},
+    ) in [(m.type, m.data) for m in host_user.messages]
 
     game._stop_turn_loop()
     assert ("stop_ambience", {}) in [(m.type, m.data) for m in host_user.messages]
@@ -440,18 +447,24 @@ def test_crazyeights_on_player_skipped_announces_to_player():
 
     game.on_player_skipped(host_player)
 
-    expected = Localization.get(host_user.locale, "crazyeights-you-are-skipped", player=host_player.name)
+    expected = Localization.get(
+        host_user.locale, "crazyeights-you-are-skipped", player=host_player.name
+    )
     assert expected in host_user.get_spoken_messages()
 
 
-def test_crazyeights_perform_leave_game_last_human_destroys_playing(monkeypatch: pytest.MonkeyPatch):
+def test_crazyeights_perform_leave_game_last_human_destroys_playing(
+    monkeypatch: pytest.MonkeyPatch,
+):
     game, host_player, host_user = create_game_with_host()
     game.add_player("Bot", Bot("Bot"))
     game.status = "playing"
 
     destroyed = {"called": 0}
 
-    monkeypatch.setattr(game, "destroy", lambda: destroyed.__setitem__("called", destroyed["called"] + 1))
+    monkeypatch.setattr(
+        game, "destroy", lambda: destroyed.__setitem__("called", destroyed["called"] + 1)
+    )
 
     game._perform_leave_game(host_player)
 
@@ -459,13 +472,17 @@ def test_crazyeights_perform_leave_game_last_human_destroys_playing(monkeypatch:
     assert all(player.is_bot for player in game.players)
 
 
-def test_crazyeights_perform_leave_game_last_human_destroys_waiting(monkeypatch: pytest.MonkeyPatch):
+def test_crazyeights_perform_leave_game_last_human_destroys_waiting(
+    monkeypatch: pytest.MonkeyPatch,
+):
     game, host_player, host_user = create_game_with_host()
     game.status = "waiting"
 
     destroyed = {"called": 0}
 
-    monkeypatch.setattr(game, "destroy", lambda: destroyed.__setitem__("called", destroyed["called"] + 1))
+    monkeypatch.setattr(
+        game, "destroy", lambda: destroyed.__setitem__("called", destroyed["called"] + 1)
+    )
 
     game._perform_leave_game(host_player)
 
@@ -483,9 +500,7 @@ def test_crazyeights_setup_keybinds_registers_expected_keys():
     c_actions = game._keybinds["c"]
     assert any(bind.actions == ["read_top"] and bind.include_spectators for bind in c_actions)
     assert any(bind.actions == ["suit_clubs"] and not bind.include_spectators for bind in c_actions)
-    read_counts_bind = [
-        bind for bind in game._keybinds["e"] if "read_counts" in bind.actions
-    ]
+    read_counts_bind = [bind for bind in game._keybinds["e"] if "read_counts" in bind.actions]
     assert read_counts_bind and read_counts_bind[0].include_spectators
 
 
@@ -555,7 +570,9 @@ def test_crazyeights_on_tick_timer_timeout(monkeypatch: pytest.MonkeyPatch):
     game.timer.ticks_remaining = 1
     executed: list[tuple[object, str]] = []
 
-    monkeypatch.setattr(game, "_handle_turn_timeout", lambda: executed.append(("timeout", "handled")))
+    monkeypatch.setattr(
+        game, "_handle_turn_timeout", lambda: executed.append(("timeout", "handled"))
+    )
 
     game.on_tick()
 
@@ -596,8 +613,16 @@ def test_crazyeights_action_play_card_draw_two_finishes(monkeypatch: pytest.Monk
     drawn_for_next: list[int] = []
     end_round_calls = {"count": 0}
 
-    monkeypatch.setattr(game, "_draw_for_player", lambda player, count: drawn_for_next.append(count))
-    monkeypatch.setattr(game, "_end_round", lambda player, last_card=None: end_round_calls.__setitem__("count", end_round_calls["count"] + 1))
+    monkeypatch.setattr(
+        game, "_draw_for_player", lambda player, count: drawn_for_next.append(count)
+    )
+    monkeypatch.setattr(
+        game,
+        "_end_round",
+        lambda player, last_card=None: end_round_calls.__setitem__(
+            "count", end_round_calls["count"] + 1
+        ),
+    )
 
     game._action_play_card(host_player, f"play_card_{draw_two.id}")
 
@@ -617,7 +642,11 @@ def test_crazyeights_action_play_card_regular_advances(monkeypatch: pytest.Monke
     host_player.hand = [card, remaining_card]
 
     advance_calls = {"count": 0}
-    monkeypatch.setattr(game, "_advance_turn", lambda: advance_calls.__setitem__("count", advance_calls["count"] + 1))
+    monkeypatch.setattr(
+        game,
+        "_advance_turn",
+        lambda: advance_calls.__setitem__("count", advance_calls["count"] + 1),
+    )
     monkeypatch.setattr(game, "_apply_card_effects", lambda card: None)
 
     game._action_play_card(host_player, f"play_card_{card.id}")
@@ -666,7 +695,9 @@ def test_crazyeights_action_read_counts_and_timer_messages():
 
     game.timer.start(10)
     game._action_check_turn_timer(host_player, "check_turn_timer")
-    assert host_user.get_last_spoken() == Localization.get(host_user.locale, "poker-timer-remaining", seconds=10)
+    assert host_user.get_last_spoken() == Localization.get(
+        host_user.locale, "poker-timer-remaining", seconds=10
+    )
 
     game.timer.clear()
     game._action_check_turn_timer(host_player, "check_turn_timer")
@@ -754,12 +785,16 @@ def test_crazyeights_card_helper_methods(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(game.deck, "is_empty", lambda: True)
     monkeypatch.setattr(game.deck, "draw_one", lambda: None)
     play_sounds = []
-    monkeypatch.setattr(game, "play_sound", lambda sound, volume=100, pan=0, pitch=100: play_sounds.append(sound))
+    monkeypatch.setattr(
+        game, "play_sound", lambda sound, volume=100, pan=0, pitch=100: play_sounds.append(sound)
+    )
     game._reshuffle_discard_into_deck()
     assert "game_crazyeights/pileempty.ogg" in play_sounds
 
     sounds = []
-    monkeypatch.setattr(game, "play_sound", lambda sound, volume=100, pan=0, pitch=100: sounds.append(sound))
+    monkeypatch.setattr(
+        game, "play_sound", lambda sound, volume=100, pan=0, pitch=100: sounds.append(sound)
+    )
     game._play_card_sound(card_wild)
     game._play_card_sound(make_card(263, 13, 1))
     game._play_card_sound(make_card(264, 12, 1))

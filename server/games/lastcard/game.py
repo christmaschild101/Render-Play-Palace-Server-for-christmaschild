@@ -21,6 +21,7 @@ from ...game_utils.options import IntOption, BoolOption, MenuOption, option_fiel
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.poker_timer import PokerTurnTimer
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 from server.core.users.bot import Bot
 from server.core.users.base import User
@@ -98,8 +99,18 @@ SCORING_LABELS = {
 }
 
 # Sounds — all reused from existing assets
-SOUND_DRAW = ["game_cards/draw1.ogg", "game_cards/draw2.ogg", "game_cards/draw3.ogg", "game_cards/draw4.ogg"]
-SOUND_PLAY = ["game_cards/play1.ogg", "game_cards/play2.ogg", "game_cards/play3.ogg", "game_cards/play4.ogg"]
+SOUND_DRAW = [
+    "game_cards/draw1.ogg",
+    "game_cards/draw2.ogg",
+    "game_cards/draw3.ogg",
+    "game_cards/draw4.ogg",
+]
+SOUND_PLAY = [
+    "game_cards/play1.ogg",
+    "game_cards/play2.ogg",
+    "game_cards/play3.ogg",
+    "game_cards/play4.ogg",
+]
 SOUND_SHUFFLE = ["game_cards/shuffle1.ogg", "game_cards/shuffle2.ogg", "game_cards/shuffle3.ogg"]
 SOUND_RESHUFFLE = "game_cards/small_shuffle.ogg"
 SOUND_MUSIC = "game_uno/music.ogg"
@@ -111,7 +122,12 @@ SOUND_WILD_DRAW_FOUR = "game_uno/wild4.ogg"
 SOUND_SKIP = "game_uno/skip.ogg"
 SOUND_REVERSE = "game_uno/reverse.ogg"
 SOUND_HAND_CHANGE = "game_uno/handchange.ogg"
-SOUND_INTERCEPT = ["game_uno/intercept1.ogg", "game_uno/intercept2.ogg", "game_uno/intercept3.ogg", "game_uno/intercept4.ogg"]
+SOUND_INTERCEPT = [
+    "game_uno/intercept1.ogg",
+    "game_uno/intercept2.ogg",
+    "game_uno/intercept3.ogg",
+    "game_uno/intercept4.ogg",
+]
 SOUND_PLAYABLE = "game_uno/playable.ogg"
 SOUND_WIN_ROUND = "game_uno/winround.ogg"
 SOUND_WIN_GAME = "game_uno/wingame.ogg"
@@ -131,14 +147,18 @@ COLOR_SORT_ORDER = {COLOR_RED: 0, COLOR_BLUE: 1, COLOR_GREEN: 2, COLOR_YELLOW: 3
 
 # Point values for scoring
 CARD_POINTS = {
-    RANK_SKIP: 20, RANK_REVERSE: 20, RANK_DRAW_TWO: 20,
-    RANK_WILD: 50, RANK_WILD_DRAW_FOUR: 50,
+    RANK_SKIP: 20,
+    RANK_REVERSE: 20,
+    RANK_DRAW_TWO: 20,
+    RANK_WILD: 50,
+    RANK_WILD_DRAW_FOUR: 50,
 }
 
 
 # ============================================================================
 # Deck builder
 # ============================================================================
+
 
 def build_lastcard_deck() -> Deck:
     """Build a 108-card LastCard deck."""
@@ -171,120 +191,226 @@ def build_lastcard_deck() -> Deck:
 # Options
 # ============================================================================
 
+
 @dataclass
 class LastCardOptions(GameOptions):
     """Options for LastCard."""
 
     # Core
     winning_score: int = option_field(
-        IntOption(default=500, min_val=50, max_val=10000, value_key="score",
-                  label="lastcard-set-winning-score", prompt="lastcard-enter-winning-score",
-                  change_msg="lastcard-option-changed-winning-score",
-                  description="lastcard-desc-winning-score"))
+        IntOption(
+            default=500,
+            min_val=50,
+            max_val=10000,
+            value_key="score",
+            label="lastcard-set-winning-score",
+            prompt="lastcard-enter-winning-score",
+            change_msg="lastcard-option-changed-winning-score",
+            description="lastcard-desc-winning-score",
+        )
+    )
     hand_size: int = option_field(
-        IntOption(default=7, min_val=3, max_val=15, value_key="count",
-                  label="lastcard-set-hand-size", prompt="lastcard-enter-hand-size",
-                  change_msg="lastcard-option-changed-hand-size",
-                  description="lastcard-desc-hand-size"))
+        IntOption(
+            default=7,
+            min_val=3,
+            max_val=15,
+            value_key="count",
+            label="lastcard-set-hand-size",
+            prompt="lastcard-enter-hand-size",
+            change_msg="lastcard-option-changed-hand-size",
+            description="lastcard-desc-hand-size",
+        )
+    )
     turn_timer: str = option_field(
-        MenuOption(choices=TURN_TIMER_CHOICES, default="0",
-                   label="lastcard-set-turn-timer", prompt="lastcard-select-turn-timer",
-                   change_msg="lastcard-option-changed-turn-timer", choice_labels=TURN_TIMER_LABELS,
-                   description="lastcard-desc-turn-timer"))
+        MenuOption(
+            choices=TURN_TIMER_CHOICES,
+            default="0",
+            label="lastcard-set-turn-timer",
+            prompt="lastcard-select-turn-timer",
+            change_msg="lastcard-option-changed-turn-timer",
+            choice_labels=TURN_TIMER_LABELS,
+            description="lastcard-desc-turn-timer",
+        )
+    )
 
     # Draw rules
     draw_until_playable: bool = option_field(
-        BoolOption(default=False, value_key="enabled",
-                   label="lastcard-set-draw-until-playable",
-                   change_msg="lastcard-option-changed-draw-until-playable",
-                   description="lastcard-desc-draw-until-playable"))
+        BoolOption(
+            default=False,
+            value_key="enabled",
+            label="lastcard-set-draw-until-playable",
+            change_msg="lastcard-option-changed-draw-until-playable",
+            description="lastcard-desc-draw-until-playable",
+        )
+    )
     draw_limit: int = option_field(
-        IntOption(default=0, min_val=0, max_val=20, value_key="count",
-                  label="lastcard-set-draw-limit", prompt="lastcard-enter-draw-limit",
-                  change_msg="lastcard-option-changed-draw-limit",
-                  description="lastcard-desc-draw-limit"))
+        IntOption(
+            default=0,
+            min_val=0,
+            max_val=20,
+            value_key="count",
+            label="lastcard-set-draw-limit",
+            prompt="lastcard-enter-draw-limit",
+            change_msg="lastcard-option-changed-draw-limit",
+            description="lastcard-desc-draw-limit",
+        )
+    )
 
     # Stacking
     stacking: str = option_field(
-        MenuOption(choices=STACKING_CHOICES, default="off",
-                   label="lastcard-set-stacking", prompt="lastcard-select-stacking",
-                   change_msg="lastcard-option-changed-stacking", choice_labels=STACKING_LABELS,
-                   description="lastcard-desc-stacking"))
+        MenuOption(
+            choices=STACKING_CHOICES,
+            default="off",
+            label="lastcard-set-stacking",
+            prompt="lastcard-select-stacking",
+            change_msg="lastcard-option-changed-stacking",
+            choice_labels=STACKING_LABELS,
+            description="lastcard-desc-stacking",
+        )
+    )
 
     # Special card rules
     skip_card_rule: str = option_field(
-        MenuOption(choices=SKIP_CARD_CHOICES, default="next",
-                   label="lastcard-set-skip-rule", prompt="lastcard-select-skip-rule",
-                   change_msg="lastcard-option-changed-skip-rule", choice_labels=SKIP_CARD_LABELS,
-                   description="lastcard-desc-skip-card-rule"))
+        MenuOption(
+            choices=SKIP_CARD_CHOICES,
+            default="next",
+            label="lastcard-set-skip-rule",
+            prompt="lastcard-select-skip-rule",
+            change_msg="lastcard-option-changed-skip-rule",
+            choice_labels=SKIP_CARD_LABELS,
+            description="lastcard-desc-skip-card-rule",
+        )
+    )
     reverse_two_players: str = option_field(
-        MenuOption(choices=REVERSE_2P_CHOICES, default="skip",
-                   label="lastcard-set-reverse-2p", prompt="lastcard-select-reverse-2p",
-                   change_msg="lastcard-option-changed-reverse-2p", choice_labels=REVERSE_2P_LABELS,
-                   description="lastcard-desc-reverse-two-players"))
+        MenuOption(
+            choices=REVERSE_2P_CHOICES,
+            default="skip",
+            label="lastcard-set-reverse-2p",
+            prompt="lastcard-select-reverse-2p",
+            change_msg="lastcard-option-changed-reverse-2p",
+            choice_labels=REVERSE_2P_LABELS,
+            description="lastcard-desc-reverse-two-players",
+        )
+    )
     zero_card_rule: str = option_field(
-        MenuOption(choices=ZERO_RULE_CHOICES, default="none",
-                   label="lastcard-set-zero-rule", prompt="lastcard-select-zero-rule",
-                   change_msg="lastcard-option-changed-zero-rule", choice_labels=ZERO_RULE_LABELS,
-                   description="lastcard-desc-zero-card-rule"))
+        MenuOption(
+            choices=ZERO_RULE_CHOICES,
+            default="none",
+            label="lastcard-set-zero-rule",
+            prompt="lastcard-select-zero-rule",
+            change_msg="lastcard-option-changed-zero-rule",
+            choice_labels=ZERO_RULE_LABELS,
+            description="lastcard-desc-zero-card-rule",
+        )
+    )
     seven_card_rule: str = option_field(
-        MenuOption(choices=SEVEN_RULE_CHOICES, default="none",
-                   label="lastcard-set-seven-rule", prompt="lastcard-select-seven-rule",
-                   change_msg="lastcard-option-changed-seven-rule", choice_labels=SEVEN_RULE_LABELS,
-                   description="lastcard-desc-seven-card-rule"))
+        MenuOption(
+            choices=SEVEN_RULE_CHOICES,
+            default="none",
+            label="lastcard-set-seven-rule",
+            prompt="lastcard-select-seven-rule",
+            change_msg="lastcard-option-changed-seven-rule",
+            choice_labels=SEVEN_RULE_LABELS,
+            description="lastcard-desc-seven-card-rule",
+        )
+    )
 
     # Gameplay variants
     jump_in: bool = option_field(
-        BoolOption(default=False, value_key="enabled",
-                   label="lastcard-set-jump-in",
-                   change_msg="lastcard-option-changed-jump-in",
-                   description="lastcard-desc-jump-in"))
+        BoolOption(
+            default=False,
+            value_key="enabled",
+            label="lastcard-set-jump-in",
+            change_msg="lastcard-option-changed-jump-in",
+            description="lastcard-desc-jump-in",
+        )
+    )
     force_play: bool = option_field(
-        BoolOption(default=False, value_key="enabled",
-                   label="lastcard-set-force-play",
-                   change_msg="lastcard-option-changed-force-play",
-                   description="lastcard-desc-force-play"))
+        BoolOption(
+            default=False,
+            value_key="enabled",
+            label="lastcard-set-force-play",
+            change_msg="lastcard-option-changed-force-play",
+            description="lastcard-desc-force-play",
+        )
+    )
     last_card_callout: bool = option_field(
-        BoolOption(default=True, value_key="enabled",
-                   label="lastcard-set-callout",
-                   change_msg="lastcard-option-changed-callout",
-                   description="lastcard-desc-last-card-callout"))
+        BoolOption(
+            default=True,
+            value_key="enabled",
+            label="lastcard-set-callout",
+            change_msg="lastcard-option-changed-callout",
+            description="lastcard-desc-last-card-callout",
+        )
+    )
     challenge_wild_draw_four: bool = option_field(
-        BoolOption(default=True, value_key="enabled",
-                   label="lastcard-set-challenge-wd4",
-                   change_msg="lastcard-option-changed-challenge-wd4",
-                   description="lastcard-desc-challenge-wild-draw-four"))
+        BoolOption(
+            default=True,
+            value_key="enabled",
+            label="lastcard-set-challenge-wd4",
+            change_msg="lastcard-option-changed-challenge-wd4",
+            description="lastcard-desc-challenge-wild-draw-four",
+        )
+    )
     allow_multiple_play: bool = option_field(
-        BoolOption(default=False, value_key="enabled",
-                   label="lastcard-set-multiple-play",
-                   change_msg="lastcard-option-changed-multiple-play",
-                   description="lastcard-desc-allow-multiple-play"))
+        BoolOption(
+            default=False,
+            value_key="enabled",
+            label="lastcard-set-multiple-play",
+            change_msg="lastcard-option-changed-multiple-play",
+            description="lastcard-desc-allow-multiple-play",
+        )
+    )
 
     # Scoring
     scoring_mode: str = option_field(
-        MenuOption(choices=SCORING_CHOICES, default="classic",
-                   label="lastcard-set-scoring", prompt="lastcard-select-scoring",
-                   change_msg="lastcard-option-changed-scoring", choice_labels=SCORING_LABELS,
-                   description="lastcard-desc-scoring-mode"))
+        MenuOption(
+            choices=SCORING_CHOICES,
+            default="classic",
+            label="lastcard-set-scoring",
+            prompt="lastcard-select-scoring",
+            change_msg="lastcard-option-changed-scoring",
+            choice_labels=SCORING_LABELS,
+            description="lastcard-desc-scoring-mode",
+        )
+    )
 
     # Buzzer & timer
     buzzer_enabled: bool = option_field(
-        BoolOption(default=True, value_key="enabled",
-                   label="lastcard-set-buzzer",
-                   change_msg="lastcard-option-changed-buzzer",
-                   description="lastcard-desc-buzzer-enabled"))
+        BoolOption(
+            default=True,
+            value_key="enabled",
+            label="lastcard-set-buzzer",
+            change_msg="lastcard-option-changed-buzzer",
+            description="lastcard-desc-buzzer-enabled",
+        )
+    )
     interrupt_timer: int = option_field(
-        IntOption(default=4, min_val=2, max_val=7, value_key="seconds",
-                  label="lastcard-set-interrupt-timer", prompt="lastcard-enter-interrupt-timer",
-                  change_msg="lastcard-option-changed-interrupt-timer",
-                  description="lastcard-desc-interrupt-timer"))
+        IntOption(
+            default=4,
+            min_val=2,
+            max_val=7,
+            value_key="seconds",
+            label="lastcard-set-interrupt-timer",
+            prompt="lastcard-enter-interrupt-timer",
+            change_msg="lastcard-option-changed-interrupt-timer",
+            description="lastcard-desc-interrupt-timer",
+        )
+    )
 
     # Safety
     max_hand_size: int = option_field(
-        IntOption(default=0, min_val=0, max_val=50, value_key="count",
-                  label="lastcard-set-max-hand", prompt="lastcard-enter-max-hand",
-                  change_msg="lastcard-option-changed-max-hand",
-                  description="lastcard-desc-max-hand-size"))
+        IntOption(
+            default=0,
+            min_val=0,
+            max_val=50,
+            value_key="count",
+            label="lastcard-set-max-hand",
+            prompt="lastcard-enter-max-hand",
+            change_msg="lastcard-option-changed-max-hand",
+            description="lastcard-desc-max-hand-size",
+        )
+    )
 
 
 # ============================================================================
@@ -312,6 +438,7 @@ class LastCardPlayer(Player):
 # ============================================================================
 # Game
 # ============================================================================
+
 
 @register_game
 @dataclass
@@ -415,7 +542,6 @@ class LastCardGame(Game, TurnTimerMixin):
         super().broadcast_sound("join_spectator.ogg")
         return player
 
-
     # ==========================================================================
     # Action sets
     # ==========================================================================
@@ -426,62 +552,120 @@ class LastCardGame(Game, TurnTimerMixin):
         action_set = ActionSet(name="turn")
 
         # Draw action
-        action_set.add(Action(
-            id="draw", label=Localization.get(locale, "lastcard-draw"),
-            handler="_action_draw", is_enabled="_is_draw_enabled",
-            is_hidden="_is_draw_hidden", show_in_actions_menu=False))
+        action_set.add(
+            Action(
+                id="draw",
+                label=Localization.get(locale, "lastcard-draw"),
+                handler="_action_draw",
+                is_enabled="_is_draw_enabled",
+                is_hidden="_is_draw_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Pass action
-        action_set.add(Action(
-            id="pass", label=Localization.get(locale, "lastcard-pass"),
-            handler="_action_pass", is_enabled="_is_pass_enabled",
-            is_hidden="_is_pass_hidden", show_in_actions_menu=False))
+        action_set.add(
+            Action(
+                id="pass",
+                label=Localization.get(locale, "lastcard-pass"),
+                handler="_action_pass",
+                is_enabled="_is_pass_enabled",
+                is_hidden="_is_pass_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Color selection actions
-        for color_id, color_key in [("red", "lastcard-color-red"), ("blue", "lastcard-color-blue"),
-                                     ("green", "lastcard-color-green"), ("yellow", "lastcard-color-yellow")]:
-            action_set.add(Action(
-                id=f"color_{color_id}", label=Localization.get(locale, color_key),
-                handler="_action_choose_color", is_enabled="_is_color_choice_enabled",
-                is_hidden="_is_color_choice_hidden", show_in_actions_menu=False))
+        for color_id, color_key in [
+            ("red", "lastcard-color-red"),
+            ("blue", "lastcard-color-blue"),
+            ("green", "lastcard-color-green"),
+            ("yellow", "lastcard-color-yellow"),
+        ]:
+            action_set.add(
+                Action(
+                    id=f"color_{color_id}",
+                    label=Localization.get(locale, color_key),
+                    handler="_action_choose_color",
+                    is_enabled="_is_color_choice_enabled",
+                    is_hidden="_is_color_choice_hidden",
+                    show_in_actions_menu=False,
+                )
+            )
 
         # Buzzer action (always accessible during play, handled via interrupt)
-        action_set.add(Action(
-            id="buzzer", label=Localization.get(locale, "lastcard-buzzer"),
-            handler="_action_buzzer", is_enabled="_is_buzzer_enabled",
-            is_hidden="_is_buzzer_hidden", show_in_actions_menu=False))
+        action_set.add(
+            Action(
+                id="buzzer",
+                label=Localization.get(locale, "lastcard-buzzer"),
+                handler="_action_buzzer",
+                is_enabled="_is_buzzer_enabled",
+                is_hidden="_is_buzzer_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Challenge WD4 action
-        action_set.add(Action(
-            id="challenge_wd4", label=Localization.get(locale, "lastcard-challenge"),
-            handler="_action_challenge_wd4", is_enabled="_is_challenge_enabled",
-            is_hidden="_is_challenge_hidden", show_in_actions_menu=False))
+        action_set.add(
+            Action(
+                id="challenge_wd4",
+                label=Localization.get(locale, "lastcard-challenge"),
+                handler="_action_challenge_wd4",
+                is_enabled="_is_challenge_enabled",
+                is_hidden="_is_challenge_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Accept draw (decline challenge)
-        action_set.add(Action(
-            id="accept_draw", label=Localization.get(locale, "lastcard-accept-draw"),
-            handler="_action_accept_draw", is_enabled="_is_accept_draw_enabled",
-            is_hidden="_is_accept_draw_hidden", show_in_actions_menu=False))
+        action_set.add(
+            Action(
+                id="accept_draw",
+                label=Localization.get(locale, "lastcard-accept-draw"),
+                handler="_action_accept_draw",
+                is_enabled="_is_accept_draw_enabled",
+                is_hidden="_is_accept_draw_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Jump-in action
-        action_set.add(Action(
-            id="jump_in", label=Localization.get(locale, "lastcard-jump-in"),
-            handler="_action_jump_in", is_enabled="_is_jump_in_enabled",
-            is_hidden="_is_jump_in_hidden", show_in_actions_menu=False))
+        action_set.add(
+            Action(
+                id="jump_in",
+                label=Localization.get(locale, "lastcard-jump-in"),
+                handler="_action_jump_in",
+                is_enabled="_is_jump_in_enabled",
+                is_hidden="_is_jump_in_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Seven swap target selection
         for i in range(10):  # Max 10 players
-            action_set.add(Action(
-                id=f"swap_target_{i}", label="",
-                handler="_action_swap_target", is_enabled="_is_swap_target_enabled",
-                is_hidden="_is_swap_target_hidden", get_label="_get_swap_target_label",
-                show_in_actions_menu=False))
+            action_set.add(
+                Action(
+                    id=f"swap_target_{i}",
+                    label="",
+                    handler="_action_swap_target",
+                    is_enabled="_is_swap_target_enabled",
+                    is_hidden="_is_swap_target_hidden",
+                    get_label="_get_swap_target_label",
+                    show_in_actions_menu=False,
+                )
+            )
 
         # Sort hand (web-only, visible in turn menu for mobile users)
-        action_set.add(Action(
-            id="cycle_hand_sort_turn", label=Localization.get(locale, "lastcard-cycle-sort"),
-            handler="_action_cycle_hand_sort", is_enabled="_is_check_enabled",
-            is_hidden="_is_sort_turn_hidden", show_in_actions_menu=False))
+        action_set.add(
+            Action(
+                id="cycle_hand_sort_turn",
+                label=Localization.get(locale, "lastcard-cycle-sort"),
+                handler="_action_cycle_hand_sort",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_sort_turn_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         return action_set
 
@@ -490,30 +674,64 @@ class LastCardGame(Game, TurnTimerMixin):
         user = self.get_user(player)
         locale = user.locale if user else "en"
 
-        action_set.add(Action(
-            id="read_hand", label=Localization.get(locale, "lastcard-read-hand"),
-            handler="_action_read_hand", is_enabled="_is_check_enabled",
-            is_hidden="_is_read_hand_hidden"))
-        action_set.add(Action(
-            id="read_top", label=Localization.get(locale, "lastcard-read-top"),
-            handler="_action_read_top", is_enabled="_is_check_enabled",
-            is_hidden="_is_check_hidden", include_spectators=True))
-        action_set.add(Action(
-            id="read_counts", label=Localization.get(locale, "lastcard-read-counts"),
-            handler="_action_read_counts", is_enabled="_is_check_enabled",
-            is_hidden="_is_check_hidden", include_spectators=True))
-        action_set.add(Action(
-            id="check_turn_timer", label=Localization.get(locale, "lastcard-check-turn-timer"),
-            handler="_action_check_turn_timer", is_enabled="_is_check_enabled",
-            is_hidden="_is_check_hidden", include_spectators=True))
-        action_set.add(Action(
-            id="read_draw_penalty", label=Localization.get(locale, "lastcard-read-draw-penalty"),
-            handler="_action_read_draw_penalty", is_enabled="_is_check_enabled",
-            is_hidden="_is_check_hidden", include_spectators=True))
-        action_set.add(Action(
-            id="cycle_hand_sort", label=Localization.get(locale, "lastcard-cycle-sort"),
-            handler="_action_cycle_hand_sort", is_enabled="_is_check_enabled",
-            is_hidden="_is_read_hand_hidden"))
+        action_set.add(
+            Action(
+                id="read_hand",
+                label=Localization.get(locale, "lastcard-read-hand"),
+                handler="_action_read_hand",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_read_hand_hidden",
+            )
+        )
+        action_set.add(
+            Action(
+                id="read_top",
+                label=Localization.get(locale, "lastcard-read-top"),
+                handler="_action_read_top",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_check_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="read_counts",
+                label=Localization.get(locale, "lastcard-read-counts"),
+                handler="_action_read_counts",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_check_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="check_turn_timer",
+                label=Localization.get(locale, "lastcard-check-turn-timer"),
+                handler="_action_check_turn_timer",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_check_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="read_draw_penalty",
+                label=Localization.get(locale, "lastcard-read-draw-penalty"),
+                handler="_action_read_draw_penalty",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_check_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="cycle_hand_sort",
+                label=Localization.get(locale, "lastcard-cycle-sort"),
+                handler="_action_cycle_hand_sort",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_read_hand_hidden",
+            )
+        )
 
         # WEB-SPECIFIC: Reorder for Web Clients
         if user and getattr(user, "client_type", "") == "web":
@@ -607,43 +825,67 @@ class LastCardGame(Game, TurnTimerMixin):
         if multi:
             # Toggle-and-confirm mode: cards are toggleable, play_selected confirms
             for card in ordered_cards:
-                turn_set.add(Action(
-                    id=f"toggle_card_{card.id}",
-                    label="", handler="_action_toggle_card",
-                    is_enabled="_is_toggle_card_enabled",
-                    is_hidden="_is_toggle_card_hidden",
-                    get_label="_get_toggle_card_label",
-                    show_in_actions_menu=False))
+                turn_set.add(
+                    Action(
+                        id=f"toggle_card_{card.id}",
+                        label="",
+                        handler="_action_toggle_card",
+                        is_enabled="_is_toggle_card_enabled",
+                        is_hidden="_is_toggle_card_hidden",
+                        get_label="_get_toggle_card_label",
+                        show_in_actions_menu=False,
+                    )
+                )
             if self.current_player == player:
                 locale = self._player_locale(player)
-                turn_set.add(Action(
-                    id="play_selected", label="",
-                    handler="_action_play_selected",
-                    is_enabled="_is_play_selected_enabled",
-                    is_hidden="_is_play_selected_hidden",
-                    get_label="_get_play_selected_label",
-                    show_in_actions_menu=False))
+                turn_set.add(
+                    Action(
+                        id="play_selected",
+                        label="",
+                        handler="_action_play_selected",
+                        is_enabled="_is_play_selected_enabled",
+                        is_hidden="_is_play_selected_hidden",
+                        get_label="_get_play_selected_label",
+                        show_in_actions_menu=False,
+                    )
+                )
         else:
             # Direct play mode: clicking a card plays it immediately
             for card in ordered_cards:
-                turn_set.add(Action(
-                    id=f"play_card_{card.id}",
-                    label="", handler="_action_play_card",
-                    is_enabled="_is_play_card_enabled",
-                    is_hidden="_is_play_card_hidden",
-                    get_label="_get_card_label",
-                    show_in_actions_menu=False))
+                turn_set.add(
+                    Action(
+                        id=f"play_card_{card.id}",
+                        label="",
+                        handler="_action_play_card",
+                        is_enabled="_is_play_card_enabled",
+                        is_hidden="_is_play_card_hidden",
+                        get_label="_get_card_label",
+                        show_in_actions_menu=False,
+                    )
+                )
 
         if self.current_player == player:
             locale = self._player_locale(player)
-            turn_set.add(Action(
-                id="draw", label=Localization.get(locale, "lastcard-draw"),
-                handler="_action_draw", is_enabled="_is_draw_enabled",
-                is_hidden="_is_draw_hidden", show_in_actions_menu=False))
-            turn_set.add(Action(
-                id="pass", label=Localization.get(locale, "lastcard-pass"),
-                handler="_action_pass", is_enabled="_is_pass_enabled",
-                is_hidden="_is_pass_hidden", show_in_actions_menu=False))
+            turn_set.add(
+                Action(
+                    id="draw",
+                    label=Localization.get(locale, "lastcard-draw"),
+                    handler="_action_draw",
+                    is_enabled="_is_draw_enabled",
+                    is_hidden="_is_draw_hidden",
+                    show_in_actions_menu=False,
+                )
+            )
+            turn_set.add(
+                Action(
+                    id="pass",
+                    label=Localization.get(locale, "lastcard-pass"),
+                    handler="_action_pass",
+                    is_enabled="_is_pass_enabled",
+                    is_hidden="_is_pass_hidden",
+                    show_in_actions_menu=False,
+                )
+            )
 
         # Web-specific turn menu reordering:
         # [Reaction: buzzer, jump_in] → [Context: colors, challenge, accept,
@@ -652,9 +894,12 @@ class LastCardGame(Game, TurnTimerMixin):
         if user and getattr(user, "client_type", "") == "web":
             top = ["buzzer", "jump_in"]
             bottom = ["draw", "pass", "cycle_hand_sort_turn"]
-            card_ids = [aid for aid in turn_set._order
-                        if aid.startswith(("play_card_", "toggle_card_"))]
-            card_group = card_ids + (["play_selected"] if "play_selected" in turn_set._order else [])
+            card_ids = [
+                aid for aid in turn_set._order if aid.startswith(("play_card_", "toggle_card_"))
+            ]
+            card_group = card_ids + (
+                ["play_selected"] if "play_selected" in turn_set._order else []
+            )
             pinned = set(top) | set(bottom) | set(card_group)
             middle = [aid for aid in turn_set._order if aid not in pinned]
             turn_set._order = (
@@ -673,12 +918,20 @@ class LastCardGame(Game, TurnTimerMixin):
         active = [p for p in self.players if not p.is_spectator]
         total_cards_needed = self.options.hand_size * len(active) + 1  # +1 for start card
         if total_cards_needed > 108:
-            errors.append(("lastcard-error-too-many-cards",
-                           {"players": len(active), "hand_size": self.options.hand_size}))
+            errors.append(
+                (
+                    "lastcard-error-too-many-cards",
+                    {"players": len(active), "hand_size": self.options.hand_size},
+                )
+            )
         max_hand = self.options.max_hand_size
         if max_hand > 0 and self.options.hand_size > max_hand:
-            errors.append(("lastcard-error-hand-exceeds-max",
-                           {"hand_size": self.options.hand_size, "max_hand": max_hand}))
+            errors.append(
+                (
+                    "lastcard-error-hand-exceeds-max",
+                    {"hand_size": self.options.hand_size, "max_hand": max_hand},
+                )
+            )
         return errors
 
     # ==========================================================================
@@ -686,7 +939,7 @@ class LastCardGame(Game, TurnTimerMixin):
     # ==========================================================================
 
     def on_start(self) -> None:
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 0
 
@@ -1071,9 +1324,13 @@ class LastCardGame(Game, TurnTimerMixin):
             if not user:
                 continue
             card_names = [self.format_card(c, user.locale) for c in cards]
-            user.speak_l("lastcard-player-plays-multi", buffer="table",
-                         player=player.name, count=len(cards),
-                         cards=", ".join(card_names))
+            user.speak_l(
+                "lastcard-player-plays-multi",
+                buffer="table",
+                player=player.name,
+                count=len(cards),
+                cards=", ".join(card_names),
+            )
 
     def _do_play_card(self, player: LastCardPlayer, card: Card) -> None:
         """Execute playing a card (used by both normal play and jump-in)."""
@@ -1081,8 +1338,7 @@ class LastCardGame(Game, TurnTimerMixin):
         had_matching_color = False
         if card.rank == RANK_WILD_DRAW_FOUR:
             had_matching_color = any(
-                c.suit == self.current_color and c.id != card.id
-                for c in player.hand
+                c.suit == self.current_color and c.id != card.id for c in player.hand
             )
 
         player.hand.remove(card)
@@ -1115,7 +1371,9 @@ class LastCardGame(Game, TurnTimerMixin):
         self.current_color = card.suit
         self._check_last_card_and_advance(player, card, had_matching_color)
 
-    def _check_last_card_and_advance(self, player: LastCardPlayer, card: Card, had_matching_color: bool) -> None:
+    def _check_last_card_and_advance(
+        self, player: LastCardPlayer, card: Card, had_matching_color: bool
+    ) -> None:
         """After a card is played, check for last-card callout and apply effects."""
         if len(player.hand) == 0:
             self._end_round(player)
@@ -1242,7 +1500,11 @@ class LastCardGame(Game, TurnTimerMixin):
             self._advance_turn()
             return
 
-        player = self.get_player_by_id(self.interrupt_wd4_player_id) if self.interrupt_wd4_player_id else self.current_player
+        player = (
+            self.get_player_by_id(self.interrupt_wd4_player_id)
+            if self.interrupt_wd4_player_id
+            else self.current_player
+        )
         if not isinstance(player, LastCardPlayer):
             player = self.current_player
         if not isinstance(player, LastCardPlayer):
@@ -1293,7 +1555,8 @@ class LastCardGame(Game, TurnTimerMixin):
             draw_limit = self.options.draw_limit
             max_hand = self.options.max_hand_size
             if (draw_limit > 0 and p.draws_this_turn >= draw_limit) or (
-                    max_hand > 0 and len(p.hand) >= max_hand):
+                max_hand > 0 and len(p.hand) >= max_hand
+            ):
                 # Hit draw limit or max hand size, must pass
                 self.turn_has_drawn = True
             else:
@@ -1553,7 +1816,9 @@ class LastCardGame(Game, TurnTimerMixin):
 
     def _rotate_all_hands(self) -> None:
         """Rotate all hands in the current turn direction."""
-        active = [p for p in self.turn_players if not p.is_spectator and isinstance(p, LastCardPlayer)]
+        active = [
+            p for p in self.turn_players if not p.is_spectator and isinstance(p, LastCardPlayer)
+        ]
         if len(active) < 2:
             return
         hands = [p.hand for p in active]
@@ -1584,7 +1849,9 @@ class LastCardGame(Game, TurnTimerMixin):
             card = self.top_card
             if card and card.rank == RANK_WILD_DRAW_FOUR and self.options.challenge_wild_draw_four:
                 self._start_wd4_challenge(
-                    self.get_player_by_id(self.interrupt_wd4_player_id) if self.interrupt_wd4_player_id else target,
+                    self.get_player_by_id(self.interrupt_wd4_player_id)
+                    if self.interrupt_wd4_player_id
+                    else target,
                     self.interrupt_wd4_had_matching,
                 )
                 return
@@ -1669,8 +1936,9 @@ class LastCardGame(Game, TurnTimerMixin):
             return
         sorted_hand = self._sort_hand(player)
         card_names = [self.format_card(c, locale) for c in sorted_hand]
-        text = Localization.get(locale, "lastcard-your-hand", count=len(player.hand),
-                                cards=", ".join(card_names))
+        text = Localization.get(
+            locale, "lastcard-your-hand", count=len(player.hand), cards=", ".join(card_names)
+        )
         user.speak(text, buffer="table")
 
     def _action_read_top(self, player: Player, action_id: str) -> None:
@@ -1711,8 +1979,9 @@ class LastCardGame(Game, TurnTimerMixin):
         if not user:
             return
         if self.pending_draw_count > 0:
-            user.speak_l("lastcard-draw-penalty-active", buffer="table",
-                         count=self.pending_draw_count)
+            user.speak_l(
+                "lastcard-draw-penalty-active", buffer="table", count=self.pending_draw_count
+            )
         else:
             user.speak_l("lastcard-draw-penalty-none", buffer="table")
 
@@ -1796,7 +2065,9 @@ class LastCardGame(Game, TurnTimerMixin):
 
     # -- Toggle card (multi-play) callbacks --
 
-    def _is_toggle_card_enabled(self, player: Player, *, action_id: str | None = None) -> str | None:
+    def _is_toggle_card_enabled(
+        self, player: Player, *, action_id: str | None = None
+    ) -> str | None:
         # Cards are always "enabled" so they remain visible for reading hand,
         # but toggling is gated in the handler by current-player check
         if self.status != "playing":
@@ -1860,8 +2131,9 @@ class LastCardGame(Game, TurnTimerMixin):
             return Localization.get(locale, "lastcard-play-none")
         count = len(selected)
         if count == 1:
-            return Localization.get(locale, "lastcard-play-one",
-                                    card=self.format_card(selected[0], locale))
+            return Localization.get(
+                locale, "lastcard-play-one", card=self.format_card(selected[0], locale)
+            )
         ranks = {c.rank for c in selected}
         if len(ranks) != 1:
             return Localization.get(locale, "lastcard-play-invalid")
@@ -1903,7 +2175,11 @@ class LastCardGame(Game, TurnTimerMixin):
         if not isinstance(player, LastCardPlayer):
             return "action-not-available"
         # Can only pass after drawing (or when can't draw)
-        if self.options.force_play and isinstance(player, LastCardPlayer) and self._has_playable_cards(player):
+        if (
+            self.options.force_play
+            and isinstance(player, LastCardPlayer)
+            and self._has_playable_cards(player)
+        ):
             return "action-not-available"
         if self.turn_has_drawn:
             return None
@@ -1954,8 +2230,11 @@ class LastCardGame(Game, TurnTimerMixin):
         if user and getattr(user, "client_type", "") == "web":
             if self.interrupt_phase == "last_card_callout":
                 return Visibility.VISIBLE
-            if (self.current_player == player
-                    and isinstance(player, LastCardPlayer) and len(player.hand) == 2):
+            if (
+                self.current_player == player
+                and isinstance(player, LastCardPlayer)
+                and len(player.hand) == 2
+            ):
                 return Visibility.VISIBLE
         return Visibility.HIDDEN  # Keybind-only for desktop
 
@@ -2005,7 +2284,9 @@ class LastCardGame(Game, TurnTimerMixin):
             return Visibility.VISIBLE
         return Visibility.HIDDEN  # Keybind-only for desktop
 
-    def _is_swap_target_enabled(self, player: Player, *, action_id: str | None = None) -> str | None:
+    def _is_swap_target_enabled(
+        self, player: Player, *, action_id: str | None = None
+    ) -> str | None:
         if not self.awaiting_swap_target:
             return "action-not-available"
         if player.id != self.swap_player_id:
@@ -2094,7 +2375,9 @@ class LastCardGame(Game, TurnTimerMixin):
     def _sort_hand(self, player: LastCardPlayer) -> list[Card]:
         """Sort a player's hand based on their sort preference."""
         if player.hand_sort == "rank":
-            return sorted(player.hand, key=lambda c: (c.rank, COLOR_SORT_ORDER.get(c.suit, 5), c.id))
+            return sorted(
+                player.hand, key=lambda c: (c.rank, COLOR_SORT_ORDER.get(c.suit, 5), c.id)
+            )
         if player.hand_sort == "none":
             return list(player.hand)
         # Default: sort by color then rank
@@ -2217,13 +2500,21 @@ class LastCardGame(Game, TurnTimerMixin):
     # ==========================================================================
 
     def _color_from_action(self, action_id: str) -> int | None:
-        mapping = {"color_red": COLOR_RED, "color_blue": COLOR_BLUE,
-                    "color_green": COLOR_GREEN, "color_yellow": COLOR_YELLOW}
+        mapping = {
+            "color_red": COLOR_RED,
+            "color_blue": COLOR_BLUE,
+            "color_green": COLOR_GREEN,
+            "color_yellow": COLOR_YELLOW,
+        }
         return mapping.get(action_id)
 
     def _color_name(self, color: int, locale: str) -> str:
-        key = {COLOR_RED: "lastcard-color-red", COLOR_BLUE: "lastcard-color-blue",
-               COLOR_GREEN: "lastcard-color-green", COLOR_YELLOW: "lastcard-color-yellow"}.get(color, "lastcard-color-red")
+        key = {
+            COLOR_RED: "lastcard-color-red",
+            COLOR_BLUE: "lastcard-color-blue",
+            COLOR_GREEN: "lastcard-color-green",
+            COLOR_YELLOW: "lastcard-color-yellow",
+        }.get(color, "lastcard-color-red")
         return Localization.get(locale, key)
 
     def format_card(self, card: Card, locale: str) -> str:
@@ -2276,24 +2567,30 @@ class LastCardGame(Game, TurnTimerMixin):
             user = self.get_user(p)
             if not user:
                 continue
-            user.speak_l("lastcard-start-card", buffer="table",
-                         card=self.format_top_card(user.locale))
+            user.speak_l(
+                "lastcard-start-card", buffer="table", card=self.format_top_card(user.locale)
+            )
 
     def _broadcast_color_chosen(self, color: int) -> None:
         for p in self.players:
             user = self.get_user(p)
             if not user:
                 continue
-            user.speak_l("lastcard-color-chosen", buffer="table",
-                         color=self._color_name(color, user.locale))
+            user.speak_l(
+                "lastcard-color-chosen", buffer="table", color=self._color_name(color, user.locale)
+            )
 
     def _broadcast_play(self, player: LastCardPlayer, card: Card) -> None:
         for p in self.players:
             user = self.get_user(p)
             if not user:
                 continue
-            user.speak_l("lastcard-player-plays", buffer="table",
-                         player=player.name, card=self.format_card(card, user.locale))
+            user.speak_l(
+                "lastcard-player-plays",
+                buffer="table",
+                player=player.name,
+                card=self.format_card(card, user.locale),
+            )
 
     def _broadcast_draw(self, player: LastCardPlayer, count: int) -> None:
         key = "lastcard-player-draws-one" if count == 1 else "lastcard-player-draws-many"
@@ -2373,7 +2670,10 @@ class LastCardGame(Game, TurnTimerMixin):
         # Check for game winner
         if self.options.scoring_mode == "classic":
             real_winner = self.get_player_by_id(winner.id)
-            if isinstance(real_winner, LastCardPlayer) and real_winner.score >= self.options.winning_score:
+            if (
+                isinstance(real_winner, LastCardPlayer)
+                and real_winner.score >= self.options.winning_score
+            ):
                 self._end_game(real_winner)
                 return
         else:
@@ -2446,9 +2746,11 @@ class LastCardGame(Game, TurnTimerMixin):
             duration_ticks=self.sound_scheduler_tick,
             player_results=[
                 PlayerResult(
-                    player_id=p.id, player_name=p.name,
+                    player_id=p.id,
+                    player_name=p.name,
                     is_bot=p.is_bot and not p.replaced_human,
-                ) for p in active
+                )
+                for p in active
             ],
             custom_data={
                 "winner_name": winner.name if winner else None,
@@ -2464,7 +2766,9 @@ class LastCardGame(Game, TurnTimerMixin):
         reverse = self.options.scoring_mode == "classic"
         sorted_scores = sorted(final_scores.items(), key=lambda item: item[1], reverse=reverse)
         for i, (name, score) in enumerate(sorted_scores, 1):
-            lines.append(Localization.get(locale, "lastcard-line-format", rank=i, player=name, score=score))
+            lines.append(
+                Localization.get(locale, "lastcard-line-format", rank=i, player=name, score=score)
+            )
         return lines
 
     def _sync_team_scores(self) -> None:

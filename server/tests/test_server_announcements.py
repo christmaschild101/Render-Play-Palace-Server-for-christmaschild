@@ -84,7 +84,7 @@ def test_notify_pending_account_requests_no_pending_silent(server):
 
 
 def test_load_user_preferences_invalid_json_returns_defaults(server):
-    record = SimpleNamespace(preferences_json="not json")
+    record = SimpleNamespace(preferences_json="not json", uuid="test-uuid")
 
     prefs = server._load_user_preferences(record)
 

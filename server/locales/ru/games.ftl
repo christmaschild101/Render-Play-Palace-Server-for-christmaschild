@@ -70,7 +70,6 @@ option-max-selected = Можно выбрать не более { $count } { $co
 }.
 
 # Status box
-status-box-closed = Информационное окно закрыто.
 
 # Game end
 game-leave = Покинуть игру
@@ -95,6 +94,47 @@ game-player-deals = { $player } раздаёт карты.
 # Card names
 card-name = { $rank } { $suit }
 no-cards = Нет карт
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = чёрный
+color-black-m = чёрный
+color-black-f = чёрная
+color-blue = синий
+color-blue-m = синий
+color-blue-f = синяя
+color-brown = коричневый
+color-brown-m = коричневый
+color-brown-f = коричневая
+color-gray = серый
+color-gray-m = серый
+color-gray-f = серая
+color-green = зелёный
+color-green-m = зелёный
+color-green-f = зелёная
+color-indigo = индиго
+color-indigo-m = индиго
+color-indigo-f = индиго
+color-orange = оранжевый
+color-orange-m = оранжевый
+color-orange-f = оранжевая
+color-pink = розовый
+color-pink-m = розовый
+color-pink-f = розовая
+color-purple = пурпурный
+color-purple-m = пурпурный
+color-purple-f = пурпурная
+color-red = красный
+color-red-m = красный
+color-red-f = красная
+color-violet = фиолетовый
+color-violet-m = фиолетовый
+color-violet-f = фиолетовая
+color-white = белый
+color-white-m = белый
+color-white-f = белая
+color-yellow = жёлтый
+color-yellow-m = жёлтый
+color-yellow-f = жёлтая
 
 # Suit names (in genitive plural for phrases like "Ace of clubs" -> "Туз треф")
 suit-diamonds = бубен

@@ -39,7 +39,6 @@ option-on = på
 option-off = av
 
 # Status box
-status-box-closed = Statusinformation stängd.
 
 # Game end
 game-leave = Lämna spelet
@@ -64,6 +63,47 @@ game-player-deals = { $player } ger ut korten.
 # Card names
 card-name = { $suit } { $rank }
 no-cards = Inga kort
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = svart
+color-black-m = svart
+color-black-f = svart
+color-blue = blå
+color-blue-m = blå
+color-blue-f = blå
+color-brown = brun
+color-brown-m = brun
+color-brown-f = brun
+color-gray = grå
+color-gray-m = grå
+color-gray-f = grå
+color-green = grön
+color-green-m = grön
+color-green-f = grön
+color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
+color-orange = orange
+color-orange-m = orange
+color-orange-f = orange
+color-pink = rosa
+color-pink-m = rosa
+color-pink-f = rosa
+color-purple = lila
+color-purple-m = lila
+color-purple-f = lila
+color-red = röd
+color-red-m = röd
+color-red-f = röd
+color-violet = violett
+color-violet-m = violett
+color-violet-f = violett
+color-white = vit
+color-white-m = vit
+color-white-f = vit
+color-yellow = gul
+color-yellow-m = gul
+color-yellow-f = gul
 
 # Suit names
 suit-diamonds = ruter

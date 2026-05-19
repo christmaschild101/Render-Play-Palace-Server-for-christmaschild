@@ -139,7 +139,11 @@ class DiceGameMixin:
         if not action_id:
             return None
         user = self.get_user(player)
-        style = user.preferences.get_effective("dice_keeping_style", game_type=self.get_type()) if user else DiceKeepingStyle.PLAYPALACE
+        style = (
+            user.preferences.get_effective("dice_keeping_style", game_type=self.get_type())
+            if user
+            else DiceKeepingStyle.PLAYPALACE
+        )
         try:
             key_num = int(action_id.split("_")[-1])
         except ValueError:
@@ -168,12 +172,18 @@ class DiceGameMixin:
                 return "action-not-available"
         return None
 
-    def _is_dice_unkeep_enabled(self, player: Player, *, action_id: str | None = None) -> str | None:
+    def _is_dice_unkeep_enabled(
+        self, player: Player, *, action_id: str | None = None
+    ) -> str | None:
         """Only enable unkeep keybinds for dice values style."""
         if self.status != "playing":
             return "action-not-playing"
         user = self.get_user(player)
-        style = user.preferences.get_effective("dice_keeping_style", game_type=self.get_type()) if user else DiceKeepingStyle.PLAYPALACE
+        style = (
+            user.preferences.get_effective("dice_keeping_style", game_type=self.get_type())
+            if user
+            else DiceKeepingStyle.PLAYPALACE
+        )
         if style != DiceKeepingStyle.QUENTIN_C:
             return "action-not-available"
         if not action_id:
@@ -200,7 +210,11 @@ class DiceGameMixin:
         except ValueError:
             return action_id
         user = self.get_user(player)
-        style = user.preferences.get_effective("dice_keeping_style", game_type=self.get_type()) if user else DiceKeepingStyle.PLAYPALACE
+        style = (
+            user.preferences.get_effective("dice_keeping_style", game_type=self.get_type())
+            if user
+            else DiceKeepingStyle.PLAYPALACE
+        )
         if style == DiceKeepingStyle.PLAYPALACE and hasattr(player, "dice"):
             die_index = key_num - 1
             if die_index >= player.dice.num_dice:

@@ -24,7 +24,8 @@ def can_declare_war(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> str | N
     # Need at least one available army OR a hero card (heroes can substitute for armies)
     available_armies = player.tribe_state.get_available_armies()
     hero_count = sum(
-        1 for card in player.hand
+        1
+        for card in player.hand
         if card.card_type == CardType.EVENT and card.subtype == EventType.HERO
     )
 
@@ -190,7 +191,8 @@ def prepare_forces(
 
     # Count hero cards available
     hero_cards = sum(
-        1 for card in player.hand
+        1
+        for card in player.hand
         if card.card_type == CardType.EVENT and card.subtype == EventType.HERO
     )
 
@@ -357,14 +359,10 @@ def _calculate_war_totals(
     defender_total = def_dice_total + def_total_bonus
 
     attacker = (
-        active_players[war.attacker_index]
-        if war.attacker_index < len(active_players)
-        else None
+        active_players[war.attacker_index] if war.attacker_index < len(active_players) else None
     )
     defender = (
-        active_players[war.defender_index]
-        if war.defender_index < len(active_players)
-        else None
+        active_players[war.defender_index] if war.defender_index < len(active_players) else None
     )
 
     return (
@@ -477,9 +475,7 @@ def _resolve_war_outcome(
     return "draw", 0, 0
 
 
-def apply_battle_losses(
-    game: AgeOfHeroesGame, attacker_losses: int, defender_losses: int
-) -> None:
+def apply_battle_losses(game: AgeOfHeroesGame, attacker_losses: int, defender_losses: int) -> None:
     """Apply army losses from battle."""
     war = game.war_state
     active_players = game.get_active_players()
@@ -627,9 +623,7 @@ def apply_war_outcome(game: AgeOfHeroesGame) -> None:
         else:
             resources_to_destroy = 0
 
-        resources_to_destroy = min(
-            resources_to_destroy, defender.tribe_state.monument_progress
-        )
+        resources_to_destroy = min(resources_to_destroy, defender.tribe_state.monument_progress)
 
         if resources_to_destroy > 0:
             defender.tribe_state.monument_progress -= resources_to_destroy
@@ -644,9 +638,7 @@ def apply_war_outcome(game: AgeOfHeroesGame) -> None:
     return_surviving_forces(game)
 
 
-def has_road_connection(
-    game: AgeOfHeroesGame, player1_index: int, player2_index: int
-) -> bool:
+def has_road_connection(game: AgeOfHeroesGame, player1_index: int, player2_index: int) -> bool:
     """Check if two players have a road connection between them."""
     active_players = game.get_active_players()
 
@@ -725,9 +717,7 @@ def return_surviving_forces(game: AgeOfHeroesGame) -> None:
     war.reset()
 
 
-def check_fortune_reroll(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> bool:
+def check_fortune_reroll(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> bool:
     """Check if player has Fortune card for reroll."""
     for card in player.hand:
         if card.card_type == CardType.EVENT and card.subtype == EventType.FORTUNE:

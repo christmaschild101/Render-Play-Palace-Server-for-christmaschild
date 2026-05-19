@@ -135,9 +135,7 @@ class ActionSet(DataClassJSONMixin):
         """Get an action by ID."""
         return self._actions.get(action_id)
 
-    def resolve_action(
-        self, game: "Game", player: "Player", action: Action
-    ) -> ResolvedAction:
+    def resolve_action(self, game: "Game", player: "Player", action: Action) -> ResolvedAction:
         """Resolve a single action's state for a player."""
         # Resolve enabled state
         disabled_reason: str | tuple[str, dict] | None = None
@@ -146,7 +144,7 @@ class ActionSet(DataClassJSONMixin):
             if method:
                 # Check if method accepts action_id kwarg
                 sig = inspect.signature(method)
-                if 'action_id' in sig.parameters:
+                if "action_id" in sig.parameters:
                     disabled_reason = method(player, action_id=action.id)
                 else:
                     disabled_reason = method(player)
@@ -158,7 +156,7 @@ class ActionSet(DataClassJSONMixin):
             if method:
                 # Check if method accepts action_id kwarg
                 sig = inspect.signature(method)
-                if 'action_id' in sig.parameters:
+                if "action_id" in sig.parameters:
                     visibility = method(player, action_id=action.id)
                 else:
                     visibility = method(player)
@@ -178,7 +176,7 @@ class ActionSet(DataClassJSONMixin):
             if method:
                 # Check if method accepts action_id kwarg
                 sig = inspect.signature(method)
-                if 'action_id' in sig.parameters:
+                if "action_id" in sig.parameters:
                     sound = method(player, action_id=action.id)
                 else:
                     sound = method(player)
@@ -192,9 +190,7 @@ class ActionSet(DataClassJSONMixin):
             sound=sound,
         )
 
-    def resolve_actions(
-        self, game: "Game", player: "Player"
-    ) -> list[ResolvedAction]:
+    def resolve_actions(self, game: "Game", player: "Player") -> list[ResolvedAction]:
         """Resolve all actions' states for a player."""
         result = []
         for aid in self._order:
@@ -205,23 +201,15 @@ class ActionSet(DataClassJSONMixin):
             result.append(resolved)
         return result
 
-    def get_visible_actions(
-        self, game: "Game", player: "Player"
-    ) -> list[ResolvedAction]:
+    def get_visible_actions(self, game: "Game", player: "Player") -> list[ResolvedAction]:
         """Get visible actions for the turn menu.
 
         Visibility and enabled are independent states. Disabled actions
         remain in the menu with an unavailable indicator.
         """
-        return [
-            ra
-            for ra in self.resolve_actions(game, player)
-            if ra.visible
-        ]
+        return [ra for ra in self.resolve_actions(game, player) if ra.visible]
 
-    def get_enabled_actions(
-        self, game: "Game", player: "Player"
-    ) -> list[ResolvedAction]:
+    def get_enabled_actions(self, game: "Game", player: "Player") -> list[ResolvedAction]:
         """Get all enabled actions for the actions menu (includes hidden)."""
         return [
             ra
@@ -229,9 +217,7 @@ class ActionSet(DataClassJSONMixin):
             if ra.enabled and ra.action.show_in_actions_menu
         ]
 
-    def get_all_actions(
-        self, game: "Game", player: "Player"
-    ) -> list[ResolvedAction]:
+    def get_all_actions(self, game: "Game", player: "Player") -> list[ResolvedAction]:
         """Get all actions with their resolved state."""
         return self.resolve_actions(game, player)
 

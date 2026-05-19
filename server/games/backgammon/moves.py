@@ -62,12 +62,14 @@ def generate_legal_moves(
         # Can land if: empty, own checkers, or exactly 1 opponent (hit)
         if dest_val * opp_sign <= 1:
             is_hit = dest_val * opp_sign == 1
-            moves.append(BackgammonMove(
-                source=-1,
-                destination=dest_idx,
-                die_value=die_value,
-                is_hit=is_hit,
-            ))
+            moves.append(
+                BackgammonMove(
+                    source=-1,
+                    destination=dest_idx,
+                    die_value=die_value,
+                    is_hit=is_hit,
+                )
+            )
         return moves
 
     # Check if we can bear off
@@ -92,41 +94,49 @@ def generate_legal_moves(
                 continue
             # Exact bear off or highest point
             if dest_idx == -1:
-                moves.append(BackgammonMove(
-                    source=i,
-                    destination=24,
-                    die_value=die_value,
-                    is_bear_off=True,
-                ))
-            else:
-                # Can bear off with higher die only if no checkers on higher points
-                if _is_highest_checker(state, color, i):
-                    moves.append(BackgammonMove(
+                moves.append(
+                    BackgammonMove(
                         source=i,
                         destination=24,
                         die_value=die_value,
                         is_bear_off=True,
-                    ))
+                    )
+                )
+            else:
+                # Can bear off with higher die only if no checkers on higher points
+                if _is_highest_checker(state, color, i):
+                    moves.append(
+                        BackgammonMove(
+                            source=i,
+                            destination=24,
+                            die_value=die_value,
+                            is_bear_off=True,
+                        )
+                    )
             continue
 
         if color == "white" and dest_idx > 23:
             if not can_bear_off:
                 continue
             if dest_idx == 24:
-                moves.append(BackgammonMove(
-                    source=i,
-                    destination=24,
-                    die_value=die_value,
-                    is_bear_off=True,
-                ))
-            else:
-                if _is_highest_checker(state, color, i):
-                    moves.append(BackgammonMove(
+                moves.append(
+                    BackgammonMove(
                         source=i,
                         destination=24,
                         die_value=die_value,
                         is_bear_off=True,
-                    ))
+                    )
+                )
+            else:
+                if _is_highest_checker(state, color, i):
+                    moves.append(
+                        BackgammonMove(
+                            source=i,
+                            destination=24,
+                            die_value=die_value,
+                            is_bear_off=True,
+                        )
+                    )
             continue
 
         if dest_idx < 0 or dest_idx > 23:
@@ -139,12 +149,14 @@ def generate_legal_moves(
             continue  # Blocked by 2+ opponent checkers
 
         is_hit = dest_val * opp_sign == 1
-        moves.append(BackgammonMove(
-            source=i,
-            destination=dest_idx,
-            die_value=die_value,
-            is_hit=is_hit,
-        ))
+        moves.append(
+            BackgammonMove(
+                source=i,
+                destination=dest_idx,
+                die_value=die_value,
+                is_hit=is_hit,
+            )
+        )
 
     return moves
 
@@ -191,13 +203,15 @@ def apply_move(state: BackgammonGameState, move: BackgammonMove, color: str) -> 
         state.board.points[move.destination] += sign
 
     # Record the move
-    state.moves_this_turn.append({
-        "source": move.source,
-        "destination": move.destination,
-        "die_value": move.die_value,
-        "is_hit": move.is_hit,
-        "is_bear_off": move.is_bear_off,
-    })
+    state.moves_this_turn.append(
+        {
+            "source": move.source,
+            "destination": move.destination,
+            "die_value": move.die_value,
+            "is_hit": move.is_hit,
+            "is_bear_off": move.is_bear_off,
+        }
+    )
 
 
 def undo_last_move(state: BackgammonGameState, color: str) -> BackgammonMove | None:

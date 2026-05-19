@@ -1,4 +1,8 @@
-"""Login dialog for Play Palace client."""
+"""Login dialog for Play Palace client.
+
+Uses a hierarchical TreeCtrl to display servers and their accounts,
+making the ownership relationship clear to screen reader users.
+"""
 
 import wx
 import sys
@@ -7,14 +11,20 @@ from pathlib import Path
 # Add parent directory to path to import config_manager
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config_manager import ConfigManager
+from ui.enhance_wx.tree_selection import ManagedTreeCtrl
+from ui.config_sharing import (
+    ConfigSharingDialog,
+    try_load_export_file,
+    format_export_timestamp,
+)
 
 
 class LoginDialog(wx.Dialog):
-    """Login dialog with server selection and account list."""
+    """Login dialog with a server/account tree and management buttons."""
 
     def __init__(self, parent=None):
         """Initialize the login dialog."""
-        super().__init__(parent, title="Play Palace Login", size=(450, 380))
+        super().__init__(parent, title="Play Palace Login", size=(500, 450))
 
         # Initialize config manager
         self.config_manager = ConfigManager()
@@ -28,8 +38,7 @@ class LoginDialog(wx.Dialog):
         self.account_id = None
         self.server_url = None
 
-        self._server_ids = []  # Track server IDs by index
-        self._account_ids = []  # Track account IDs by index
+        self._populating = False
 
         self._create_ui()
         self.CenterOnScreen()
@@ -47,166 +56,511 @@ class LoginDialog(wx.Dialog):
         title.SetFont(title_font)
         sizer.Add(title, 0, wx.ALL | wx.CENTER, 10)
 
-        # Server Manager button
-        self.server_manager_btn = wx.Button(self.panel, label="Server &Manager")
-        sizer.Add(self.server_manager_btn, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+        # Server/Account tree label
+        tree_label = wx.StaticText(self.panel, label="&Servers and Accounts:")
+        sizer.Add(tree_label, 0, wx.LEFT | wx.TOP, 10)
 
-        # Server selection
-        server_label = wx.StaticText(self.panel, label="&Server:")
-        sizer.Add(server_label, 0, wx.LEFT | wx.TOP, 10)
-
-        self.server_combo = wx.ComboBox(
+        # Server/Account tree
+        self.tree = ManagedTreeCtrl(
             self.panel,
-            choices=[],
-            style=wx.CB_READONLY | wx.CB_DROPDOWN,
+            style=wx.TR_HAS_BUTTONS | wx.TR_SINGLE | wx.TR_HIDE_ROOT,
+            name="Servers and accounts",
         )
-        sizer.Add(self.server_combo, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+        sizer.Add(self.tree, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
-        # User Accounts list
-        accounts_label = wx.StaticText(self.panel, label="&User Account:")
-        sizer.Add(accounts_label, 0, wx.LEFT | wx.TOP, 10)
+        # Row 1: Add actions
+        add_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.add_server_btn = wx.Button(self.panel, label="Add &Server")
+        add_sizer.Add(self.add_server_btn, 0, wx.RIGHT, 5)
 
-        self.accounts_list = wx.ListBox(self.panel, style=wx.LB_SINGLE, size=(-1, 120))
-        sizer.Add(self.accounts_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+        self.add_account_btn = wx.Button(self.panel, label="Add Acco&unt")
+        add_sizer.Add(self.add_account_btn, 0)
 
-        # Buttons
-        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(add_sizer, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
+        # Row 2: Item actions + advanced
+        item_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.edit_btn = wx.Button(self.panel, label="&Edit")
+        item_sizer.Add(self.edit_btn, 0, wx.RIGHT, 5)
+
+        self.delete_btn = wx.Button(self.panel, label="&Delete")
+        item_sizer.Add(self.delete_btn, 0, wx.RIGHT, 5)
+
+        self.advanced_btn = wx.Button(self.panel, label="Ad&vanced")
+        item_sizer.Add(self.advanced_btn, 0)
+
+        sizer.Add(item_sizer, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
+
+        # Row 3: Dialog actions
+        action_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.login_btn = wx.Button(self.panel, wx.ID_OK, "&Login")
         self.login_btn.SetDefault()
-        button_sizer.Add(self.login_btn, 0, wx.RIGHT, 5)
-
-        self.create_account_btn = wx.Button(self.panel, label="Create &Account")
-        self.create_account_btn.Hide()
-        button_sizer.Add(self.create_account_btn, 0, wx.RIGHT, 5)
+        action_sizer.Add(self.login_btn, 0, wx.RIGHT, 5)
 
         cancel_btn = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
-        button_sizer.Add(cancel_btn, 0)
+        action_sizer.Add(cancel_btn, 0)
 
-        sizer.Add(button_sizer, 0, wx.ALL | wx.CENTER, 10)
+        sizer.Add(action_sizer, 0, wx.ALL | wx.CENTER, 10)
 
         # Set sizer
         self.panel.SetSizer(sizer)
 
         # Bind events
-        self.server_manager_btn.Bind(wx.EVT_BUTTON, self.on_server_manager)
-        self.server_combo.Bind(wx.EVT_COMBOBOX, self.on_server_change)
+        self.tree.Bind(wx.EVT_TREE_SEL_CHANGED, self._on_tree_sel_changed)
+        self.tree.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self._on_tree_item_activated)
+        self.add_server_btn.Bind(wx.EVT_BUTTON, self.on_add_server)
+        self.add_account_btn.Bind(wx.EVT_BUTTON, self.on_add_account)
+        self.edit_btn.Bind(wx.EVT_BUTTON, self.on_edit)
+        self.delete_btn.Bind(wx.EVT_BUTTON, self.on_delete)
+        self.advanced_btn.Bind(wx.EVT_BUTTON, self.on_advanced)
         self.login_btn.Bind(wx.EVT_BUTTON, self.on_login)
-        self.create_account_btn.Bind(wx.EVT_BUTTON, self.on_create_account)
         cancel_btn.Bind(wx.EVT_BUTTON, self.on_cancel)
-        self.accounts_list.Bind(wx.EVT_LISTBOX_DCLICK, self.on_login)
 
-        # Populate servers
-        self._refresh_servers_list()
+        # Populate tree
+        last_server = self.config_manager.get_last_server_id()
+        last_account = None
+        if last_server:
+            last_account = self.config_manager.get_last_account_id(last_server)
+        self._populate_tree(select_server_id=last_server, select_account_id=last_account)
 
-        # Select last used server if available
-        last_server_id = self.config_manager.get_last_server_id()
-        if last_server_id and last_server_id in self._server_ids:
-            idx = self._server_ids.index(last_server_id)
-            self.server_combo.SetSelection(idx)
-            self._refresh_accounts_list()
-
-        # Set focus
-        if self.accounts_list.GetCount() > 0:
-            self.accounts_list.SetFocus()
-        elif self.server_combo.GetCount() > 0:
-            self.server_combo.SetFocus()
+        # Set initial focus
+        if self.tree.GetSelection().IsOk():
+            self.tree.SetFocus()
         else:
-            self.server_manager_btn.SetFocus()
+            self.add_server_btn.SetFocus()
 
-    def _refresh_servers_list(self):
-        """Refresh the servers dropdown."""
-        current_selection = self.server_combo.GetSelection()
-        current_server_id = None
-        if current_selection != wx.NOT_FOUND and current_selection < len(self._server_ids):
-            current_server_id = self._server_ids[current_selection]
+    # -------------------------------------------------------------------------
+    # Tree population
+    # -------------------------------------------------------------------------
 
-        self.server_combo.Clear()
-        servers = self.config_manager.get_all_servers()
-        self._server_ids = []
+    def _populate_tree(self, select_server_id=None, select_account_id=None):
+        """Rebuild the tree from config, preserving expand state where possible.
 
-        for server_id, server in servers.items():
-            display_name = server.get("name", "Unknown Server")
-            self.server_combo.Append(display_name)
-            self._server_ids.append(server_id)
+        Args:
+            select_server_id: Server to select (or expand if selecting an account).
+            select_account_id: Account to select within select_server_id.
+        """
+        self._populating = True
+        try:
+            # Record currently expanded servers
+            expanded_server_ids = set()
+            root = self.tree.GetRootItem()
+            if root.IsOk():
+                item, cookie = self.tree.GetFirstChild(root)
+                while item.IsOk():
+                    data = self.tree.GetItemData(item)
+                    if data and self.tree.IsExpanded(item):
+                        expanded_server_ids.add(data[1])
+                    item, cookie = self.tree.GetNextChild(root, cookie)
 
-        # Restore selection if possible
-        if current_server_id and current_server_id in self._server_ids:
-            idx = self._server_ids.index(current_server_id)
-            self.server_combo.SetSelection(idx)
-        elif self.server_combo.GetCount() > 0:
-            self.server_combo.SetSelection(0)
+            self.tree.DeleteAllItems()
+            tree_root = self.tree.AddRoot("")
 
-        self._refresh_accounts_list()
+            target_item = None
+            servers = self.config_manager.get_all_servers()
 
-    def _refresh_accounts_list(self):
-        """Refresh the accounts list for the selected server."""
-        self.accounts_list.Clear()
-        self._account_ids = []
+            for server_id, server in servers.items():
+                server_name = server.get("name", "Unknown Server")
+                server_item = self.tree.AppendItem(tree_root, server_name)
+                self.tree.SetItemData(server_item, ("server", server_id, None))
 
-        server_id = self._get_selected_server_id()
+                accounts = self.config_manager.get_server_accounts(server_id)
+                for account_id, account in accounts.items():
+                    username = account.get("username", "Unknown")
+                    acct_item = self.tree.AppendItem(server_item, username)
+                    self.tree.SetItemData(acct_item, ("account", server_id, account_id))
+
+                    # Target: specific account requested
+                    if server_id == select_server_id and account_id == select_account_id:
+                        target_item = acct_item
+
+                # Expand if was previously expanded or contains the target
+                should_expand = server_id in expanded_server_ids or server_id == select_server_id
+                if should_expand and self.tree.GetChildrenCount(server_item, False) > 0:
+                    self.tree.Expand(server_item)
+
+                # Target: server requested but no specific account
+                if server_id == select_server_id and target_item is None:
+                    # Select the first account if available, otherwise the server
+                    first_child, _ = self.tree.GetFirstChild(server_item)
+                    target_item = first_child if first_child.IsOk() else server_item
+
+            # Fallback: select first account of first server, or first server
+            if target_item is None:
+                first_server, _ = self.tree.GetFirstChild(tree_root)
+                if first_server.IsOk():
+                    first_account, _ = self.tree.GetFirstChild(first_server)
+                    if first_account.IsOk():
+                        self.tree.Expand(first_server)
+                        target_item = first_account
+                    else:
+                        target_item = first_server
+
+            if target_item:
+                self.tree.SelectItem(target_item)
+        finally:
+            self._populating = False
+
+        self._update_button_states()
+
+    # -------------------------------------------------------------------------
+    # Tree helpers
+    # -------------------------------------------------------------------------
+
+    def _get_selected_item_data(self):
+        """Get data for the currently selected tree item.
+
+        Returns:
+            Tuple of (item_type, server_id, account_id) or (None, None, None).
+        """
+        sel = self.tree.GetSelection()
+        if not sel.IsOk():
+            return (None, None, None)
+        data = self.tree.GetItemData(sel)
+        if not data:
+            return (None, None, None)
+        return data
+
+    def _get_server_id_for_selection(self):
+        """Get the server_id for the current selection, walking up if needed."""
+        item_type, server_id, _ = self._get_selected_item_data()
+        return server_id
+
+    def _get_server_name_for_selection(self):
+        """Get the server display name for the current selection."""
+        sel = self.tree.GetSelection()
+        if not sel.IsOk():
+            return ""
+        data = self.tree.GetItemData(sel)
+        if not data:
+            return ""
+        item_type = data[0]
+        if item_type == "server":
+            return self.tree.GetItemText(sel)
+        elif item_type == "account":
+            parent = self.tree.GetItemParent(sel)
+            if parent.IsOk():
+                return self.tree.GetItemText(parent)
+        return ""
+
+    # -------------------------------------------------------------------------
+    # Button state management
+    # -------------------------------------------------------------------------
+
+    def _update_button_states(self):
+        """Update button labels and enabled state based on tree selection."""
+        item_type, server_id, account_id = self._get_selected_item_data()
+        server_name = self._get_server_name_for_selection()
+
+        if item_type == "server":
+            self._set_label(self.edit_btn, "&Edit Server")
+            self._set_label(self.delete_btn, "&Delete Server")
+            self._set_label(self.add_account_btn, f"Add Acco&unt to {server_name}")
+            self.edit_btn.Enable(True)
+            self.delete_btn.Enable(True)
+            self.add_account_btn.Enable(True)
+            self.login_btn.Enable(False)
+        elif item_type == "account":
+            self._set_label(self.edit_btn, "&Edit Account")
+            self._set_label(self.delete_btn, "&Delete Account")
+            self._set_label(self.add_account_btn, f"Add Acco&unt to {server_name}")
+            self.edit_btn.Enable(True)
+            self.delete_btn.Enable(True)
+            self.add_account_btn.Enable(True)
+            self.login_btn.Enable(True)
+        else:
+            self._set_label(self.edit_btn, "&Edit")
+            self._set_label(self.delete_btn, "&Delete")
+            self._set_label(self.add_account_btn, "Add Acco&unt")
+            self.edit_btn.Enable(False)
+            self.delete_btn.Enable(False)
+            self.add_account_btn.Enable(False)
+            self.login_btn.Enable(False)
+
+    @staticmethod
+    def _set_label(btn, label):
+        """Set button label only if it changed (avoids redundant screen reader announcements)."""
+        if btn.GetLabel() != label:
+            btn.SetLabel(label)
+
+    # -------------------------------------------------------------------------
+    # Event handlers
+    # -------------------------------------------------------------------------
+
+    def _on_tree_sel_changed(self, event):
+        """Handle tree selection change."""
+        event.Skip()
+        if not self._populating:
+            self._update_button_states()
+
+    def _on_tree_item_activated(self, event):
+        """Handle Enter/double-click on tree item."""
+        item = event.GetItem()
+        if not item.IsOk():
+            return
+        data = self.tree.GetItemData(item)
+        if data and data[0] == "account":
+            self.on_login(event)
+        else:
+            # Toggle expand/collapse for server nodes
+            if self.tree.IsExpanded(item):
+                self.tree.Collapse(item)
+            else:
+                self.tree.Expand(item)
+
+    def on_add_server(self, event):
+        """Open the server editor to create a new server."""
+        from .server_manager import ServerEditorDialog
+
+        dlg = ServerEditorDialog(self, self.config_manager)
+        new_server_id = None
+        if dlg.ShowModal() == wx.ID_OK:
+            new_server_id = dlg.get_server_id()
+            self._populate_tree(select_server_id=new_server_id)
+        dlg.Destroy()
+
+        if new_server_id:
+            prompt = wx.MessageBox(
+                "Server added. Would you like to add an account for it now?\nBy default, a server will accept new created accounts by users.",
+                "Add Account?",
+                wx.YES_NO | wx.ICON_QUESTION,
+            )
+            if prompt == wx.YES:
+                self.on_add_account(None)
+                return
+
+        self.tree.SetFocus()
+
+    def on_add_account(self, event):
+        """Open the account editor to create a new account on the selected server."""
+        from .server_manager import AccountEditorDialog
+
+        server_id = self._get_server_id_for_selection()
         if not server_id:
+            wx.MessageBox(
+                "Please select a server first.", "No Server Selected", wx.OK | wx.ICON_WARNING
+            )
             return
 
-        accounts = self.config_manager.get_server_accounts(server_id)
-        for account_id, account in accounts.items():
-            self.accounts_list.Append(account.get("username", "Unknown"))
-            self._account_ids.append(account_id)
+        server_name = self._get_server_name_for_selection()
+        dlg = AccountEditorDialog(
+            self, self.config_manager, server_id, account_id=None, server_name=server_name
+        )
+        new_account_id = None
+        if dlg.ShowModal() == wx.ID_OK:
+            new_account_id = dlg.get_account_id()
+            self._populate_tree(select_server_id=server_id, select_account_id=new_account_id)
+        dlg.Destroy()
 
-        # Select last used account for this server, or first account if none
-        last_account_id = self.config_manager.get_last_account_id(server_id)
-        if last_account_id and last_account_id in self._account_ids:
-            idx = self._account_ids.index(last_account_id)
-            self.accounts_list.SetSelection(idx)
-        elif self.accounts_list.GetCount() > 0:
-            self.accounts_list.SetSelection(0)
+        if new_account_id:
+            prompt = wx.MessageBox(
+                "Account added. Would you like to log in with this account now?\nBy default, a server will accept new created accounts by users.",
+                "Log In Now?",
+                wx.YES_NO | wx.ICON_QUESTION,
+            )
+            if prompt == wx.YES:
+                self.on_login(None)
+                return
 
-    def _get_selected_server_id(self) -> str:
-        """Get the currently selected server ID."""
-        selection = self.server_combo.GetSelection()
-        if selection == wx.NOT_FOUND or selection >= len(self._server_ids):
-            return None
-        return self._server_ids[selection]
+        self.tree.SetFocus()
 
-    def _get_selected_account_id(self) -> str:
-        """Get the currently selected account ID."""
-        selection = self.accounts_list.GetSelection()
-        if selection == wx.NOT_FOUND or selection >= len(self._account_ids):
-            return None
-        return self._account_ids[selection]
+    def on_edit(self, event):
+        """Edit the selected server or account."""
+        item_type, server_id, account_id = self._get_selected_item_data()
 
-    def on_server_manager(self, event):
-        """Handle server manager button click."""
-        from .server_manager import ServerManagerDialog
+        if item_type == "server":
+            from .server_manager import ServerEditorDialog
 
-        current_server_id = self._get_selected_server_id()
-        dlg = ServerManagerDialog(self, self.config_manager, current_server_id)
+            dlg = ServerEditorDialog(self, self.config_manager, server_id)
+            if dlg.ShowModal() == wx.ID_OK:
+                self._populate_tree(select_server_id=server_id)
+            dlg.Destroy()
+        elif item_type == "account":
+            from .server_manager import AccountEditorDialog
+
+            server_name = self._get_server_name_for_selection()
+            dlg = AccountEditorDialog(
+                self, self.config_manager, server_id, account_id, server_name=server_name
+            )
+            if dlg.ShowModal() == wx.ID_OK:
+                self._populate_tree(select_server_id=server_id, select_account_id=account_id)
+            dlg.Destroy()
+
+        self.tree.SetFocus()
+
+    def on_delete(self, event):
+        """Delete the selected server or account."""
+        item_type, server_id, account_id = self._get_selected_item_data()
+        sel = self.tree.GetSelection()
+
+        if item_type == "server":
+            server_name = self.tree.GetItemText(sel)
+            result = wx.MessageBox(
+                f"Delete server '{server_name}' and all its accounts?",
+                "Confirm Delete",
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
+            )
+            if result == wx.YES:
+                self.config_manager.delete_server(server_id)
+                self._populate_tree()
+
+        elif item_type == "account":
+            server_name = self._get_server_name_for_selection()
+            username = self.tree.GetItemText(sel)
+            result = wx.MessageBox(
+                f"Delete account '{username}' from {server_name}?",
+                "Confirm Delete",
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
+            )
+            if result == wx.YES:
+                self.config_manager.delete_account(server_id, account_id)
+                self._populate_tree(select_server_id=server_id)
+
+        self.tree.SetFocus()
+
+    def on_advanced(self, event):
+        """Show advanced options menu (import, export, default options profile)."""
+        menu = wx.Menu()
+        import_id = wx.NewIdRef()
+        export_id = wx.NewIdRef()
+        options_id = wx.NewIdRef()
+
+        menu.Append(import_id, "&Import Server Profiles")
+        menu.Append(export_id, "E&xport Server Profiles")
+        menu.Append(options_id, "Default &Options Profile")
+
+        menu.Bind(wx.EVT_MENU, self._on_import_profiles, id=import_id)
+        menu.Bind(wx.EVT_MENU, self._on_export_profiles, id=export_id)
+        menu.Bind(wx.EVT_MENU, self._on_default_options_profile, id=options_id)
+
+        self.PopupMenu(menu)
+        menu.Destroy()
+
+    def _on_import_profiles(self, event):
+        """Handle import server profiles."""
+        imported_data = self._load_import_file()
+        if imported_data is None:
+            return
+
+        dlg = ConfigSharingDialog(
+            self,
+            self.config_manager,
+            ConfigSharingDialog.MODE_IMPORT,
+            imported_data=imported_data,
+        )
+        if dlg._no_data:
+            dlg.Destroy()
+            wx.MessageBox(
+                "There is no data to import. All servers in this file either already "
+                "exist with no changes, or the file contains no servers.",
+                "Nothing to Import",
+                wx.OK | wx.ICON_INFORMATION,
+            )
+            return
+
+        result = dlg.ShowModal()
+        dlg.Destroy()
+
+        if result == wx.ID_OK:
+            self._populate_tree()
+
+    def _on_export_profiles(self, event):
+        """Handle export server profiles."""
+        servers = self.config_manager.get_all_servers()
+        if not servers:
+            wx.MessageBox(
+                "No servers to export.",
+                "Export",
+                wx.OK | wx.ICON_INFORMATION,
+            )
+            return
+
+        dlg = ConfigSharingDialog(self, self.config_manager, ConfigSharingDialog.MODE_EXPORT)
         dlg.ShowModal()
         dlg.Destroy()
-        self._refresh_servers_list()
 
-    def on_server_change(self, event):
-        """Handle server selection change."""
-        self._refresh_accounts_list()
+    def _on_default_options_profile(self, event):
+        """Handle default options profile."""
+        wx.MessageBox(
+            "Not implemented yet.",
+            "Default Options Profile",
+            wx.OK | wx.ICON_INFORMATION,
+        )
+
+    def _load_import_file(self):
+        """Load an import file, with auto-detection and browser fallback.
+
+        Returns:
+            Parsed dict if a valid file was loaded, or None to abort.
+        """
+        auto_path = Path.cwd() / "identities-export.json"
+
+        # Auto-detect file in cwd
+        if auto_path.exists():
+            data = try_load_export_file(str(auto_path))
+            if data:
+                desc = data.get("description", "")
+                ts = format_export_timestamp(data.get("timestamp", 0))
+                result = wx.MessageBox(
+                    f"Found export file in current directory.\n\n"
+                    f"Description: {desc}\n"
+                    f"Date: {ts}\n\n"
+                    f"Would you like to load this file?",
+                    "Import Server Profiles",
+                    wx.YES_NO | wx.ICON_QUESTION,
+                )
+                if result == wx.YES:
+                    return data
+
+        # File browser loop
+        while True:
+            file_dlg = wx.FileDialog(
+                self,
+                "Select Export File to Import",
+                defaultDir=str(Path.cwd()),
+                wildcard="JSON files (*.json)|*.json",
+                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            )
+            if file_dlg.ShowModal() != wx.ID_OK:
+                file_dlg.Destroy()
+                return None
+            chosen_path = file_dlg.GetPath()
+            file_dlg.Destroy()
+
+            data = try_load_export_file(chosen_path)
+            if data is None:
+                wx.MessageBox(
+                    "The selected file is not a valid export file.",
+                    "Invalid File",
+                    wx.OK | wx.ICON_ERROR,
+                )
+                continue
+
+            # Confirm file details
+            desc = data.get("description", "")
+            ts = format_export_timestamp(data.get("timestamp", 0))
+            result = wx.MessageBox(
+                f"Description: {desc}\nDate: {ts}\n\nWould you like to import this file?",
+                "Confirm Import File",
+                wx.YES_NO | wx.ICON_QUESTION,
+            )
+            if result == wx.YES:
+                return data
+            # If No, return to file browser
 
     def on_login(self, event):
-        """Handle login button click."""
-        server_id = self._get_selected_server_id()
-        if not server_id:
-            wx.MessageBox("Please select a server", "Error", wx.OK | wx.ICON_ERROR)
-            self.server_combo.SetFocus()
-            return
+        """Handle login button click or account activation."""
+        item_type, server_id, account_id = self._get_selected_item_data()
 
-        account_id = self._get_selected_account_id()
-        if not account_id:
-            wx.MessageBox("Please select an account", "Error", wx.OK | wx.ICON_ERROR)
-            self.accounts_list.SetFocus()
+        if item_type != "account" or not server_id or not account_id:
+            wx.MessageBox("Please select an account.", "Error", wx.OK | wx.ICON_ERROR)
+            self.tree.SetFocus()
             return
 
         # Get account credentials
         account = self.config_manager.get_account_by_id(server_id, account_id)
         if not account:
-            wx.MessageBox("Account not found", "Error", wx.OK | wx.ICON_ERROR)
+            wx.MessageBox("Account not found.", "Error", wx.OK | wx.ICON_ERROR)
             return
 
         self.server_id = server_id
@@ -221,29 +575,6 @@ class LoginDialog(wx.Dialog):
         self.config_manager.set_last_account(server_id, account_id)
 
         self.EndModal(wx.ID_OK)
-
-    def on_create_account(self, event):
-        """Handle create account button click."""
-        server_id = self._get_selected_server_id()
-        if not server_id:
-            wx.MessageBox(
-                "Please select a server first", "Error", wx.OK | wx.ICON_ERROR
-            )
-            self.server_combo.SetFocus()
-            return
-
-        server_url = self.config_manager.get_server_url(server_id)
-        if not server_url:
-            wx.MessageBox(
-                "Could not determine server URL", "Error", wx.OK | wx.ICON_ERROR
-            )
-            return
-
-        from .registration_dialog import RegistrationDialog
-
-        dlg = RegistrationDialog(self, server_url, server_id=server_id)
-        dlg.ShowModal()
-        dlg.Destroy()
 
     def on_cancel(self, event):
         """Handle cancel button click."""

@@ -13,6 +13,7 @@ from server.messages.localization import Localization
 _locales_dir = Path(__file__).parent.parent / "locales"
 Localization.init(_locales_dir)
 
+
 @pytest.fixture
 def mock_user():
     """Create a mock user."""

@@ -39,7 +39,6 @@ option-on = 켜짐
 option-off = 꺼짐
 
 # Status box
-status-box-closed = 상태 정보가 닫혔습니다.
 
 # Game end
 game-leave = 게임 나가기
@@ -64,6 +63,47 @@ game-player-deals = { $player }님이 카드를 나눠줍니다.
 # Card names
 card-name = { $suit }의 { $rank }
 no-cards = 카드 없음
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = 검정
+color-black-m = 검정
+color-black-f = 검정
+color-blue = 파랑
+color-blue-m = 파랑
+color-blue-f = 파랑
+color-brown = 갈색
+color-brown-m = 갈색
+color-brown-f = 갈색
+color-gray = 회색
+color-gray-m = 회색
+color-gray-f = 회색
+color-green = 초록
+color-green-m = 초록
+color-green-f = 초록
+color-indigo = 남색
+color-indigo-m = 남색
+color-indigo-f = 남색
+color-orange = 주황
+color-orange-m = 주황
+color-orange-f = 주황
+color-pink = 분홍
+color-pink-m = 분홍
+color-pink-f = 분홍
+color-purple = 보라
+color-purple-m = 보라
+color-purple-f = 보라
+color-red = 빨강
+color-red-m = 빨강
+color-red-f = 빨강
+color-violet = 보라색
+color-violet-m = 보라색
+color-violet-f = 보라색
+color-white = 하양
+color-white-m = 하양
+color-white-f = 하양
+color-yellow = 노랑
+color-yellow-m = 노랑
+color-yellow-f = 노랑
 
 # Suit names
 suit-diamonds = 다이아몬드

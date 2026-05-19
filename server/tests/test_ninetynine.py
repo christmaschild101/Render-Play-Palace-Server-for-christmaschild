@@ -66,9 +66,7 @@ class TestNinetyNineUnit:
 
     def test_custom_options(self):
         """Test custom game options."""
-        options = NinetyNineOptions(
-            starting_tokens=5, hand_size=5, rules_variant="rs_games"
-        )
+        options = NinetyNineOptions(starting_tokens=5, hand_size=5, rules_variant="rs_games")
         game = NinetyNineGame(options=options)
         assert game.options.starting_tokens == 5
         assert game.options.hand_size == 5
@@ -83,7 +81,7 @@ class TestNinetyNineBotHeuristics:
         game = NinetyNineGame(options=options)
         players = []
         for i in range(player_count):
-            user = MockUser(f"Bot{i+1}")
+            user = MockUser(f"Bot{i + 1}")
             player = game.add_player(user.username, user)
             players.append(player)
         game.alive_player_ids = [p.id for p in players]
@@ -124,6 +122,7 @@ class TestNinetyNineBotHeuristics:
         score = evaluate_count(game, players[0], new_count=30, rank=RS_RANK_PLUS_10)
 
         assert score != 5000
+
 
 class TestCardAndDeck:
     """Tests for Card and Deck classes."""

@@ -86,6 +86,7 @@ class DummyLobbyGame(LobbyActionsMixin):
         self.attached_users: list[tuple[str, StubUser]] = []
         self.on_start_called = False
         self._prestart_errors: list = []
+        self._keybinds: dict = {}
 
     # Helpers expected by mixin -------------------------------------------------
     def prestart_validate(self):
@@ -93,6 +94,9 @@ class DummyLobbyGame(LobbyActionsMixin):
 
     def on_start(self):
         self.on_start_called = True
+
+    def validate_actions(self):
+        pass
 
     def create_player(self, player_uuid: str, name: str, is_bot: bool = False):
         return Player(id=player_uuid, name=name, is_bot=is_bot)
@@ -190,7 +194,7 @@ def test_add_bot_no_available_names_notifies_user(monkeypatch):
 
     game._action_add_bot(host, "", "add_bot")
 
-    assert ("no-bot-names-available" in [entry[1] for entry in user.spoken if entry[0] == "speak_l"])
+    assert "no-bot-names-available" in [entry[1] for entry in user.spoken if entry[0] == "speak_l"]
 
 
 def test_remove_bot_drops_last_bot():
@@ -277,7 +281,9 @@ def test_show_actions_menu_lists_enabled_actions():
         is_enabled="",
         is_hidden="",
     )
-    resolved = ResolvedAction(action=action, label="Do it", enabled=True, disabled_reason=None, visible=True)
+    resolved = ResolvedAction(
+        action=action, label="Do it", enabled=True, disabled_reason=None, visible=True
+    )
     game.enabled_actions = [resolved]
     game.keybinds["do_it"] = "x"
 
@@ -285,9 +291,7 @@ def test_show_actions_menu_lists_enabled_actions():
 
     assert user.menus
     menu = user.menus[-1]
-    labels = [
-        item.text if isinstance(item, MenuItem) else item for item in menu["items"]
-    ]
+    labels = [item.text if isinstance(item, MenuItem) else item for item in menu["items"]]
     assert any("Do it" in text for text in labels)
     assert Localization.get(user.locale, "back") in labels
 
@@ -299,7 +303,7 @@ def test_show_actions_menu_handles_no_actions():
 
     game._action_show_actions_menu(player, "menu")
 
-    assert ("no-actions-available" in [entry[1] for entry in user.spoken if entry[0] == "speak_l"])
+    assert "no-actions-available" in [entry[1] for entry in user.spoken if entry[0] == "speak_l"]
 
 
 def test_action_save_table_delegates_to_table():

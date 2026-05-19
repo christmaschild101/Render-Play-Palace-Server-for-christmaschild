@@ -11,6 +11,7 @@ class SequenceState(DataClassJSONMixin):
     """
     Represents the state of a sequence for a single suit on the table.
     """
+
     low_card: Optional[Card] = None
     high_card: Optional[Card] = None
 
@@ -20,6 +21,7 @@ class NineState(DataClassJSONMixin):
     """
     Game-specific state for the Nine card game.
     """
+
     # Dictionary mapping suit (int) to its SequenceState
     sequences: dict[int, SequenceState] = field(default_factory=dict)
 

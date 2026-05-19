@@ -70,4 +70,4 @@ class GameScoresMixin:
             lines = self.team_manager.format_scores_detailed(user.locale)
             self.status_box(player, lines)
         else:
-            self.status_box(player, ["No scores available."])
+            self.status_box(player, [Localization.get(user.locale, "no-scores-available")])

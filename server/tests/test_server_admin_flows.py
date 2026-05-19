@@ -48,6 +48,7 @@ class DummyUser:
     def connection(self):
         async def send(payload):
             self.sent.append(payload)
+
         return SimpleNamespace(send=send)
 
 
@@ -64,7 +65,10 @@ class DummyDB:
         return self.pending
 
     def get_non_admin_users(self, exclude_banned=True):
-        return [SimpleNamespace(username=u, trust_level=TrustLevel.USER, approved=False) for u in self.non_admins]
+        return [
+            SimpleNamespace(username=u, trust_level=TrustLevel.USER, approved=False)
+            for u in self.non_admins
+        ]
 
     def approve_user(self, username):
         self.updated.append((username, TrustLevel.USER, True))
@@ -114,7 +118,9 @@ async def test_handle_account_approval_selection_accepts(server):
     admin = DummyUser("admin", trust=TrustLevel.ADMIN)
     pending_user = DummyUser("newbie", trust=TrustLevel.USER, approved=False)
     server._users = {"admin": admin, "newbie": pending_user}
-    server._db.pending = [SimpleNamespace(username="newbie", trust_level=TrustLevel.USER, approved=False)]
+    server._db.pending = [
+        SimpleNamespace(username="newbie", trust_level=TrustLevel.USER, approved=False)
+    ]
     await server._handle_account_approval_selection(admin, "pending_newbie")
     # Should route to pending actions menu
     assert admin.menus[-1] == "pending_user_actions_menu"
@@ -161,6 +167,7 @@ def test_show_leaderboard_types_menu_with_data(server):
     registry.GameRegistry.get_by_category = staticmethod(lambda: {"misc": [fake_game]})  # type: ignore[assignment]
     registry.get_game_class = lambda gt: fake_game  # type: ignore[assignment]
     import server.core.server as core_server_module
+
     core_server_module.get_game_class = registry.get_game_class  # type: ignore[assignment]
 
     server._show_leaderboard_types_menu(user, "fake")

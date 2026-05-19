@@ -76,9 +76,7 @@ def find_best_combo_chain(
     for card in remaining_hand:
         captures = find_captures(table, card.rank, escoba)
         if captures:
-            sequence, captured, score = _evaluate_combo_completion(
-                captures, cards_played, card
-            )
+            sequence, captured, score = _evaluate_combo_completion(captures, cards_played, card)
         else:
             sequence, captured, score = _explore_combo_chain(
                 table,
@@ -147,14 +145,10 @@ def _explore_combo_chain(
     new_table = table + [card]
     new_hand = [c for c in remaining_hand if c.id != card.id]
     new_played = cards_played + [card]
-    return find_best_combo_chain(
-        new_table, new_hand, escoba, new_played, depth + 1, max_depth
-    )
+    return find_best_combo_chain(new_table, new_hand, escoba, new_played, depth + 1, max_depth)
 
 
-def check_combo_potential(
-    game: "ScopaGame", card: Card, player: "ScopaPlayer"
-) -> float:
+def check_combo_potential(game: "ScopaGame", card: Card, player: "ScopaPlayer") -> float:
     """
     Check if playing this card sets up a capture combo chain.
 
@@ -278,9 +272,7 @@ def _score_capture_size(best_capture: list[Card], inverse: bool) -> float:
     return -num_captured * 10 if inverse else num_captured * 10
 
 
-def _score_scopa(
-    best_capture: list[Card], table_cards: list[Card], inverse: bool
-) -> float:
+def _score_scopa(best_capture: list[Card], table_cards: list[Card], inverse: bool) -> float:
     num_captured = len(best_capture)
     is_scopa = num_captured == len(table_cards) and len(table_cards) > 0
     if not is_scopa:

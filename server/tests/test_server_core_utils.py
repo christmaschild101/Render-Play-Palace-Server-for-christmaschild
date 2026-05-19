@@ -102,16 +102,16 @@ def test_validate_transport_security_passes_with_cert_and_key(make_server):
 
 def test_validate_credentials_enforces_lengths(make_server):
     srv = make_server()
-    username, password, error = srv._validate_credentials("ab", "pass")
+    username, password, error = srv._validate_credentials("ab", "pass", locale="en")
     assert error and "Username" in error
 
-    username, password, error = srv._validate_credentials("valid", "pw")
+    username, password, error = srv._validate_credentials("valid", "pw", locale="en")
     assert error and "Password" in error
 
 
 def test_validate_credentials_sanitizes_inputs(make_server):
     srv = make_server()
-    username, password, error = srv._validate_credentials("  Alice  ", "  secret  ")
+    username, password, error = srv._validate_credentials("  Alice  ", "  secret  ", locale="en")
     assert error is None
     assert username == "Alice"
     assert password == "  secret  "
@@ -151,7 +151,7 @@ def test_check_login_rate_limit_blocks_ip(monkeypatch, make_server):
     srv._login_attempts_ip = {"1.2.3.4": deque([0.0])}
     monkeypatch.setattr(server_module.time, "monotonic", lambda: 0.0)
 
-    message = srv._check_login_rate_limit("1.2.3.4", "user")
+    message = srv._check_login_rate_limit("1.2.3.4", "user", locale="en")
 
     assert message and "login attempts" in message
 
@@ -164,7 +164,7 @@ def test_check_login_rate_limit_blocks_username(monkeypatch, make_server):
     srv._login_attempts_user = {"alice": deque([0.0])}
     monkeypatch.setattr(server_module.time, "monotonic", lambda: 0.0)
 
-    message = srv._check_login_rate_limit("5.6.7.8", "alice")
+    message = srv._check_login_rate_limit("5.6.7.8", "alice", locale="en")
 
     assert message and "failed login attempts" in message
 
@@ -188,7 +188,7 @@ def test_check_registration_rate_limit(monkeypatch, make_server):
     srv._registration_attempts_ip = {"ip": deque([0.0])}
     monkeypatch.setattr(server_module.time, "monotonic", lambda: 0.0)
 
-    message = srv._check_registration_rate_limit("ip")
+    message = srv._check_registration_rate_limit("ip", locale="en")
 
     assert message and "registration attempts" in message
 
@@ -200,7 +200,7 @@ def test_check_refresh_rate_limit(monkeypatch, make_server):
     srv._refresh_attempts_ip = {"ip": deque([0.0])}
     monkeypatch.setattr(server_module.time, "monotonic", lambda: 0.0)
 
-    message = srv._check_refresh_rate_limit("ip")
+    message = srv._check_refresh_rate_limit("ip", locale="en")
 
     assert message and "refresh attempts" in message
 

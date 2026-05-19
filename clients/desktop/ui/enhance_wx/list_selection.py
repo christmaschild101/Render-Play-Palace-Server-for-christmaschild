@@ -28,28 +28,33 @@ import wx
 # CONFIGURATION ENUMS
 # =============================================================================
 
+
 class FocusAfterDelete(Enum):
     """Where to move focus after deleting an item."""
+
     PREVIOUS = "previous"  # Focus the item before the deleted one (default)
-    NEXT = "next"          # Focus the item after the deleted one
+    NEXT = "next"  # Focus the item after the deleted one
 
 
 class FocusAfterAdd(Enum):
     """Where to move focus after adding an item."""
-    NEW_ITEM = "new"       # Focus the newly added item (default)
-    STAY = "stay"          # Keep focus on current item
+
+    NEW_ITEM = "new"  # Focus the newly added item (default)
+    STAY = "stay"  # Keep focus on current item
 
 
 class ColumnWidth(Enum):
     """Column width modes for list controls."""
+
     AUTO_CONTENT = "auto_content"  # Auto-size to fit content (wx.LIST_AUTOSIZE)
-    AUTO_HEADER = "auto_header"    # Auto-size to fit header text (wx.LIST_AUTOSIZE_USEHEADER)
-    FILL = "fill"                  # Fill remaining space in the control
+    AUTO_HEADER = "auto_header"  # Auto-size to fit header text (wx.LIST_AUTOSIZE_USEHEADER)
+    FILL = "fill"  # Fill remaining space in the control
 
 
 # =============================================================================
 # MIXINS
 # =============================================================================
+
 
 class ListBoxSelectionManagerMixin:
     """
@@ -223,6 +228,7 @@ class ListCtrlSelectionManagerMixin:
 # READY-TO-USE CONTROLS
 # =============================================================================
 
+
 class ManagedListBox(ListBoxSelectionManagerMixin, wx.ListBox):
     """
     A wx.ListBox with automatic selection management.
@@ -260,6 +266,7 @@ class ManagedListBox(ListBoxSelectionManagerMixin, wx.ListBox):
         fruits.Append("Date")  # Auto-focuses new item
         fruits.Delete(0)       # Auto-focuses appropriate neighbor
     """
+
     pass
 
 
@@ -322,7 +329,9 @@ class ManagedListCtrl(ListCtrlSelectionManagerMixin, wx.ListView):
         self._column_widths: list[int | ColumnWidth] = []
         self._show_header = show_header
 
-    def AppendColumn(self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT) -> None:
+    def AppendColumn(
+        self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT
+    ) -> None:
         """
         Add a column to the list.
 
@@ -347,7 +356,11 @@ class ManagedListCtrl(ListCtrlSelectionManagerMixin, wx.ListView):
     def AutoSizeColumns(self, use_header: bool = False) -> None:
         """Resize all columns to fit their content."""
         for col in range(self._column_count):
-            original_width = self._column_widths[col] if col < len(self._column_widths) else ColumnWidth.AUTO_CONTENT
+            original_width = (
+                self._column_widths[col]
+                if col < len(self._column_widths)
+                else ColumnWidth.AUTO_CONTENT
+            )
 
             if isinstance(original_width, ColumnWidth) and original_width == ColumnWidth.FILL:
                 total_width = self.GetClientSize().width
@@ -391,11 +404,9 @@ __all__ = [
     "FocusAfterDelete",
     "FocusAfterAdd",
     "ColumnWidth",
-
     # Mixins (for custom controls)
     "ListBoxSelectionManagerMixin",
     "ListCtrlSelectionManagerMixin",
-
     # Ready-to-use controls
     "ManagedListBox",
     "ManagedListCtrl",

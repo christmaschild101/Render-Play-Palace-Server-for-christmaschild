@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build and smoke-test the server container image with Podman."""
+
 from __future__ import annotations
 
 import shutil

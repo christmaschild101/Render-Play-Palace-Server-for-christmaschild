@@ -39,7 +39,6 @@ option-on = an
 option-off = aus
 
 # Statusbox
-status-box-closed = Statusinformationen geschlossen.
 
 # Spielende
 game-leave = Spiel verlassen
@@ -64,6 +63,47 @@ game-player-deals = { $player } teilt die Karten aus.
 # Kartennamen
 card-name = { $rank } { $suit }
 no-cards = Keine Karten
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = schwarz
+color-black-m = schwarzer
+color-black-f = schwarze
+color-blue = blau
+color-blue-m = blauer
+color-blue-f = blaue
+color-brown = braun
+color-brown-m = brauner
+color-brown-f = braune
+color-gray = grau
+color-gray-m = grauer
+color-gray-f = graue
+color-green = grün
+color-green-m = grüner
+color-green-f = grüne
+color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
+color-orange = orange
+color-orange-m = orange
+color-orange-f = orange
+color-pink = pink
+color-pink-m = pink
+color-pink-f = pink
+color-purple = lila
+color-purple-m = lila
+color-purple-f = lila
+color-red = rot
+color-red-m = roter
+color-red-f = rote
+color-violet = violett
+color-violet-m = violetter
+color-violet-f = violette
+color-white = weiß
+color-white-m = weißer
+color-white-f = weiße
+color-yellow = gelb
+color-yellow-m = gelber
+color-yellow-f = gelbe
 
 # Farbennamen
 suit-diamonds = Karo

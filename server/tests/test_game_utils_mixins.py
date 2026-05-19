@@ -643,9 +643,7 @@ def test_duration_estimate_runs_and_reports(monkeypatch):
 
     game.check_estimate_completion()
     assert not game._estimate_running
-    estimate_result = next(
-        kwargs for key, kwargs in game.broadcasts if key == "estimate-result"
-    )
+    estimate_result = next(kwargs for key, kwargs in game.broadcasts if key == "estimate-result")
     assert "bot_time" in estimate_result
     assert estimate_result["bot_time"] == "7 seconds"
     assert estimate_result["human_time"] == "15 seconds"

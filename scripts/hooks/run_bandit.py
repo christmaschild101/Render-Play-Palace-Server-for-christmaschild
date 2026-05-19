@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run Bandit via uv against server and client sources."""
+
 from __future__ import annotations
 
 import shutil

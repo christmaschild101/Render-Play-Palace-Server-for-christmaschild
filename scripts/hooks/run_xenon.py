@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run Xenon complexity budget checks via uv."""
+
 from __future__ import annotations
 
 import shutil

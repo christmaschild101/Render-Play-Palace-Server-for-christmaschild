@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run Trivy vulnerability scan via Podman."""
+
 from __future__ import annotations
 
 import shutil

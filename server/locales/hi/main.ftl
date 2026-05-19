@@ -35,6 +35,8 @@ whose-turn = किसकी बारी है
 whos-at-table = टेबल पर कौन है
 check-scores = स्कोर देखें
 check-scores-detailed = विस्तृत स्कोर
+check-game-options = खेल विकल्प देखें
+no-game-options = कोई खेल विकल्प उपलब्ध नहीं है।
 
 # Turn messages
 game-player-skipped = { $player } को छोड़ दिया गया है।
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] अंक
    *[other] अंक
 }
-status-box-closed = बंद।
 play = खेलें
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = आपका खाता प्रतिबंधित है
 incorrect-username = आपके द्वारा दर्ज किया गया उपयोगकर्ता नाम मौजूद नहीं है।
 incorrect-password = आपके द्वारा दर्ज किया गया पासवर्ड गलत है।
 already-logged-in = यह खाता पहले से लॉग इन है।
+
+# क्रेडेंशियल सत्यापन
+credential-username-length = उपयोगकर्ता नाम { $min } से { $max } अक्षरों के बीच होना चाहिए।
+credential-password-length = पासवर्ड { $min } से { $max } अक्षरों के बीच होना चाहिए।
+
+# दर सीमा
+rate-limit-login-ip = इस पते से बहुत अधिक लॉगिन प्रयास किए गए हैं। कृपया प्रतीक्षा करें और पुनः प्रयास करें।
+rate-limit-login-user = इस उपयोगकर्ता नाम के लिए बहुत अधिक विफल लॉगिन प्रयास किए गए हैं। कृपया प्रतीक्षा करें और पुनः प्रयास करें।
+rate-limit-registration = इस पते से बहुत अधिक पंजीकरण प्रयास किए गए हैं। कृपया प्रतीक्षा करें और पुनः प्रयास करें।
+rate-limit-refresh = इस पते से बहुत अधिक रिफ्रेश प्रयास किए गए हैं। कृपया प्रतीक्षा करें और पुनः प्रयास करें।
+
+# सत्र और प्रमाणीकरण त्रुटियाँ
+account-not-found = खाता नहीं मिला।
+session-expired = सत्र समाप्त हो गया। कृपया पुनः लॉग इन करें।
+session-token-mismatch = सत्र टोकन उपयोगकर्ता नाम से मेल नहीं खाता।
+refresh-token-expired = रिफ्रेश टोकन समाप्त हो गया। कृपया पुनः लॉग इन करें।
+refresh-token-mismatch = रिफ्रेश टोकन उपयोगकर्ता नाम से मेल नहीं खाता।
+
+# पंजीकरण
+registration-success = पंजीकरण सफल! आपका खाता अनुमोदन की प्रतीक्षा में है।
+registration-username-taken = यह उपयोगकर्ता नाम पहले से लिया जा चुका है। कृपया कोई अलग उपयोगकर्ता नाम चुनें।
+
+# प्राथमिकता वापसी
+pref-invalid-value = अमान्य चयन, डिफ़ॉल्ट का उपयोग किया जा रहा है।
 
 # Decline reason
 decline-reason-prompt = अस्वीकार करने का कारण दर्ज करें (या रद्द करने के लिए Escape दबाएं):

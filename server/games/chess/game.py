@@ -5,13 +5,14 @@ import random
 
 from ..base import Game, Player, GameOptions
 from ..registry import register_game
-from ...game_utils.actions import Action, ActionSet, Visibility
+from ...game_utils.actions import Action, ActionSet, Visibility, EditboxInput, MenuInput
 from ...game_utils.game_result import GameResult, PlayerResult
 
 from ...game_utils.options import MenuOption, BoolOption, option_field
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.poker_timer import PokerTurnTimer
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 from server.core.users.bot import Bot
 from server.core.users.base import User, MenuItem, EscapeBehavior
@@ -75,6 +76,18 @@ def piece_name(piece: str, locale: str) -> str:
     return piece
 
 
+def piece_color_name(piece: str, color: str, locale: str) -> str:
+    """Get the grammatically correct localized color word for a piece.
+
+    Looks up the piece's gender from chess-piece-{piece}-gender, then
+    returns color-{color}-m or color-{color}-f accordingly.
+    """
+    gender = Localization.get(locale, f"chess-piece-{piece}-gender")
+    if gender not in ("m", "f"):
+        gender = "m"
+    return Localization.get(locale, f"color-{color}-{gender}")
+
+
 @dataclass
 class ChessOptions(GameOptions):
     """Options for Chess."""
@@ -126,7 +139,9 @@ class ChessGame(Game):
 
     # Game state
     current_color: str = "white"
-    selected_square: dict[str, int | None] = field(default_factory=dict)  # player_id -> selected square
+    selected_square: dict[str, int | None] = field(
+        default_factory=dict
+    )  # player_id -> selected square
     game_over: bool = False
     winner_color: str = ""
     draw_reason: str = ""
@@ -199,7 +214,6 @@ class ChessGame(Game):
         self.play_sound(sound)
         return player
 
-
     def _perform_leave_game(self, player: Player) -> None:
         if self.status == "playing" and not player.is_bot:
             player.is_bot = True
@@ -251,89 +265,112 @@ class ChessGame(Game):
         for rank in range(7, -1, -1):
             for file in range(8):
                 i = rank * 8 + file
-                action_set.add(Action(
-                    id=f"square_{i}",
-                    label="",
-                    handler="_action_square_click",
-                    is_enabled="_is_square_enabled",
-                    is_hidden="_is_square_hidden",
-                    get_label="_get_square_label",
-                    show_in_actions_menu=False,
-                    show_disabled_label=False,
-                ))
+                action_set.add(
+                    Action(
+                        id=f"square_{i}",
+                        label="",
+                        handler="_action_square_click",
+                        is_enabled="_is_square_enabled",
+                        is_hidden="_is_square_hidden",
+                        get_label="_get_square_label",
+                        show_in_actions_menu=False,
+                        show_disabled_label=False,
+                    )
+                )
 
         # Promotion actions (only visible during promotion)
         for piece in ("queen", "rook", "bishop", "knight"):
-            action_set.add(Action(
-                id=f"promote_{piece}",
-                label=Localization.get(locale, f"chess-piece-{piece}"),
-                handler="_action_promote",
-                is_enabled="_is_promote_enabled",
-                is_hidden="_is_promote_hidden",
-                show_in_actions_menu=False,
-            ))
+            action_set.add(
+                Action(
+                    id=f"promote_{piece}",
+                    label=Localization.get(locale, f"chess-piece-{piece}"),
+                    handler="_action_promote",
+                    is_enabled="_is_promote_enabled",
+                    is_hidden="_is_promote_hidden",
+                    show_in_actions_menu=False,
+                )
+            )
 
         # Draw offer/response
-        action_set.add(Action(
-            id="offer_draw",
-            label=Localization.get(locale, "chess-offer-draw"),
-            handler="_action_offer_draw",
-            is_enabled="_is_offer_draw_enabled",
-            is_hidden="_is_offer_draw_hidden",
-            show_in_actions_menu=True,
-        ))
-        action_set.add(Action(
-            id="accept_draw",
-            label=Localization.get(locale, "chess-you-accept-draw"),
-            handler="_action_accept_draw",
-            is_enabled="_is_draw_response_enabled",
-            is_hidden="_is_draw_response_hidden",
-            show_in_actions_menu=False,
-        ))
-        action_set.add(Action(
-            id="decline_draw",
-            label=Localization.get(locale, "chess-you-decline-draw"),
-            handler="_action_decline_draw",
-            is_enabled="_is_draw_response_enabled",
-            is_hidden="_is_draw_response_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="offer_draw",
+                label=Localization.get(locale, "chess-offer-draw"),
+                handler="_action_offer_draw",
+                is_enabled="_is_offer_draw_enabled",
+                is_hidden="_is_offer_draw_hidden",
+                show_in_actions_menu=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="accept_draw",
+                label=Localization.get(locale, "chess-you-accept-draw"),
+                handler="_action_accept_draw",
+                is_enabled="_is_draw_response_enabled",
+                is_hidden="_is_draw_response_hidden",
+                show_in_actions_menu=False,
+            )
+        )
+        action_set.add(
+            Action(
+                id="decline_draw",
+                label=Localization.get(locale, "chess-you-decline-draw"),
+                handler="_action_decline_draw",
+                is_enabled="_is_draw_response_enabled",
+                is_hidden="_is_draw_response_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Undo
-        action_set.add(Action(
-            id="request_undo",
-            label=Localization.get(locale, "chess-undo-request"),
-            handler="_action_request_undo",
-            is_enabled="_is_request_undo_enabled",
-            is_hidden="_is_request_undo_hidden",
-            show_in_actions_menu=True,
-        ))
-        action_set.add(Action(
-            id="accept_undo",
-            label=Localization.get(locale, "chess-you-accept-undo"),
-            handler="_action_accept_undo",
-            is_enabled="_is_undo_response_enabled",
-            is_hidden="_is_undo_response_hidden",
-            show_in_actions_menu=False,
-        ))
-        action_set.add(Action(
-            id="decline_undo",
-            label=Localization.get(locale, "chess-you-decline-undo"),
-            handler="_action_decline_undo",
-            is_enabled="_is_undo_response_enabled",
-            is_hidden="_is_undo_response_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="request_undo",
+                label=Localization.get(locale, "chess-undo-request"),
+                handler="_action_request_undo",
+                is_enabled="_is_request_undo_enabled",
+                is_hidden="_is_request_undo_hidden",
+                show_in_actions_menu=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="accept_undo",
+                label=Localization.get(locale, "chess-you-accept-undo"),
+                handler="_action_accept_undo",
+                is_enabled="_is_undo_response_enabled",
+                is_hidden="_is_undo_response_hidden",
+                show_in_actions_menu=False,
+            )
+        )
+        action_set.add(
+            Action(
+                id="decline_undo",
+                label=Localization.get(locale, "chess-you-decline-undo"),
+                handler="_action_decline_undo",
+                is_enabled="_is_undo_response_enabled",
+                is_hidden="_is_undo_response_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Resign
-        action_set.add(Action(
-            id="resign",
-            label=Localization.get(locale, "chess-you-resign", opponent=""),
-            handler="_action_resign",
-            is_enabled="_is_resign_enabled",
-            is_hidden="_is_resign_hidden",
-            show_in_actions_menu=True,
-        ))
+        action_set.add(
+            Action(
+                id="resign",
+                label=Localization.get(locale, "chess-resign"),
+                handler="_action_resign",
+                is_enabled="_is_resign_enabled",
+                is_hidden="_is_resign_hidden",
+                show_in_actions_menu=True,
+                input_request=MenuInput(
+                    prompt="chess-resign-confirm",
+                    options="_resign_confirm_options",
+                    include_cancel=False,
+                ),
+            )
+        )
 
         return action_set
 
@@ -363,6 +400,14 @@ class ChessGame(Game):
                 is_hidden="_is_always_hidden",
             ),
             Action(
+                id="type_move",
+                label=Localization.get(locale, "chess-type-move"),
+                handler="_action_type_move",
+                is_enabled="_is_type_move_enabled",
+                is_hidden="_is_always_hidden",
+                input_request=EditboxInput(prompt="chess-enter-move"),
+            ),
+            Action(
                 id="import_fen",
                 label=Localization.get(locale, "chess-import-fen"),
                 handler="_action_import_fen",
@@ -387,11 +432,32 @@ class ChessGame(Game):
 
     def setup_keybinds(self) -> None:
         super().setup_keybinds()
-        self.define_keybind("b", "View board", ["view_board"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("s", "Check status", ["check_status"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind(
+            "b", "View board", ["view_board"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "s",
+            "Check status",
+            ["check_status"],
+            state=KeybindState.ACTIVE,
+            include_spectators=True,
+        )
+        self.define_keybind("m", "Type a move", ["type_move"], state=KeybindState.ACTIVE)
         self.define_keybind("i", "Import FEN", ["import_fen"], state=KeybindState.ACTIVE)
-        self.define_keybind("shift+t", "Turn timer", ["check_turn_timer"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("shift+f", "Flip board", ["flip_board"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind(
+            "shift+t",
+            "Turn timer",
+            ["check_turn_timer"],
+            state=KeybindState.ACTIVE,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "shift+f",
+            "Flip board",
+            ["flip_board"],
+            state=KeybindState.ACTIVE,
+            include_spectators=True,
+        )
         self.define_keybind("shift+d", "Offer draw", ["offer_draw"], state=KeybindState.ACTIVE)
         self.define_keybind("shift+u", "Request undo", ["request_undo"], state=KeybindState.ACTIVE)
         self.define_keybind("shift+r", "Resign", ["resign"], state=KeybindState.ACTIVE)
@@ -404,20 +470,20 @@ class ChessGame(Game):
         # Promotion
         self.define_keybind("q", "Promote queen", ["promote_queen"], state=KeybindState.ACTIVE)
         self.define_keybind("r", "Promote rook", ["promote_rook"], state=KeybindState.ACTIVE)
-        self.define_keybind("shift+b", "Promote bishop", ["promote_bishop"], state=KeybindState.ACTIVE)
+        self.define_keybind(
+            "shift+b", "Promote bishop", ["promote_bishop"], state=KeybindState.ACTIVE
+        )
         self.define_keybind("k", "Promote knight", ["promote_knight"], state=KeybindState.ACTIVE)
 
     # ==========================================================================
     # Menu overrides (grid mode for chess board)
     # ==========================================================================
 
-    def rebuild_player_menu(
-        self, player: "Player", *, position: int | None = None
-    ) -> None:
+    def rebuild_player_menu(self, player: "Player", *, position: int | None = None) -> None:
         """Override to enable grid mode only when the board squares are shown."""
         if self._destroyed or self.status == "finished":
             return
-        if player.id in self._status_box_open:
+        if self._is_transient_display_open(player):
             return
         user = self.get_user(player)
         if not user:
@@ -457,7 +523,7 @@ class ChessGame(Game):
     # ==========================================================================
 
     def on_start(self) -> None:
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 1
 
@@ -479,6 +545,10 @@ class ChessGame(Game):
 
         white_player = self._get_player_by_color("white")
         black_player = self._get_player_by_color("black")
+
+        # Default orientation: black player views from black's side
+        if black_player:
+            self.board_flipped[black_player.id] = True
 
         # Initialize board
         self._init_board()
@@ -522,7 +592,6 @@ class ChessGame(Game):
 
         self._start_turn_timer()
         self.rebuild_all_menus()
-
         self.broadcast_personal_l(player, "game-your-turn", "game-turn-start")
 
         if player.is_bot:
@@ -576,6 +645,11 @@ class ChessGame(Game):
             if isinstance(player, ChessPlayer):
                 self._action_square_click(player, action_id)
                 return
+        # Speak the confirmation prompt before the resign menu appears
+        if action_id == "resign" and input_value is None and not player.is_bot:
+            user = self.get_user(player)
+            if user:
+                user.speak_l("chess-resign-confirm")
         super().execute_action(player, action_id, input_value=input_value, context=context)
 
     # ==========================================================================
@@ -638,13 +712,19 @@ class ChessGame(Game):
         p = piece["piece"]
 
         if p == "pawn":
-            return self._is_valid_pawn_move(from_sq, to_sq, piece, from_file, from_rank, to_file, to_rank, file_diff, rank_diff)
+            return self._is_valid_pawn_move(
+                from_sq, to_sq, piece, from_file, from_rank, to_file, to_rank, file_diff, rank_diff
+            )
         elif p == "knight":
             return (file_diff == 2 and rank_diff == 1) or (file_diff == 1 and rank_diff == 2)
         elif p == "bishop":
             return file_diff == rank_diff and file_diff > 0 and self._is_path_clear(from_sq, to_sq)
         elif p == "rook":
-            return (file_diff == 0 or rank_diff == 0) and (file_diff + rank_diff > 0) and self._is_path_clear(from_sq, to_sq)
+            return (
+                (file_diff == 0 or rank_diff == 0)
+                and (file_diff + rank_diff > 0)
+                and self._is_path_clear(from_sq, to_sq)
+            )
         elif p == "queen":
             if file_diff == rank_diff and file_diff > 0:
                 return self._is_path_clear(from_sq, to_sq)
@@ -656,9 +736,18 @@ class ChessGame(Game):
 
         return False
 
-    def _is_valid_pawn_move(self, from_sq: int, to_sq: int, piece: dict,
-                            from_file: int, from_rank: int, to_file: int, to_rank: int,
-                            file_diff: int, rank_diff: int) -> bool:
+    def _is_valid_pawn_move(
+        self,
+        from_sq: int,
+        to_sq: int,
+        piece: dict,
+        from_file: int,
+        from_rank: int,
+        to_file: int,
+        to_rank: int,
+        file_diff: int,
+        rank_diff: int,
+    ) -> bool:
         direction = 1 if piece["color"] == "white" else -1
         start_rank = 1 if piece["color"] == "white" else 6
 
@@ -731,7 +820,11 @@ class ChessGame(Game):
         elif p == "bishop":
             return file_diff == rank_diff and file_diff > 0 and self._is_path_clear(from_sq, to_sq)
         elif p == "rook":
-            return (file_diff == 0 or rank_diff == 0) and (file_diff + rank_diff > 0) and self._is_path_clear(from_sq, to_sq)
+            return (
+                (file_diff == 0 or rank_diff == 0)
+                and (file_diff + rank_diff > 0)
+                and self._is_path_clear(from_sq, to_sq)
+            )
         elif p == "queen":
             if file_diff == rank_diff and file_diff > 0:
                 return self._is_path_clear(from_sq, to_sq)
@@ -838,13 +931,13 @@ class ChessGame(Game):
                         candidates.append(cap)
 
         elif p == "knight":
-            for dr, df in [(-2,-1),(-2,1),(-1,-2),(-1,2),(1,-2),(1,2),(2,-1),(2,1)]:
+            for dr, df in [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]:
                 tr, tf = from_rank + dr, from_file + df
                 if 0 <= tr < 8 and 0 <= tf < 8:
                     candidates.append(tr * 8 + tf)
 
         elif p == "bishop":
-            for dr, df in [(-1,-1),(-1,1),(1,-1),(1,1)]:
+            for dr, df in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
                 r, f = from_rank + dr, from_file + df
                 while 0 <= r < 8 and 0 <= f < 8:
                     candidates.append(r * 8 + f)
@@ -854,7 +947,7 @@ class ChessGame(Game):
                     f += df
 
         elif p == "rook":
-            for dr, df in [(-1,0),(1,0),(0,-1),(0,1)]:
+            for dr, df in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 r, f = from_rank + dr, from_file + df
                 while 0 <= r < 8 and 0 <= f < 8:
                     candidates.append(r * 8 + f)
@@ -864,7 +957,7 @@ class ChessGame(Game):
                     f += df
 
         elif p == "queen":
-            for dr, df in [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]:
+            for dr, df in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
                 r, f = from_rank + dr, from_file + df
                 while 0 <= r < 8 and 0 <= f < 8:
                     candidates.append(r * 8 + f)
@@ -1012,7 +1105,6 @@ class ChessGame(Game):
 
         self.halfmove_clock += 1
         self.en_passant_target = -1
-        self.position_history.append(self._get_position_hash())
 
     # ==========================================================================
     # Move execution
@@ -1057,7 +1149,9 @@ class ChessGame(Game):
         # Auto-promote to queen in silent mode
         to_rank = to_sq // 8
         if piece["piece"] == "pawn":
-            if (piece["color"] == "white" and to_rank == 7) or (piece["color"] == "black" and to_rank == 0):
+            if (piece["color"] == "white" and to_rank == 7) or (
+                piece["color"] == "black" and to_rank == 0
+            ):
                 self.board[to_sq] = {"piece": "queen", "color": piece["color"], "has_moved": True}
 
     def _execute_move_full(self, player: ChessPlayer, from_sq: int, to_sq: int) -> None:
@@ -1075,9 +1169,13 @@ class ChessGame(Game):
             self._execute_castling(piece["color"], castle_type)
             self.play_sound("game_chess/moveking.ogg")
             if castle_type == "kingside":
-                self.broadcast_personal_l(player, "chess-you-castle-kingside", "chess-player-castles-kingside")
+                self.broadcast_personal_l(
+                    player, "chess-you-castle-kingside", "chess-player-castles-kingside"
+                )
             else:
-                self.broadcast_personal_l(player, "chess-you-castle-queenside", "chess-player-castles-queenside")
+                self.broadcast_personal_l(
+                    player, "chess-you-castle-queenside", "chess-player-castles-queenside"
+                )
             self._record_move(from_sq, to_sq, piece, target, castle_type)
             self._post_move_checks(player)
             return
@@ -1093,7 +1191,8 @@ class ChessGame(Game):
                 player,
                 "chess-you-en-passant",
                 "chess-player-en-passant",
-                to=to_notation, **{"from": from_notation},
+                to=to_notation,
+                **{"from": from_notation},
             )
 
         # Execute move
@@ -1109,7 +1208,8 @@ class ChessGame(Game):
                     "chess-you-capture",
                     "chess-player-captures",
                     pieces={"piece": piece["piece"], "captured": target["piece"]},
-                    to=to_notation, **{"from": from_notation},
+                    to=to_notation,
+                    **{"from": from_notation},
                 )
             else:
                 self._play_piece_sound(piece["piece"])
@@ -1118,7 +1218,8 @@ class ChessGame(Game):
                     "chess-you-move",
                     "chess-player-moves",
                     pieces={"piece": piece["piece"]},
-                    to=to_notation, **{"from": from_notation},
+                    to=to_notation,
+                    **{"from": from_notation},
                 )
 
         # Mark as moved
@@ -1148,7 +1249,9 @@ class ChessGame(Game):
         # Check for promotion
         to_rank = to_sq // 8
         if piece["piece"] == "pawn":
-            if (piece["color"] == "white" and to_rank == 7) or (piece["color"] == "black" and to_rank == 0):
+            if (piece["color"] == "white" and to_rank == 7) or (
+                piece["color"] == "black" and to_rank == 0
+            ):
                 self.promotion_pending = True
                 self.promotion_square = to_sq
                 self.rebuild_all_menus()
@@ -1190,16 +1293,20 @@ class ChessGame(Game):
             elif from_sq == 63:
                 self.castle_black_kingside = False
 
-    def _record_move(self, from_sq: int, to_sq: int, piece: dict, target: dict | None, special: str) -> None:
+    def _record_move(
+        self, from_sq: int, to_sq: int, piece: dict, target: dict | None, special: str
+    ) -> None:
         """Record a move in history."""
-        self.move_history.append({
-            "from": from_sq,
-            "to": to_sq,
-            "piece": piece["piece"],
-            "color": piece["color"],
-            "captured": target["piece"] if target else "",
-            "special": special,
-        })
+        self.move_history.append(
+            {
+                "from": from_sq,
+                "to": to_sq,
+                "piece": piece["piece"],
+                "color": piece["color"],
+                "captured": target["piece"] if target else "",
+                "special": special,
+            }
+        )
         self.position_history.append(self._get_position_hash())
 
     def _post_move_checks(self, player: ChessPlayer) -> None:
@@ -1215,7 +1322,9 @@ class ChessGame(Game):
             self.game_over = True
             self.winner_color = player.color
             self.play_sound("game_chess/checkmate.ogg")
-            self.broadcast_personal_l(player, "chess-you-win-checkmate", "chess-checkmate", winner=player.name)
+            self.broadcast_personal_l(
+                player, "chess-you-win-checkmate", "chess-checkmate", winner=player.name
+            )
             self._end_game(player)
             return
 
@@ -1411,7 +1520,14 @@ class ChessGame(Game):
                     return False, "Invalid position"
                 index = rank * 8 + file
                 color = "white" if char.isupper() else "black"
-                piece_map = {"p": "pawn", "n": "knight", "b": "bishop", "r": "rook", "q": "queen", "k": "king"}
+                piece_map = {
+                    "p": "pawn",
+                    "n": "knight",
+                    "b": "bishop",
+                    "r": "rook",
+                    "q": "queen",
+                    "k": "king",
+                }
                 piece = piece_map.get(char.lower())
                 if not piece:
                     return False, f"Unknown piece: {char}"
@@ -1462,7 +1578,14 @@ class ChessGame(Game):
                     if empty > 0:
                         row += str(empty)
                         empty = 0
-                    piece_chars = {"pawn": "p", "knight": "n", "bishop": "b", "rook": "r", "queen": "q", "king": "k"}
+                    piece_chars = {
+                        "pawn": "p",
+                        "knight": "n",
+                        "bishop": "b",
+                        "rook": "r",
+                        "queen": "q",
+                        "king": "k",
+                    }
                     char = piece_chars.get(sq["piece"], "?")
                     if sq["color"] == "white":
                         char = char.upper()
@@ -1572,7 +1695,10 @@ class ChessGame(Game):
                 if user:
                     notation = index_to_notation(sq_index)
                     p_name = piece_name(piece["piece"], locale)
-                    user.speak_l("chess-you-select", piece=f"{piece['color']} {p_name}", square=notation)
+                    color_name = piece_color_name(piece["piece"], piece["color"], locale)
+                    user.speak_l(
+                        "chess-you-select", piece=f"{color_name} {p_name}", square=notation
+                    )
                 self.update_player_menu(player)
             else:
                 user = self.get_user(player)
@@ -1623,9 +1749,127 @@ class ChessGame(Game):
 
         notation = index_to_notation(sq)
         self.play_sound("game_chess/promote.ogg")
-        self._broadcast_move(player, "chess-you-promote", "chess-player-promotes", pieces={"piece": piece_type}, square=notation)
+        self._broadcast_move(
+            player,
+            "chess-you-promote",
+            "chess-player-promotes",
+            pieces={"piece": piece_type},
+            square=notation,
+        )
 
         self._post_move_checks(player)
+
+    def _action_type_move(self, player: Player, input_value: str, action_id: str) -> None:
+        """Execute a move typed by the player in text notation."""
+        if not isinstance(player, ChessPlayer):
+            return
+        user = self.get_user(player)
+        text = input_value.strip() if input_value else ""
+        if not text:
+            return
+        from_sq, to_sq, promotion = self._parse_move_text(text, player.color)
+        if from_sq is None or to_sq is None:
+            if user:
+                user.speak_l("chess-move-parse-error")
+            return
+        legal, _ = self._is_legal_move(from_sq, to_sq, player.color)
+        if not legal:
+            if user:
+                user.speak_l("chess-illegal-move")
+            return
+        self._execute_move_full(player, from_sq, to_sq)
+        if promotion and self.promotion_pending and player.color == self.current_color:
+            self._action_promote(player, f"promote_{promotion}")
+
+    def _parse_move_text(self, text: str, color: str) -> tuple[int | None, int | None, str]:
+        """Parse typed move text into (from_sq, to_sq, promotion_piece).
+
+        Accepted formats:
+          - o-o / O-O / 0-0            kingside castle
+          - o-o-o / O-O-O / 0-0-0      queenside castle
+          - e2-e4  or  e2e4            coordinate move (hyphen optional)
+          - pe2-e4 / Pe2-E4            piece-prefixed coordinate move (prefix ignored)
+          - e2xe4                      capture notation (x treated like -)
+          - e7-e8=q                    promotion, piece appended after =
+          - e1-g1 / e1-h1             remapped to kingside castle for white (king must be on e1)
+          - e1-c1 / e1-a1             remapped to queenside castle for white (king must be on e1)
+          - e8-g8 / e8-h8             remapped to kingside castle for black (king must be on e8)
+          - e8-c8 / e8-a8             remapped to queenside castle for black (king must be on e8)
+
+        Returns (None, None, "") on parse failure.
+        """
+        s = text.strip().lower().rstrip("+#!")
+
+        rank = 0 if color == "white" else 7
+
+        # Castling symbolic notation
+        if s in ("o-o-o", "0-0-0"):
+            king_sq = rank * 8 + 4
+            return king_sq, rank * 8 + 2, ""
+        if s in ("o-o", "0-0"):
+            king_sq = rank * 8 + 4
+            return king_sq, rank * 8 + 6, ""
+
+        # Strip optional piece prefix (p n b r q k).
+        # Special case: "b" is ambiguous — strip it as a bishop prefix only when
+        # the next character is a file letter (a-h), e.g. "bc1-e3". If the next
+        # character is a digit it is the b-file coordinate, e.g. "b1-c3".
+        if s and s[0] in "pnrqk":
+            s = s[1:]
+        elif len(s) >= 2 and s[0] == "b" and s[1] in "abcdefgh":
+            s = s[1:]
+
+        # Promotion suffix:  ...=q
+        promotion = ""
+        if "=" in s:
+            s, promo_str = s.split("=", 1)
+            piece_map = {"q": "queen", "r": "rook", "b": "bishop", "n": "knight"}
+            promotion = piece_map.get(promo_str.strip()[:1], "")
+
+        # Normalise separator: allow hyphen, x, or nothing
+        # Expect exactly 4 chars after normalisation: e2e4
+        s = s.replace("-", "").replace("x", "")
+
+        if len(s) != 4:
+            return None, None, ""
+
+        from_str = s[0:2]
+        to_str = s[2:4]
+
+        from_sq = notation_to_index(from_str)
+        to_sq = notation_to_index(to_str)
+
+        if from_sq is None or to_sq is None:
+            return None, None, ""
+
+        # Remap castling shorthands where the player typed the rook square
+        # instead of the king's destination.  Only applies when the king is
+        # actually on e1/e8 — if it has moved, treat it as a normal move.
+        # Accepted: e1/e8 -> g (kingside dest), h (kingside rook sq),
+        #           e1/e8 -> c (queenside dest), a (queenside rook sq).
+        # NOT remapped: d-file, so e1-d1 / e1-d2 work as plain king moves.
+        king_file = 4  # e-file
+        if from_sq % 8 == king_file and from_sq // 8 == rank:
+            piece_on_sq = self.board[from_sq]
+            if piece_on_sq and piece_on_sq["piece"] == "king" and piece_on_sq["color"] == color:
+                to_file = to_sq % 8
+                if to_file == 7:  # h-file -> kingside (g-file)
+                    to_sq = rank * 8 + 6
+                elif to_file == 0:  # a-file -> queenside (c-file)
+                    to_sq = rank * 8 + 2
+
+        return from_sq, to_sq, promotion
+
+    def _is_type_move_enabled(self, player: Player) -> str | None:
+        if self.status != "playing":
+            return "action-not-playing"
+        if not isinstance(player, ChessPlayer):
+            return "action-not-available"
+        if player.color != self.current_color:
+            return "action-not-your-turn"
+        if self.game_over or self.promotion_pending:
+            return "action-not-available"
+        return None
 
     def _action_offer_draw(self, player: Player, action_id: str) -> None:
         if not isinstance(player, ChessPlayer):
@@ -1720,10 +1964,21 @@ class ChessGame(Game):
         self.broadcast_personal_l(player, "chess-you-decline-undo", "chess-player-declines-undo")
         self.rebuild_all_menus()
 
-    def _action_resign(self, player: Player, action_id: str) -> None:
+    def _resign_confirm_options(self, player: Player) -> list[str]:
+        locale = self._player_locale(player)
+        return [
+            Localization.get(locale, "chess-resign-yes"),
+            Localization.get(locale, "chess-resign-no"),
+        ]
+
+    def _action_resign(self, player: Player, input_value: str, action_id: str) -> None:
         if not isinstance(player, ChessPlayer):
             return
         if self.game_over:
+            return
+
+        locale = self._player_locale(player)
+        if input_value != Localization.get(locale, "chess-resign-yes"):
             return
 
         opponent_color = "black" if player.color == "white" else "white"
@@ -1733,7 +1988,9 @@ class ChessGame(Game):
         self.game_over = True
         self.winner_color = opponent_color
         self.play_sound("game_chess/resign.ogg")
-        self.broadcast_personal_l(player, "chess-you-resign", "chess-player-resigns", opponent=opponent_name)
+        self.broadcast_personal_l(
+            player, "chess-you-resign", "chess-player-resigns", opponent=opponent_name
+        )
         if opponent:
             self._end_game(opponent)
         else:
@@ -1751,10 +2008,14 @@ class ChessGame(Game):
                 index = rank * 8 + file
                 sq = self.board[index]
                 if sq:
-                    rank_pieces.append(f"{sq['color'][0]}{piece_name(sq['piece'], locale)[0].upper()}")
+                    rank_pieces.append(
+                        f"{sq['color'][0]}{piece_name(sq['piece'], locale)[0].upper()}"
+                    )
                 else:
                     rank_pieces.append(Localization.get(locale, "chess-empty"))
-            line = Localization.get(locale, "chess-board-rank", rank=rank + 1, pieces=", ".join(rank_pieces))
+            line = Localization.get(
+                locale, "chess-board-rank", rank=rank + 1, pieces=", ".join(rank_pieces)
+            )
             lines.append(line)
         self.status_box(player, lines)
 
@@ -1793,7 +2054,9 @@ class ChessGame(Game):
         if not user:
             return
         current_fen = self._get_fen()
-        user.show_editbox("fen_input", Localization.get(user.locale, "chess-enter-fen"), current_fen)
+        user.show_editbox(
+            "fen_input", Localization.get(user.locale, "chess-enter-fen"), current_fen
+        )
         self._pending_actions[player.id] = "import_fen"
 
     def on_editbox_submit(self, player: Player, editbox_id: str, value: str) -> None:
@@ -1868,11 +2131,13 @@ class ChessGame(Game):
             if selected == sq_index:
                 if sq:
                     p_name = piece_name(sq["piece"], locale)
-                    return f"[{notation}: {sq['color']} {p_name}]"
+                    color_name = piece_color_name(sq["piece"], sq["color"], locale)
+                    return f"[{notation}: {color_name} {p_name}]"
 
         if sq:
             p_name = piece_name(sq["piece"], locale)
-            return f"{notation}: {sq['color']} {p_name}"
+            color_name = piece_color_name(sq["piece"], sq["color"], locale)
+            return f"{notation}: {color_name} {p_name}"
         return notation
 
     def _is_promote_enabled(self, player: Player) -> str | None:
@@ -2013,6 +2278,7 @@ class ChessGame(Game):
 
     def build_game_result(self) -> GameResult:
         from datetime import datetime
+
         return GameResult(
             game_type=self.get_type(),
             timestamp=datetime.now().isoformat(),

@@ -17,7 +17,10 @@ from server.game_utils.options import (
     option_field,
     option_group,
 )
-from server.games.base import Player
+from server.game_utils.options import OptionsHandlerMixin
+from server.game_utils.event_handling_mixin import EventHandlingMixin
+from server.games.base import Player, TransientDisplayState
+from server.game_utils.menu_management_mixin import TRANSIENT_DISPLAY_MENU_ID
 from server.messages.localization import Localization
 
 
@@ -25,9 +28,22 @@ class OptionsUser:
     def __init__(self, locale: str = "en"):
         self.locale = locale
         self._last_speak = None
+        self.menus: list[tuple[str, list]] = []
+        self.menu_kwargs: list[dict] = []
+        self.removed_menus: list[str] = []
+        self._current_menus: dict[str, dict] = {}
 
     def speak_l(self, key, **kwargs):
         self._last_speak = (key, kwargs)
+
+    def show_menu(self, menu_id, items, **kwargs):
+        self.menus.append((menu_id, items))
+        self.menu_kwargs.append(kwargs)
+        self._current_menus[menu_id] = {"items": items, **kwargs}
+
+    def remove_menu(self, menu_id):
+        self.removed_menus.append(menu_id)
+        self._current_menus.pop(menu_id, None)
 
 
 class OptionsGame:
@@ -36,6 +52,7 @@ class OptionsGame:
         self.players: list[Player] = []
         self._action_sets: dict[tuple[str, str], ActionSet] = {}
         self._options_path: dict[str, list[str]] = {}
+        self._transient_display_state: dict[str, TransientDisplayState] = {}
 
     def get_user(self, player: Player) -> OptionsUser | None:
         return self._user
@@ -45,6 +62,114 @@ class OptionsGame:
 
     def set_action_set(self, player: Player, action_set: ActionSet) -> None:
         self._action_sets[(player.id, action_set.name)] = action_set
+
+    def _get_transient_display_state(self, player: Player) -> TransientDisplayState | None:
+        return self._transient_display_state.get(player.id)
+
+
+class ReadonlyOptionsGame(OptionsHandlerMixin):
+    def __init__(self, user: OptionsUser, options: GameOptions):
+        self._user = user
+        self.options = options
+        self.players: list[Player] = []
+        self._transient_display_state: dict[str, TransientDisplayState] = {}
+        self.rebuilt_players: list[str] = []
+
+    def get_user(self, player: Player) -> OptionsUser | None:
+        return self._user
+
+    def rebuild_player_menu(self, player: Player) -> None:
+        self.rebuilt_players.append(player.id)
+
+    def _get_transient_display_state(self, player: Player) -> TransientDisplayState | None:
+        return self._transient_display_state.get(player.id)
+
+    def _show_transient_display(
+        self,
+        player: Player,
+        *,
+        kind: str,
+        items: list,
+        multiletter: bool,
+        path: list[str] | None = None,
+        position: int | None = None,
+    ) -> None:
+        existing = self._transient_display_state.get(player.id)
+        self._transient_display_state[player.id] = TransientDisplayState(
+            kind=kind,
+            path=list(path or []),
+            positions=existing.positions if existing else {},
+        )
+        self._user.show_menu(
+            TRANSIENT_DISPLAY_MENU_ID,
+            items,
+            multiletter=multiletter,
+            position=position,
+        )
+
+    def _close_transient_display(
+        self,
+        player: Player,
+        *,
+        speak_key: str | None = None,
+        rebuild_menu: bool = True,
+    ) -> None:
+        self._user.remove_menu(TRANSIENT_DISPLAY_MENU_ID)
+        self._transient_display_state.pop(player.id, None)
+        if rebuild_menu:
+            self.rebuild_player_menu(player)
+
+
+class ViewerRebuildGuardGame(EventHandlingMixin, OptionsHandlerMixin):
+    def __init__(self, user: OptionsUser, options: GameOptions):
+        self._user = user
+        self.options = options
+        self.players: list[Player] = []
+        self._transient_display_state: dict[str, TransientDisplayState] = {}
+        self._pending_actions: dict[str, str] = {}
+        self._actions_menu_open: set[str] = set()
+
+    def get_user(self, player: Player) -> OptionsUser | None:
+        return self._user
+
+    def _get_transient_display_state(self, player: Player) -> TransientDisplayState | None:
+        return self._transient_display_state.get(player.id)
+
+    def _is_transient_display_open(self, player: Player) -> bool:
+        return player.id in self._transient_display_state
+
+    def _show_transient_display(
+        self,
+        player: Player,
+        *,
+        kind: str,
+        items: list,
+        multiletter: bool,
+        path: list[str] | None = None,
+        position: int | None = None,
+    ) -> None:
+        existing = self._transient_display_state.get(player.id)
+        self._transient_display_state[player.id] = TransientDisplayState(
+            kind=kind,
+            path=list(path or []),
+            positions=existing.positions if existing else {},
+        )
+        self._user.show_menu(
+            TRANSIENT_DISPLAY_MENU_ID,
+            items,
+            multiletter=multiletter,
+            position=position,
+        )
+
+    def _close_transient_display(
+        self,
+        player: Player,
+        *,
+        speak_key: str | None = None,
+        rebuild_menu: bool = True,
+    ) -> None:
+        self._user.remove_menu(TRANSIENT_DISPLAY_MENU_ID)
+        self._transient_display_state.pop(player.id, None)
 
 
 @dataclass
@@ -227,15 +352,21 @@ def test_game_options_create_action_set_and_update_labels(monkeypatch):
 class LinkedVisibilityOptions(GameOptions):
     reshuffle_limit: int = option_field(
         IntOption(
-            default=3, min_val=0, max_val=10,
-            label="opt-limit", prompt="opt-limit-prompt",
+            default=3,
+            min_val=0,
+            max_val=10,
+            label="opt-limit",
+            prompt="opt-limit-prompt",
             change_msg="opt-limit-change",
         )
     )
     reshuffle_penalty: int = option_field(
         IntOption(
-            default=1, min_val=0, max_val=5,
-            label="opt-penalty", prompt="opt-penalty-prompt",
+            default=1,
+            min_val=0,
+            max_val=5,
+            label="opt-penalty",
+            prompt="opt-penalty-prompt",
             change_msg="opt-penalty-change",
         ),
         visible_when=("reshuffle_limit", lambda v: v > 0),
@@ -244,6 +375,7 @@ class LinkedVisibilityOptions(GameOptions):
 
 def test_visible_when_condition_true(monkeypatch):
     """Option is included when visible_when condition is true."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -261,6 +393,7 @@ def test_visible_when_condition_true(monkeypatch):
 
 def test_visible_when_condition_false(monkeypatch):
     """Option is excluded when visible_when condition is false."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -279,6 +412,7 @@ def test_visible_when_condition_false(monkeypatch):
 
 def test_visible_when_updates_on_label_refresh(monkeypatch):
     """Visibility changes when referenced option changes and labels update."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -325,24 +459,33 @@ def test_get_visibility_conditions_helper():
 class GroupedOptions(GameOptions):
     rounds: int = option_field(
         IntOption(
-            default=3, min_val=1, max_val=10,
-            label="opt-rounds", prompt="opt-rounds-prompt",
+            default=3,
+            min_val=1,
+            max_val=10,
+            label="opt-rounds",
+            prompt="opt-rounds-prompt",
             change_msg="opt-rounds-change",
         )
     )
     bear_settings: None = option_group(label="opt-bear-settings")
     bear_speed: int = option_field(
         IntOption(
-            default=5, min_val=1, max_val=10,
-            label="opt-bear-speed", prompt="opt-bear-speed-prompt",
+            default=5,
+            min_val=1,
+            max_val=10,
+            label="opt-bear-speed",
+            prompt="opt-bear-speed-prompt",
             change_msg="opt-bear-speed-change",
         ),
         group="bear_settings",
     )
     bear_aggression: int = option_field(
         IntOption(
-            default=3, min_val=1, max_val=10,
-            label="opt-bear-aggr", prompt="opt-bear-aggr-prompt",
+            default=3,
+            min_val=1,
+            max_val=10,
+            label="opt-bear-aggr",
+            prompt="opt-bear-aggr-prompt",
             change_msg="opt-bear-aggr-change",
         ),
         group="bear_settings",
@@ -351,6 +494,7 @@ class GroupedOptions(GameOptions):
 
 def test_option_group_top_level_shows_group_header(monkeypatch):
     """At top level, group header is shown but group children are not."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -372,6 +516,7 @@ def test_option_group_top_level_shows_group_header(monkeypatch):
 
 def test_option_group_navigate_into_group(monkeypatch):
     """Navigating into a group shows its children and a back action."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -397,6 +542,7 @@ def test_option_group_navigate_into_group(monkeypatch):
 
 def test_option_group_back_returns_to_top(monkeypatch):
     """Navigating back from a group shows top-level options again."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -444,8 +590,11 @@ def test_option_group_meta_from_class():
 class NestedGroupOptions(GameOptions):
     top_option: int = option_field(
         IntOption(
-            default=1, min_val=1, max_val=5,
-            label="opt-top", prompt="opt-top-prompt",
+            default=1,
+            min_val=1,
+            max_val=5,
+            label="opt-top",
+            prompt="opt-top-prompt",
             change_msg="opt-top-change",
         )
     )
@@ -453,16 +602,22 @@ class NestedGroupOptions(GameOptions):
     inner_group: None = option_group(label="opt-inner")
     inner_option: int = option_field(
         IntOption(
-            default=2, min_val=1, max_val=10,
-            label="opt-inner-val", prompt="opt-inner-prompt",
+            default=2,
+            min_val=1,
+            max_val=10,
+            label="opt-inner-val",
+            prompt="opt-inner-prompt",
             change_msg="opt-inner-change",
         ),
         group="inner_group",
     )
     outer_option: int = option_field(
         IntOption(
-            default=3, min_val=1, max_val=10,
-            label="opt-outer-val", prompt="opt-outer-prompt",
+            default=3,
+            min_val=1,
+            max_val=10,
+            label="opt-outer-val",
+            prompt="opt-outer-prompt",
             change_msg="opt-outer-change",
         ),
         group="outer_group",
@@ -511,8 +666,11 @@ class MultiSelectOptions(GameOptions):
     )
     other_option: int = option_field(
         IntOption(
-            default=5, min_val=1, max_val=10,
-            label="opt-other", prompt="opt-other-prompt",
+            default=5,
+            min_val=1,
+            max_val=10,
+            label="opt-other",
+            prompt="opt-other-prompt",
             change_msg="opt-other-change",
         )
     )
@@ -534,6 +692,7 @@ def test_multi_select_default_is_independent_copy():
 
 def test_multi_select_top_level_shows_parent_action(monkeypatch):
     """At top level, multi-select shows a parent action with count."""
+
     def fake_get(locale, key, **kwargs):
         if key == "opt-packs":
             return f"Packs ({kwargs.get('count', 0)} selected)"
@@ -555,6 +714,7 @@ def test_multi_select_top_level_shows_parent_action(monkeypatch):
 
 def test_multi_select_navigate_in_shows_toggles(monkeypatch):
     """Navigating into a multi-select shows toggle actions for each choice."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -580,6 +740,7 @@ def test_multi_select_navigate_in_shows_toggles(monkeypatch):
 
 def test_multi_select_toggle_labels_show_on_off(monkeypatch):
     """Toggle labels show on/off state for each choice."""
+
     def fake_get(locale, key, **kwargs):
         return key
 
@@ -626,6 +787,7 @@ def test_multi_select_with_callable_choices():
 
 def test_multi_select_choice_labels(monkeypatch):
     """MultiSelectOption supports localized choice labels."""
+
     def fake_get(locale, key, **kwargs):
         mapping = {"label-std": "Standard Pack", "label-prem": "Premium Pack"}
         return mapping.get(key, key)
@@ -673,15 +835,21 @@ def test_multi_select_max_selected():
 class CombinedOptions(GameOptions):
     limit: int = option_field(
         IntOption(
-            default=3, min_val=0, max_val=10,
-            label="opt-limit", prompt="opt-limit-prompt",
+            default=3,
+            min_val=0,
+            max_val=10,
+            label="opt-limit",
+            prompt="opt-limit-prompt",
             change_msg="opt-limit-change",
         )
     )
     penalty: int = option_field(
         IntOption(
-            default=1, min_val=0, max_val=5,
-            label="opt-penalty", prompt="opt-penalty-prompt",
+            default=1,
+            min_val=0,
+            max_val=5,
+            label="opt-penalty",
+            prompt="opt-penalty-prompt",
             change_msg="opt-penalty-change",
         ),
         visible_when=("limit", lambda v: v > 0),
@@ -746,3 +914,175 @@ def test_combined_visibility_hides_when_condition_false(monkeypatch):
     action_set = options.create_options_action_set(game, player)
     assert action_set.get_action("set_penalty") is None
     assert action_set.get_action("set_limit") is not None
+
+
+def test_game_options_view_top_level_shows_groups_readonly_items_and_back(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    options = GroupedOptions()
+    game = OptionsGame(OptionsUser())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    items = options.build_game_options_view_items(game, player)
+    item_ids = [item.id for item in items]
+
+    assert "readonly_rounds" in item_ids
+    assert "group_bear_settings" in item_ids
+    assert "readonly_bear_speed" not in item_ids
+    assert item_ids[-1] == "transient_display_back"
+
+
+def test_game_options_view_multiselect_submenu_shows_readonly_entries(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    options = MultiSelectOptions()
+    options.packs = ["standard", "premium"]
+    game = OptionsGame(OptionsUser())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+    game._transient_display_state = {
+        player.id: TransientDisplayState(kind="game_options", path=["packs"])
+    }
+
+    items = options.build_game_options_view_items(game, player)
+    item_ids = [item.id for item in items]
+
+    assert "readonly_packs_standard" in item_ids
+    assert "readonly_packs_premium" in item_ids
+    assert "readonly_packs_classic" in item_ids
+    assert item_ids[-1] == "transient_display_back"
+
+
+def test_game_options_view_leaf_selection_is_ignored(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    user = OptionsUser()
+    game = ReadonlyOptionsGame(user, GroupedOptions())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    game._action_check_game_options(player, "check_game_options")
+    assert user.menus[-1][0] == TRANSIENT_DISPLAY_MENU_ID
+
+    game._handle_game_options_display_selection(player, "readonly_rounds")
+
+    assert game._transient_display_state[player.id].path == []
+    assert user.removed_menus == []
+    assert game.rebuilt_players == []
+
+
+def test_game_options_view_uses_non_multiletter_menu(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    user = OptionsUser()
+    game = ReadonlyOptionsGame(user, GroupedOptions())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    game._action_check_game_options(player, "check_game_options")
+
+    assert user.menu_kwargs[-1]["multiletter"] is False
+
+
+def test_game_options_submenu_opens_with_first_item_focused(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    user = OptionsUser()
+    game = ReadonlyOptionsGame(user, GroupedOptions())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    game._action_check_game_options(player, "check_game_options")
+    game._handle_game_options_display_selection(player, "group_bear_settings")
+
+    assert user.menu_kwargs[-1]["position"] == 1
+
+
+def test_game_options_back_restores_previous_focus_position(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    user = OptionsUser()
+    game = ReadonlyOptionsGame(user, GroupedOptions())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    game._action_check_game_options(player, "check_game_options")
+    game._transient_display_state[player.id].positions[()] = 2
+    game._handle_game_options_display_selection(player, "group_bear_settings")
+    game._handle_game_options_display_selection(player, "transient_display_back")
+
+    assert user.menu_kwargs[-1]["position"] == 2
+
+
+def test_game_options_view_back_closes_at_root(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    user = OptionsUser()
+    game = ReadonlyOptionsGame(user, GroupedOptions())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    game._action_check_game_options(player, "check_game_options")
+    game._handle_game_options_display_selection(player, "transient_display_back")
+
+    assert user.removed_menus == [TRANSIENT_DISPLAY_MENU_ID]
+    assert player.id not in game._transient_display_state
+    assert game.rebuilt_players == [player.id]
+
+
+def test_check_game_options_without_options_speaks_message(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    user = OptionsUser()
+    game = ReadonlyOptionsGame(user, GroupedOptions())
+    del game.options
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    game._action_check_game_options(player, "check_game_options")
+
+    assert user._last_speak == ("no-game-options", {})
+
+
+def test_game_options_view_blocks_post_action_rebuilds(monkeypatch):
+    monkeypatch.setattr(
+        "server.game_utils.options.Localization.get",
+        lambda locale, key, **kw: key,
+    )
+
+    user = OptionsUser()
+    game = ViewerRebuildGuardGame(user, GroupedOptions())
+    player = Player(id="p1", name="Alice")
+    game.players = [player]
+
+    assert game._should_rebuild_after_keybind(player, executed_any=True) is True
+
+    game._action_check_game_options(player, "check_game_options")
+
+    assert player.id in game._transient_display_state
+    assert game._should_rebuild_after_keybind(player, executed_any=True) is False

@@ -3,7 +3,11 @@ allow_server_commands = True
 
 
 def convert_to_bool(
-    state: str, initial_value: bool = None, *, allow_no_value: bool = False, no_value_error: str= "The state parameter is required."
+    state: str,
+    initial_value: bool = None,
+    *,
+    allow_no_value: bool = False,
+    no_value_error: str = "The state parameter is required.",
 ) -> bool | str:
     """Convert a string input parameter into a boolean state.
     Supports flipping the existing state, or allowing for returning None type if the existing state is only accessible on the server."""
@@ -43,9 +47,7 @@ def process_command(command: str, args: str):
     func = get_command_func(command)
     if not func:
         if allow_server_commands:
-            client.network.send_packet(
-                {"type": "slash_command", "command": command, "args": args}
-            )
+            client.network.send_packet({"type": "slash_command", "command": command, "args": args})
         else:
             client.speaker.speak(f"Slash command {command} not found.")
         return
@@ -65,14 +67,10 @@ def arg_parser(min_args: int = 0, max_args: int = 0):
         def wrapper(arg_string):
             parts = arg_string.split(" ", max_args - 1) if arg_string else []
             if len(parts) < min_args:
-                client.speaker.speak(
-                    f"{func.__name__} requires at least {min_args} arguments."
-                )
+                client.speaker.speak(f"{func.__name__} requires at least {min_args} arguments.")
                 return
             if len(parts) > max_args:
-                client.speaker.speak(
-                    f"{func.__name__} takes at most {max_args} arguments."
-                )
+                client.speaker.speak(f"{func.__name__} takes at most {max_args} arguments.")
                 return
             return func(*parts)
 
@@ -96,18 +94,14 @@ def inlang(lang: str = ""):
     if not lang:
         lang = client.get_language_name(lang)
         client.speaker.speak(
-            f"Input language is currently {lang} ("
-            + client.get_language_code(lang)
-            + ")."
+            f"Input language is currently {lang} (" + client.get_language_code(lang) + ")."
         )
         return
     lang = client.get_language_name(lang)
     if not lang:
         return
     client.modify_option_value("social/chat_input_language", lang)
-    client.speaker.speak(
-        f"Input language set to {lang} (" + client.get_language_code(lang) + ")."
-    )
+    client.speaker.speak(f"Input language set to {lang} (" + client.get_language_code(lang) + ").")
 
 
 @arg_parser(1, 2)

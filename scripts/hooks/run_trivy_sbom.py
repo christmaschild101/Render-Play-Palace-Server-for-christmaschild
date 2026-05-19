@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate a CycloneDX SBOM via Trivy."""
+
 from __future__ import annotations
 
 import shutil

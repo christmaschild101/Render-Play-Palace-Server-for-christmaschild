@@ -4,7 +4,7 @@ PlayPalace is an accessible online gaming platform. This repository contains bot
 
 ## Contact
 
-If you have questions, want realtime information, or plan to develop for the project, you can join the [Play Palace discord server](https://discord.gg/PBPZegdsTN) here.
+If you have questions, want realtime information, or plan to develop for the project, you can join the [Play Palace discord server](https://discord.gg/e9cSpwJ5mR) here.
 
 This is the primary place for discussion about the project.
 

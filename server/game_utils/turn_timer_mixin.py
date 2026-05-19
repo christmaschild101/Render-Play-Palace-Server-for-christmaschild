@@ -7,16 +7,17 @@ from .poker_timer import PokerTurnTimer
 
 class TurnTimerGameProtocol(Protocol):
     """Protocol for games using TurnTimerMixin."""
+
     timer: PokerTurnTimer
     options: Any  # Must have turn_timer attribute
-    
+
     def play_sound(self, sound: str) -> None: ...
     def _on_turn_timeout(self) -> None: ...
 
 
 class TurnTimerMixin:
     """Mixin for managing turn timers.
-    
+
     Requires the class to have:
     - self.timer: PokerTurnTimer
     - self.options: object with 'turn_timer' attribute (str)
@@ -30,13 +31,13 @@ class TurnTimerMixin:
         """Start the turn timer based on game options."""
         # Reset warning flag
         self._timer_warning_played = False
-        
+
         try:
             # Handle both string "30" and int 30
             seconds = int(self.options.turn_timer)
         except (ValueError, AttributeError):
             seconds = 0
-            
+
         if seconds <= 0:
             self.timer.clear()
             return
@@ -52,7 +53,7 @@ class TurnTimerMixin:
         """Called every tick to update timer and check for timeout."""
         if self.timer.tick():
             self._on_turn_timeout()
-        
+
         self._maybe_play_timer_warning()
 
     def _maybe_play_timer_warning(self) -> None:
@@ -65,7 +66,7 @@ class TurnTimerMixin:
             total_seconds = int(self.options.turn_timer)
         except (ValueError, AttributeError):
             total_seconds = 0
-            
+
         # Don't warn for very short timers or unlimited
         if total_seconds < 20:
             return
@@ -83,14 +84,14 @@ class TurnTimerMixin:
             # Actually, to be safe, I'll defer sound to a helper or just use the one from CrazyEights if available,
             # or maybe "game_pig/turn.ogg" is not right.
             # Let's define a method for the sound name.
-            
+
             self.play_sound(self.timer_warning_sound)
 
     @property
     def timer_warning_sound(self) -> str:
         """
         Get the warning sound file path.
-        
+
         Defaults to the CrazyEights sound for backward compatibility,
         but can be overridden by subclasses.
         """

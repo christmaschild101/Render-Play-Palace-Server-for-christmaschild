@@ -53,7 +53,10 @@ class DummyDB:
         return [SimpleNamespace(username=u, trust_level=TrustLevel.ADMIN) for u in self.users]
 
     def get_non_admin_users(self, exclude_banned=True):
-        return [SimpleNamespace(username=u, trust_level=TrustLevel.USER, approved=True) for u in self.users]
+        return [
+            SimpleNamespace(username=u, trust_level=TrustLevel.USER, approved=True)
+            for u in self.users
+        ]
 
     def update_user_trust_level(self, username, trust_level):
         self.updated.append((username, trust_level))

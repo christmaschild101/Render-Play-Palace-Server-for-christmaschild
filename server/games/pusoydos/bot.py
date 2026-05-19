@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 # Combo generation
 # ---------------------------------------------------------------------------
 
+
 def get_all_valid_combos(hand: list[Card], *, allow_2: bool = True) -> list[Combo]:
     """Generate all valid combos from a hand."""
     combos: list[Combo] = []
@@ -54,6 +55,7 @@ def _combo_strength(combo: Combo) -> tuple[int, int, int]:
 # Strategic helpers
 # ---------------------------------------------------------------------------
 
+
 def _is_two(card: Card) -> bool:
     return card.rank == 2
 
@@ -71,6 +73,7 @@ def _hand_strength(hand: list[Card]) -> float:
 # Bot play logic
 # ---------------------------------------------------------------------------
 
+
 def bot_think(game: "PusoyDosGame", player: "PusoyDosPlayer") -> list[int]:
     """Return card IDs to play, or empty list to pass."""
     hand = sort_cards(player.hand)
@@ -82,15 +85,18 @@ def bot_think(game: "PusoyDosGame", player: "PusoyDosPlayer") -> list[int]:
     has_3c = any(c.rank == 3 and c.suit == 2 for c in hand)
     if is_first_turn and has_3c:
         all_combos = get_all_valid_combos(hand, allow_2=allow_2)
-        valid_starts = [c for c in all_combos
-                        if any(card.rank == 3 and card.suit == 2 for card in c.cards)]
+        valid_starts = [
+            c for c in all_combos if any(card.rank == 3 and card.suit == 2 for card in c.cards)
+        ]
         if valid_starts:
             # Prefer larger combos to clear more cards, but avoid using 2s
-            valid_starts.sort(key=lambda c: (
-                -len(c.cards),
-                _count_twos(c.cards),  # fewer 2s is better
-                _combo_strength(c),
-            ))
+            valid_starts.sort(
+                key=lambda c: (
+                    -len(c.cards),
+                    _count_twos(c.cards),  # fewer 2s is better
+                    _combo_strength(c),
+                )
+            )
             return [c.id for c in valid_starts[0].cards]
 
     all_combos = get_all_valid_combos(hand, allow_2=allow_2)
@@ -100,8 +106,9 @@ def bot_think(game: "PusoyDosGame", player: "PusoyDosPlayer") -> list[int]:
         return _bot_free_play(hand, all_combos)
 
     # Must beat the current combo
-    valid_plays = [c for c in all_combos
-                   if len(c.cards) == len(current_combo.cards) and c.beats(current_combo)]
+    valid_plays = [
+        c for c in all_combos if len(c.cards) == len(current_combo.cards) and c.beats(current_combo)
+    ]
 
     if not valid_plays:
         return []  # Pass
@@ -138,10 +145,12 @@ def _bot_free_play(hand: list[Card], all_combos: list[Combo]) -> list[int]:
     small_combos = [c for c in all_combos if len(c.cards) < 5]
     if small_combos:
         # Sort: prefer combos without 2s, then weakest first
-        small_combos.sort(key=lambda c: (
-            _count_twos(c.cards),
-            _combo_strength(c),
-        ))
+        small_combos.sort(
+            key=lambda c: (
+                _count_twos(c.cards),
+                _combo_strength(c),
+            )
+        )
         return [c.id for c in small_combos[0].cards]
 
     return []
@@ -171,6 +180,7 @@ def _bot_choose_play(hand: list[Card], valid_plays: list[Combo]) -> list[int]:
 # ---------------------------------------------------------------------------
 # Card passing (tribute) logic
 # ---------------------------------------------------------------------------
+
 
 def bot_choose_give_cards(hand: list[Card], count: int) -> list[int]:
     """Choose cards to give back during card passing (winner gives worst cards)."""

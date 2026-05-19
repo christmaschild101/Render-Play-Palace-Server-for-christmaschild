@@ -43,7 +43,8 @@ class CertificatePromptDialog(wx.Dialog):
         sizer.Add(intro, 0, wx.ALL | wx.EXPAND, 12)
 
         warning_text = (
-            "Hostname matches certificate." if self.info.matches_host
+            "Hostname matches certificate."
+            if self.info.matches_host
             else f"Hostname mismatch: expected {self.info.host}."
         )
         warning = wx.StaticText(panel, label=warning_text)

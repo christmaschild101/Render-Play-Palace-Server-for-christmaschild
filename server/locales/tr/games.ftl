@@ -39,7 +39,6 @@ option-on = açık
 option-off = kapalı
 
 # Durum kutusu
-status-box-closed = Durum bilgisi kapatıldı.
 
 # Oyun sonu
 game-leave = Oyundan ayrıl
@@ -64,6 +63,47 @@ game-player-deals = { $player } kartları dağıtıyor.
 # Kart adları
 card-name = { $suit } { $rank }
 no-cards = Kart yok
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = siyah
+color-black-m = siyah
+color-black-f = siyah
+color-blue = mavi
+color-blue-m = mavi
+color-blue-f = mavi
+color-brown = kahverengi
+color-brown-m = kahverengi
+color-brown-f = kahverengi
+color-gray = gri
+color-gray-m = gri
+color-gray-f = gri
+color-green = yeşil
+color-green-m = yeşil
+color-green-f = yeşil
+color-indigo = çivit
+color-indigo-m = çivit
+color-indigo-f = çivit
+color-orange = turuncu
+color-orange-m = turuncu
+color-orange-f = turuncu
+color-pink = pembe
+color-pink-m = pembe
+color-pink-f = pembe
+color-purple = mor
+color-purple-m = mor
+color-purple-f = mor
+color-red = kırmızı
+color-red-m = kırmızı
+color-red-f = kırmızı
+color-violet = menekşe
+color-violet-m = menekşe
+color-violet-f = menekşe
+color-white = beyaz
+color-white-m = beyaz
+color-white-f = beyaz
+color-yellow = sarı
+color-yellow-m = sarı
+color-yellow-f = sarı
 
 # Takım adları
 suit-diamonds = karo

@@ -336,11 +336,7 @@ class TestScopaGameFlow:
 
         # Deck should have been dealt from
         total_cards = 40 * game.options.number_of_decks
-        dealt = (
-            sum(len(p.hand) for p in game.players)
-            + len(game.table_cards)
-            + game.deck.size()
-        )
+        dealt = sum(len(p.hand) for p in game.players) + len(game.table_cards) + game.deck.size()
         assert dealt == total_cards
 
 
@@ -607,7 +603,7 @@ class TestScopaBotAI:
 
         # Scores should be in descending order (1 > 2 > 3 > 4)
         for i in range(len(scores) - 1):
-            assert scores[i] > scores[i + 1], f"Rank {i+1} should score higher than {i+2}"
+            assert scores[i] > scores[i + 1], f"Rank {i + 1} should score higher than {i + 2}"
 
     def test_escoba_empty_table_inverse_mode(self):
         """Test escoba empty table in inverse mode (want opponent to capture)."""

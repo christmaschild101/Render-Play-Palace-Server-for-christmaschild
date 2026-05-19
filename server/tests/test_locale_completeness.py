@@ -58,16 +58,13 @@ def test_all_locales_have_same_files():
         # Also check for extra files (shouldn't happen but good to know)
         if extra_files:
             pytest.fail(
-                f"Locale '{locale}' has extra files not in reference: "
-                f"{sorted(extra_files)}"
+                f"Locale '{locale}' has extra files not in reference: {sorted(extra_files)}"
             )
 
     # If any locales are missing files, fail with detailed message
     if missing_map:
         total_missing = sum(len(files) for files in missing_map.values())
-        error_lines = [
-            f"Found {total_missing} missing file(s) in {len(missing_map)} locale(s):"
-        ]
+        error_lines = [f"Found {total_missing} missing file(s) in {len(missing_map)} locale(s):"]
         for locale in sorted(missing_map.keys()):
             missing_files = missing_map[locale]
             error_lines.append(f"  {locale}: {', '.join(sorted(missing_files))}")
@@ -113,20 +110,15 @@ def test_reference_locale_exists():
 
     reference_path = locales_dir / reference_locale
     assert reference_path.exists(), f"Reference locale '{reference_locale}' not found"
-    assert reference_path.is_dir(), (
-        f"Reference locale '{reference_locale}' is not a directory"
-    )
+    assert reference_path.is_dir(), f"Reference locale '{reference_locale}' is not a directory"
 
     reference_files = get_locale_files(locales_dir, reference_locale)
-    assert len(reference_files) > 0, (
-        f"Reference locale '{reference_locale}' has no .ftl files"
-    )
+    assert len(reference_files) > 0, f"Reference locale '{reference_locale}' has no .ftl files"
 
     # Ensure key system files exist
     required_files = {"main.ftl", "games.ftl", "languages.ftl"}
     assert required_files.issubset(reference_files), (
-        f"Reference locale missing required files: "
-        f"{required_files - reference_files}"
+        f"Reference locale missing required files: {required_files - reference_files}"
     )
 
 
@@ -141,9 +133,36 @@ def test_all_expected_languages_present():
 
     # Expected languages based on current deployment
     expected_languages = {
-        "ar", "cs", "de", "en", "es", "fa", "fr", "hi", "hr", "hu",
-        "id", "it", "ja", "ko", "mn", "nl", "pl", "pt", "ro", "ru",
-        "sk", "sl", "sr", "sv", "th", "tr", "uk", "vi", "zh", "zu",
+        "ar",
+        "cs",
+        "de",
+        "en",
+        "es",
+        "fa",
+        "fr",
+        "hi",
+        "hr",
+        "hu",
+        "id",
+        "it",
+        "ja",
+        "ko",
+        "mn",
+        "nl",
+        "pl",
+        "pt",
+        "ro",
+        "ru",
+        "sk",
+        "sl",
+        "sr",
+        "sv",
+        "th",
+        "tr",
+        "uk",
+        "vi",
+        "zh",
+        "zu",
     }
 
     missing_languages = expected_languages - all_locales

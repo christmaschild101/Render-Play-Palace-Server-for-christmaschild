@@ -28,7 +28,6 @@ def test_localization_missing_directory(tmp_path, capsys):
 
 
 @pytest.mark.asyncio
-
 async def test_tls_certificate_load_failure(tmp_path, capsys):
     server = Server(
         db_path=str(tmp_path / "db.sqlite"),
@@ -43,7 +42,6 @@ async def test_tls_certificate_load_failure(tmp_path, capsys):
 
 
 @pytest.mark.asyncio
-
 async def test_websocket_bind_failure(tmp_path, monkeypatch, capsys):
     config_path = _write_config(tmp_path, allow_insecure=True)
 
@@ -70,7 +68,6 @@ async def test_websocket_bind_failure(tmp_path, monkeypatch, capsys):
 
 
 @pytest.mark.asyncio
-
 async def test_database_connection_failure(tmp_path, capsys):
     config_path = _write_config(tmp_path, allow_insecure=True)
     db_path = tmp_path / "dbdir"
@@ -86,7 +83,6 @@ async def test_database_connection_failure(tmp_path, capsys):
 
 
 @pytest.mark.asyncio
-
 async def test_tick_interval_invalid(tmp_path, capsys):
     config_path = _write_config(tmp_path, allow_insecure=True, tick_interval=0)
     server = Server(
@@ -100,7 +96,6 @@ async def test_tick_interval_invalid(tmp_path, capsys):
 
 
 @pytest.mark.asyncio
-
 async def test_tls_required_without_cert(tmp_path, capsys):
     config_path = _write_config(tmp_path, allow_insecure=False)
     server = Server(
@@ -114,7 +109,6 @@ async def test_tls_required_without_cert(tmp_path, capsys):
 
 
 @pytest.mark.asyncio
-
 async def test_insecure_mode_with_cert_conflict(tmp_path, capsys):
     config_path = _write_config(tmp_path, allow_insecure=True)
     server = Server(

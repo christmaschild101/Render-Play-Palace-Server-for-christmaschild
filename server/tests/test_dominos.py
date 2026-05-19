@@ -132,7 +132,9 @@ def test_round_winner_opening_rule_uses_previous_round_winner() -> None:
 
 
 def test_option_labels_localize_choice_values() -> None:
-    options = DominosOptions(domino_set="double9", opening_rule="set_max_double", spinner_enabled=True)
+    options = DominosOptions(
+        domino_set="double9", opening_rule="set_max_double", spinner_enabled=True
+    )
     summary = options.format_options_summary("en")
 
     # Summary should contain localized labels, not raw field names
@@ -330,7 +332,7 @@ def test_information_actions_use_direct_tts_not_status_box() -> None:
 
     game._action_read_hand(player1, "read_hand")
 
-    assert "status_box" not in user.menus
+    assert "transient_display" not in user.menus
     assert any(message.type == "speak" for message in user.messages)
 
 
@@ -342,7 +344,7 @@ def test_view_chain_uses_status_box() -> None:
 
     game._action_view_chain(player1, "view_chain")
 
-    assert "status_box" in user.menus
+    assert "transient_display" in user.menus
 
 
 def test_read_ends_uses_direct_tts() -> None:
@@ -355,7 +357,7 @@ def test_read_ends_uses_direct_tts() -> None:
 
     game._action_read_ends(player1, "read_ends")
 
-    assert "status_box" not in user.menus
+    assert "transient_display" not in user.menus
     spoken = user.get_last_spoken()
     assert spoken is not None
     assert "3" in spoken
@@ -452,7 +454,9 @@ def test_round_wait_advances_to_next_round_after_five_seconds() -> None:
     game._finish_round_from_empty_hand(player1)
 
     assert game.round_wait_ticks == 100
-    reached = advance_until(game, lambda: game.round == current_round + 1 and game.round_wait_ticks == 0, max_ticks=120)
+    reached = advance_until(
+        game, lambda: game.round == current_round + 1 and game.round_wait_ticks == 0, max_ticks=120
+    )
     assert reached is True
 
 
@@ -488,6 +492,8 @@ def test_bot_turn_uses_advance_until_to_act() -> None:
     bot.bot_pending_action = None
     game._update_all_turn_actions()
 
-    reached = advance_until(game, lambda: game.current_player == human and game.open_ends["right"] == 4)
+    reached = advance_until(
+        game, lambda: game.current_player == human and game.open_ends["right"] == 4
+    )
 
     assert reached is True

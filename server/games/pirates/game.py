@@ -18,6 +18,7 @@ from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.options import GameOptions, FloatOption, MenuOption, option_field
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 from .player import PiratesPlayer
@@ -149,9 +150,7 @@ class PiratesGame(Game):
         if self.charted_tiles:
             self.charted_tiles = {int(k): v for k, v in self.charted_tiles.items()}
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> PiratesPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> PiratesPlayer:
         """Create a new Pirates player."""
         # Skills are initialized in PiratesPlayer.__post_init__
         return PiratesPlayer(id=player_id, name=name, is_bot=is_bot)
@@ -487,7 +486,7 @@ class PiratesGame(Game):
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 0
 
@@ -534,7 +533,7 @@ class PiratesGame(Game):
         self.round += 1
 
         # Check for Golden Moon (every 3rd round)
-        self.golden_moon_active = (self.round % 3 == 0)
+        self.golden_moon_active = self.round % 3 == 0
         if self.golden_moon_active:
             self.play_sound("game_pirates/goldenmoon.ogg")
             self.broadcast_l("pirates-golden-moon")
@@ -554,14 +553,12 @@ class PiratesGame(Game):
         # Play turn sound
         if not player.is_bot:
             user = self.get_user(player)
-            if user and user.preferences.get_effective("play_turn_sound", game_type=self.get_type()):
+            if user and user.preferences.get_effective(
+                "play_turn_sound", game_type=self.get_type()
+            ):
                 user.play_sound("game_pig/turn.ogg")
 
-        self.broadcast_l(
-            "pirates-turn",
-            player=player.name,
-            position=player.position
-        )
+        self.broadcast_l("pirates-turn", player=player.name, position=player.position)
 
     def on_tick(self) -> None:
         """Called every game tick."""
@@ -639,11 +636,7 @@ class PiratesGame(Game):
                 buffer="table",
             )
         self.broadcast_l(
-            "pirates-gem-found",
-            player=player.name,
-            gem=gem_name,
-            value=gem_value,
-            exclude=player
+            "pirates-gem-found", player=player.name, gem=gem_name, value=gem_value, exclude=player
         )
 
         # Give XP for finding gem
@@ -800,7 +793,7 @@ class PiratesGame(Game):
             player=player.name,
             direction=direction,
             position=player.position,
-            exclude=player
+            exclude=player,
         )
 
         self.charted_tiles[player.position] = True
@@ -912,7 +905,11 @@ class PiratesGame(Game):
             return
 
         ocean_index = (player.position - 1) // 10
-        ocean_name = self.selected_oceans[ocean_index] if ocean_index < len(self.selected_oceans) else "Unknown"
+        ocean_name = (
+            self.selected_oceans[ocean_index]
+            if ocean_index < len(self.selected_oceans)
+            else "Unknown"
+        )
 
         user = self.get_user(player)
         if user:
@@ -928,7 +925,7 @@ class PiratesGame(Game):
                 "pirates-moon-brightness",
                 brightness=brightness,
                 collected=self.gems_collected,
-                total=18
+                total=18,
             )
 
     # ==========================================================================
@@ -960,10 +957,12 @@ class PiratesGame(Game):
         target = bot_ai.bot_select_target(self, player, targets)
         if target:
             combat.do_attack(
-                self, player, target,
+                self,
+                player,
+                target,
                 self.golden_moon_active,
                 self.options.combat_xp_multiplier,
-                self.options.gem_stealing
+                self.options.gem_stealing,
             )
             return "end_turn"
 
@@ -977,7 +976,11 @@ class PiratesGame(Game):
             if p.id == player.id:
                 continue
             ocean_num = (p.position - 1) // 10
-            ocean_name = self.selected_oceans[ocean_num] if ocean_num < len(self.selected_oceans) else "Unknown"
+            ocean_name = (
+                self.selected_oceans[ocean_num]
+                if ocean_num < len(self.selected_oceans)
+                else "Unknown"
+            )
             if not any(o[0] == ocean_num for o in occupied_oceans):
                 occupied_oceans.append((ocean_num, ocean_name))
 
@@ -1009,12 +1012,13 @@ class PiratesGame(Game):
         sound_num = random.randint(1, 2)  # nosec B311
         self.play_sound(f"game_pirates/portal{sound_num}.ogg", volume=60)
 
-        ocean_name = self.selected_oceans[chosen_ocean] if chosen_ocean < len(self.selected_oceans) else "Unknown"
+        ocean_name = (
+            self.selected_oceans[chosen_ocean]
+            if chosen_ocean < len(self.selected_oceans)
+            else "Unknown"
+        )
         self.broadcast_l(
-            "pirates-portal-success",
-            player=player.name,
-            ocean=ocean_name,
-            position=new_pos
+            "pirates-portal-success", player=player.name, ocean=ocean_name, position=new_pos
         )
 
         self.charted_tiles[new_pos] = True
@@ -1027,7 +1031,9 @@ class PiratesGame(Game):
         user = self.get_user(player)
         if user:
             user.speak_l("pirates-battleship-activated", buffer="table")
-        self.broadcast_l("pirates-skill-activated", player=player.name, skill="Battleship", exclude=player)
+        self.broadcast_l(
+            "pirates-skill-activated", player=player.name, skill="Battleship", exclude=player
+        )
 
         for shot in range(1, 3):
             targets = self.get_targets_in_range(player)
@@ -1042,10 +1048,12 @@ class PiratesGame(Game):
             target = bot_ai.bot_select_target(self, player, targets)
             if target:
                 combat.do_attack(
-                    self, player, target,
+                    self,
+                    player,
+                    target,
                     self.golden_moon_active,
                     self.options.combat_xp_multiplier,
-                    self.options.gem_stealing
+                    self.options.gem_stealing,
                 )
 
         return "end_turn"

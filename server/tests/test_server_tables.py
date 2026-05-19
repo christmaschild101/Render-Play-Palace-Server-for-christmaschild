@@ -66,21 +66,17 @@ def server(tmp_path):
     return srv
 
 
-
 def test_save_tables_calls_db_and_manager(monkeypatch, server):
     tables_manager = DummyTablesManager()
     tables_manager.saved = [DummyTable("t1", "pig"), DummyTable("t2", "farkle")]
     server._tables = tables_manager
 
     saved_to_db = []
-    server._db = SimpleNamespace(
-        save_all_tables=lambda tables: saved_to_db.extend(tables)
-    )
+    server._db = SimpleNamespace(save_all_tables=lambda tables: saved_to_db.extend(tables))
 
     server._save_tables()
 
     assert saved_to_db == tables_manager.saved
-
 
 
 def test_load_tables_restores_games_and_clears_db(monkeypatch, server):

@@ -14,6 +14,8 @@ dependencies = [
     "sound-lib>=0.2.2",
     "pydantic>=2.0",
     "jsonschema>=4.21",
+    "markdown>=3.5",
+    "nh3>=0.2.15",
 ]
 
 [project.scripts]
@@ -24,3 +26,9 @@ packages = ["."]
 
 [tool.uv.sources]
 sound-lib = { git = "https://github.com/samtupy/sound_lib_macos_fixes.git" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.15.9",
+]

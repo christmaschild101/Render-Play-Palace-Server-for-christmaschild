@@ -35,6 +35,8 @@ whose-turn = Giliran siapa
 whos-at-table = Siapa yang di meja
 check-scores = Periksa skor
 check-scores-detailed = Skor detail
+check-game-options = Periksa opsi permainan
+no-game-options = Tidak ada opsi permainan.
 
 # Turn messages
 game-player-skipped = { $player } dilewati.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] poin
    *[other] poin
 }
-status-box-closed = Ditutup.
 play = Main
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = Akun Anda dibanned dan tidak dapat diakses.
 incorrect-username = Nama pengguna yang Anda masukkan tidak ada.
 incorrect-password = Kata sandi yang Anda masukkan salah.
 already-logged-in = Akun ini sudah login.
+
+# Validasi kredensial
+credential-username-length = Nama pengguna harus antara { $min } dan { $max } karakter.
+credential-password-length = Kata sandi harus antara { $min } dan { $max } karakter.
+
+# Pembatasan kecepatan
+rate-limit-login-ip = Terlalu banyak percobaan masuk dari alamat ini. Harap tunggu dan coba lagi.
+rate-limit-login-user = Terlalu banyak percobaan masuk yang gagal untuk nama pengguna ini. Harap tunggu dan coba lagi.
+rate-limit-registration = Terlalu banyak percobaan pendaftaran dari alamat ini. Harap tunggu dan coba lagi.
+rate-limit-refresh = Terlalu banyak percobaan refresh dari alamat ini. Harap tunggu dan coba lagi.
+
+# Kesalahan sesi dan autentikasi
+account-not-found = Akun tidak ditemukan.
+session-expired = Sesi telah berakhir. Silakan masuk kembali.
+session-token-mismatch = Token sesi tidak cocok dengan nama pengguna.
+refresh-token-expired = Token refresh telah kedaluwarsa. Silakan masuk kembali.
+refresh-token-mismatch = Token refresh tidak cocok dengan nama pengguna.
+
+# Pendaftaran
+registration-success = Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan.
+registration-username-taken = Nama pengguna sudah digunakan. Silakan pilih nama pengguna yang berbeda.
+
+# Nilai preferensi default
+pref-invalid-value = Pilihan tidak valid, menggunakan nilai default.
 
 # Decline reason
 decline-reason-prompt = Masukkan alasan penolakan (atau tekan Escape untuk batal):

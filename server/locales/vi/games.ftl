@@ -39,7 +39,6 @@ option-on = bật
 option-off = tắt
 
 # Hộp trạng thái
-status-box-closed = Đã đóng thông tin trạng thái.
 
 # Kết thúc game
 game-leave = Rời trò chơi
@@ -65,6 +64,47 @@ game-player-deals = { $player } chia bài.
 # Cấu trúc tiếng Việt: [Tên] [Chất] (ví dụ: Át cơ)
 card-name = { $rank } { $suit }
 no-cards = Không có bài
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = đen
+color-black-m = đen
+color-black-f = đen
+color-blue = xanh dương
+color-blue-m = xanh dương
+color-blue-f = xanh dương
+color-brown = nâu
+color-brown-m = nâu
+color-brown-f = nâu
+color-gray = xám
+color-gray-m = xám
+color-gray-f = xám
+color-green = xanh lá
+color-green-m = xanh lá
+color-green-f = xanh lá
+color-indigo = chàm
+color-indigo-m = chàm
+color-indigo-f = chàm
+color-orange = cam
+color-orange-m = cam
+color-orange-f = cam
+color-pink = hồng
+color-pink-m = hồng
+color-pink-f = hồng
+color-purple = tím
+color-purple-m = tím
+color-purple-f = tím
+color-red = đỏ
+color-red-m = đỏ
+color-red-f = đỏ
+color-violet = tím nhạt
+color-violet-m = tím nhạt
+color-violet-f = tím nhạt
+color-white = trắng
+color-white-m = trắng
+color-white-f = trắng
+color-yellow = vàng
+color-yellow-m = vàng
+color-yellow-f = vàng
 
 # Tên chất bài
 suit-diamonds = rô

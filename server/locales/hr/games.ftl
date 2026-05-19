@@ -39,7 +39,6 @@ option-on = uključeno
 option-off = isključeno
 
 # Status box
-status-box-closed = Informacije o statusu zatvorene.
 
 # Game end
 game-leave = Napusti igru
@@ -64,6 +63,47 @@ game-player-deals = { $player } dijeli karte.
 # Card names
 card-name = { $rank } { $suit }
 no-cards = Nema karata
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = crna
+color-black-m = crni
+color-black-f = crna
+color-blue = plava
+color-blue-m = plavi
+color-blue-f = plava
+color-brown = smeđa
+color-brown-m = smeđi
+color-brown-f = smeđa
+color-gray = siva
+color-gray-m = sivi
+color-gray-f = siva
+color-green = zelena
+color-green-m = zeleni
+color-green-f = zelena
+color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
+color-orange = narančasta
+color-orange-m = narančasti
+color-orange-f = narančasta
+color-pink = ružičasta
+color-pink-m = ružičasti
+color-pink-f = ružičasta
+color-purple = ljubičasta
+color-purple-m = ljubičasti
+color-purple-f = ljubičasta
+color-red = crvena
+color-red-m = crveni
+color-red-f = crvena
+color-violet = ljubičasta
+color-violet-m = ljubičasti
+color-violet-f = ljubičasta
+color-white = bijela
+color-white-m = bijeli
+color-white-f = bijela
+color-yellow = žuta
+color-yellow-m = žuti
+color-yellow-f = žuta
 
 # Suit names
 suit-diamonds = karo

@@ -12,14 +12,14 @@ CHECKERS_PER_PLAYER = 15
 # Index 0 = point 1 (Red's perspective). Red's home = points 1-6 (indices 0-5).
 # Standard backgammon: each player has 2 on 24pt, 5 on 13pt, 3 on 8pt, 5 on 6pt.
 INITIAL_BOARD = [0] * 24
-INITIAL_BOARD[23] = 2     # point 24: +2 Red
-INITIAL_BOARD[12] = 5     # point 13: +5 Red
-INITIAL_BOARD[7] = 3      # point 8: +3 Red
-INITIAL_BOARD[5] = 5      # point 6: +5 Red
-INITIAL_BOARD[0] = -2     # point 1: -2 White (White's 24-point)
-INITIAL_BOARD[11] = -5    # point 12: -5 White (White's 13-point)
-INITIAL_BOARD[16] = -3    # point 17: -3 White (White's 8-point)
-INITIAL_BOARD[18] = -5    # point 19: -5 White (White's 6-point)
+INITIAL_BOARD[23] = 2  # point 24: +2 Red
+INITIAL_BOARD[12] = 5  # point 13: +5 Red
+INITIAL_BOARD[7] = 3  # point 8: +3 Red
+INITIAL_BOARD[5] = 5  # point 6: +5 Red
+INITIAL_BOARD[0] = -2  # point 1: -2 White (White's 24-point)
+INITIAL_BOARD[11] = -5  # point 12: -5 White (White's 13-point)
+INITIAL_BOARD[16] = -3  # point 17: -3 White (White's 8-point)
+INITIAL_BOARD[18] = -5  # point 19: -5 White (White's 6-point)
 
 
 @dataclass
@@ -116,10 +116,7 @@ def point_count(state: BackgammonGameState, point_idx: int) -> int:
 
 def remaining_dice(state: BackgammonGameState) -> list[int]:
     """Return list of unused die values."""
-    return [
-        d for d, used in zip(state.dice, state.dice_used)
-        if not used
-    ]
+    return [d for d, used in zip(state.dice, state.dice_used) if not used]
 
 
 def remaining_dice_unique(state: BackgammonGameState) -> list[int]:

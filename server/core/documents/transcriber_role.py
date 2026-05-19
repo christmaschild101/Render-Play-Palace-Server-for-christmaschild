@@ -22,19 +22,48 @@ class TranscriberRoleMixin:
     _db: "Database"
     _user_states: dict[str, dict]
 
+    def _transcriber_admin_denied(self, user: NetworkUser) -> None:
+        """Reject a transcriber-management action for non-admins."""
+        user.speak_l("documents-no-permission")
+        self._show_documents_menu(user)
+
     def _get_transcriber_menu_handlers(
         self, user: "NetworkUser", selection_id: str, state: dict
     ) -> dict[str, tuple]:
         """Return menu dispatch entries for transcriber management."""
         return {
-            "transcribers_for_language_menu": (self._handle_transcribers_for_language_selection, (user, selection_id, state)),
-            "transcriber_remove_confirm": (self._handle_transcriber_remove_confirm, (user, selection_id, state)),
-            "add_transcriber_users_menu": (self._handle_add_transcriber_users_selection, (user, selection_id, state)),
-            "transcribers_by_user_menu": (self._handle_transcribers_by_user_selection, (user, selection_id, state)),
-            "add_transcriber_user_picker_menu": (self._handle_add_transcriber_user_picker_selection, (user, selection_id, state)),
-            "transcriber_user_languages_menu": (self._handle_transcriber_user_languages_selection, (user, selection_id, state)),
-            "transcriber_remove_lang_confirm": (self._handle_transcriber_remove_lang_confirm, (user, selection_id, state)),
-            "transcriber_remove_all_confirm": (self._handle_transcriber_remove_all_confirm, (user, selection_id, state)),
+            "transcribers_for_language_menu": (
+                self._handle_transcribers_for_language_selection,
+                (user, selection_id, state),
+            ),
+            "transcriber_remove_confirm": (
+                self._handle_transcriber_remove_confirm,
+                (user, selection_id, state),
+            ),
+            "add_transcriber_users_menu": (
+                self._handle_add_transcriber_users_selection,
+                (user, selection_id, state),
+            ),
+            "transcribers_by_user_menu": (
+                self._handle_transcribers_by_user_selection,
+                (user, selection_id, state),
+            ),
+            "add_transcriber_user_picker_menu": (
+                self._handle_add_transcriber_user_picker_selection,
+                (user, selection_id, state),
+            ),
+            "transcriber_user_languages_menu": (
+                self._handle_transcriber_user_languages_selection,
+                (user, selection_id, state),
+            ),
+            "transcriber_remove_lang_confirm": (
+                self._handle_transcriber_remove_lang_confirm,
+                (user, selection_id, state),
+            ),
+            "transcriber_remove_all_confirm": (
+                self._handle_transcriber_remove_all_confirm,
+                (user, selection_id, state),
+            ),
         }
 
     # -- Transcriber management menus --
@@ -61,7 +90,8 @@ class TranscriberRoleMixin:
         else:
             # Non-admins only see languages that have at least one transcriber.
             lang_codes = [
-                code for code in Localization.get_available_locale_codes()
+                code
+                for code in Localization.get_available_locale_codes()
                 if lang_counts.get(code, 0) > 0
             ]
             if not lang_codes:
@@ -83,15 +113,11 @@ class TranscriberRoleMixin:
         ):
             self._user_states[user.username] = {"menu": "language_menu"}
 
-    async def _on_transcribers_by_language_select(
-        self, user: NetworkUser, lang_code: str
-    ) -> None:
+    async def _on_transcribers_by_language_select(self, user: NetworkUser, lang_code: str) -> None:
         """Handle language selection in transcribers-by-language view."""
         self._show_transcribers_for_language(user, lang_code)
 
-    def _show_transcribers_for_language(
-        self, user: NetworkUser, lang_code: str
-    ) -> None:
+    def _show_transcribers_for_language(self, user: NetworkUser, lang_code: str) -> None:
         """Show list of transcribers assigned to a language."""
         usernames = self._db.get_transcribers_for_language(lang_code)
         is_admin = user.trust_level.value >= TrustLevel.ADMIN.value
@@ -111,9 +137,7 @@ class TranscriberRoleMixin:
                     id="add_users",
                 )
             )
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "back"), id="back")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "transcribers_for_language_menu",
             items,
@@ -133,6 +157,9 @@ class TranscriberRoleMixin:
         if selection_id == "back":
             self._show_transcribers_by_language(user)
         elif selection_id == "add_users":
+            if user.trust_level.value < TrustLevel.ADMIN.value:
+                self._transcriber_admin_denied(user)
+                return
             self._show_add_transcriber_users(user, lang_code)
         elif selection_id.startswith("user_"):
             target_username = selection_id[5:]
@@ -149,8 +176,10 @@ class TranscriberRoleMixin:
 
         lang_name = Localization.get(user.locale, f"language-{lang_code}")
         question = Localization.get(
-            user.locale, "transcribers-remove-confirm",
-            user=target_username, language=lang_name,
+            user.locale,
+            "transcribers-remove-confirm",
+            user=target_username,
+            language=lang_name,
         )
         show_yes_no_menu(user, "transcriber_remove_confirm", question)
         self._user_states[user.username] = {
@@ -165,17 +194,23 @@ class TranscriberRoleMixin:
         """Handle transcriber removal confirmation."""
         lang_code = state.get("lang_code", "")
         target_username = state.get("target_username", "")
+        if user.trust_level.value < TrustLevel.ADMIN.value:
+            self._transcriber_admin_denied(user)
+            return
         if selection_id == "yes":
             self._db.remove_transcriber_assignment(target_username, lang_code)
             lang_name = Localization.get(user.locale, f"language-{lang_code}")
             user.speak_l(
                 "transcribers-removed",
-                user=target_username, language=lang_name,
+                user=target_username,
+                language=lang_name,
             )
         self._show_transcribers_for_language(user, lang_code)
 
     def _show_add_transcriber_users(
-        self, user: NetworkUser, lang_code: str,
+        self,
+        user: NetworkUser,
+        lang_code: str,
         enabled_users: set[str] | None = None,
         focus_username: str | None = None,
     ) -> None:
@@ -210,12 +245,8 @@ class TranscriberRoleMixin:
             self._show_transcribers_for_language(user, lang_code)
             return
 
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "done"), id="done")
-        )
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "done"), id="done"))
+        items.append(MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel"))
         user.show_menu(
             "add_transcriber_users_menu",
             items,
@@ -235,6 +266,9 @@ class TranscriberRoleMixin:
         """Handle selection in the add-transcriber-users menu."""
         lang_code = state.get("lang_code", "")
         enabled_users: set[str] = state.get("enabled_users", set())
+        if user.trust_level.value < TrustLevel.ADMIN.value:
+            self._transcriber_admin_denied(user)
+            return
         if selection_id == "done":
             if enabled_users:
                 lang_name = Localization.get(user.locale, f"language-{lang_code}")
@@ -243,7 +277,8 @@ class TranscriberRoleMixin:
                 users_str = ", ".join(sorted(enabled_users))
                 user.speak_l(
                     "transcribers-users-added",
-                    users=users_str, language=lang_name,
+                    users=users_str,
+                    language=lang_name,
                 )
             self._show_transcribers_for_language(user, lang_code)
         elif selection_id == "cancel":
@@ -257,7 +292,10 @@ class TranscriberRoleMixin:
                 enabled_users.add(target_username)
                 user.play_sound("checkbox_list_on.wav")
             self._show_add_transcriber_users(
-                user, lang_code, enabled_users, focus_username=target_username,
+                user,
+                lang_code,
+                enabled_users,
+                focus_username=target_username,
             )
 
     # -- Transcribers by user --
@@ -285,9 +323,7 @@ class TranscriberRoleMixin:
                     id="add_user",
                 )
             )
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "back"), id="back")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "transcribers_by_user_menu",
             items,
@@ -303,6 +339,9 @@ class TranscriberRoleMixin:
         if selection_id == "back":
             self._show_documents_menu(user)
         elif selection_id == "add_user":
+            if user.trust_level.value < TrustLevel.ADMIN.value:
+                self._transcriber_admin_denied(user)
+                return
             self._show_add_transcriber_user_picker(user)
         elif selection_id.startswith("user_"):
             target_username = selection_id[5:]
@@ -324,9 +363,7 @@ class TranscriberRoleMixin:
             user.speak_l("transcribers-no-users-to-add")
             self._show_transcribers_by_user(user)
             return
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "back"), id="back")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "add_transcriber_user_picker_menu",
             items,
@@ -341,17 +378,20 @@ class TranscriberRoleMixin:
         self, user: NetworkUser, selection_id: str, state: dict
     ) -> None:
         """Handle selection in the add-transcriber user picker."""
+        if user.trust_level.value < TrustLevel.ADMIN.value:
+            self._transcriber_admin_denied(user)
+            return
         if selection_id == "back":
             self._show_transcribers_by_user(user)
         elif selection_id.startswith("pick_"):
             target_username = selection_id[5:]
             self._show_add_transcriber_languages(
-                user, target_username, from_user_list=True,
+                user,
+                target_username,
+                from_user_list=True,
             )
 
-    def _show_transcriber_user_languages(
-        self, user: NetworkUser, target_username: str
-    ) -> None:
+    def _show_transcriber_user_languages(self, user: NetworkUser, target_username: str) -> None:
         """Show languages assigned to a specific transcriber."""
         lang_codes = self._db.get_transcriber_languages(target_username)
         is_admin = user.trust_level.value >= TrustLevel.ADMIN.value
@@ -378,9 +418,7 @@ class TranscriberRoleMixin:
                     id="remove_transcriber",
                 )
             )
-        items.append(
-            MenuItem(text=Localization.get(user.locale, "back"), id="back")
-        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "transcriber_user_languages_menu",
             items,
@@ -400,8 +438,14 @@ class TranscriberRoleMixin:
         if selection_id == "back":
             self._show_transcribers_by_user(user)
         elif selection_id == "add_languages":
+            if user.trust_level.value < TrustLevel.ADMIN.value:
+                self._transcriber_admin_denied(user)
+                return
             self._show_add_transcriber_languages(user, target_username)
         elif selection_id == "remove_transcriber":
+            if user.trust_level.value < TrustLevel.ADMIN.value:
+                self._transcriber_admin_denied(user)
+                return
             self._show_transcriber_remove_all_confirm(user, target_username)
         elif selection_id.startswith("lang_"):
             lang_code = selection_id[5:]
@@ -418,8 +462,10 @@ class TranscriberRoleMixin:
 
         lang_name = Localization.get(user.locale, f"language-{lang_code}")
         question = Localization.get(
-            user.locale, "transcribers-remove-lang-confirm",
-            user=target_username, language=lang_name,
+            user.locale,
+            "transcribers-remove-lang-confirm",
+            user=target_username,
+            language=lang_name,
         )
         show_yes_no_menu(user, "transcriber_remove_lang_confirm", question)
         self._user_states[user.username] = {
@@ -434,23 +480,26 @@ class TranscriberRoleMixin:
         """Handle language removal confirmation."""
         target_username = state.get("target_username", "")
         lang_code = state.get("lang_code", "")
+        if user.trust_level.value < TrustLevel.ADMIN.value:
+            self._transcriber_admin_denied(user)
+            return
         if selection_id == "yes":
             self._db.remove_transcriber_assignment(target_username, lang_code)
             lang_name = Localization.get(user.locale, f"language-{lang_code}")
             user.speak_l(
                 "transcribers-removed",
-                user=target_username, language=lang_name,
+                user=target_username,
+                language=lang_name,
             )
         self._show_transcriber_user_languages(user, target_username)
 
-    def _show_transcriber_remove_all_confirm(
-        self, user: NetworkUser, target_username: str
-    ) -> None:
+    def _show_transcriber_remove_all_confirm(self, user: NetworkUser, target_username: str) -> None:
         """Ask admin to confirm removing all transcriber assignments from a user."""
         from server.core.ui.common_flows import show_yes_no_menu
 
         question = Localization.get(
-            user.locale, "transcribers-remove-all-confirm",
+            user.locale,
+            "transcribers-remove-all-confirm",
             user=target_username,
         )
         show_yes_no_menu(user, "transcriber_remove_all_confirm", question)
@@ -464,6 +513,9 @@ class TranscriberRoleMixin:
     ) -> None:
         """Handle removal of all transcriber assignments."""
         target_username = state.get("target_username", "")
+        if user.trust_level.value < TrustLevel.ADMIN.value:
+            self._transcriber_admin_denied(user)
+            return
         if selection_id == "yes":
             lang_codes = self._db.get_transcriber_languages(target_username)
             for lang_code in lang_codes:
@@ -472,7 +524,9 @@ class TranscriberRoleMixin:
         self._show_transcribers_by_user(user)
 
     def _show_add_transcriber_languages(
-        self, user: NetworkUser, target_username: str,
+        self,
+        user: NetworkUser,
+        target_username: str,
         from_user_list: bool = False,
     ) -> None:
         """Show language menu filtered to the user's unassigned fluent languages."""
@@ -494,14 +548,12 @@ class TranscriberRoleMixin:
             if selected:
                 for lang_code in selected:
                     self._db.add_transcriber_assignment(target_username, lang_code)
-                lang_names = [
-                    Localization.get(u.locale, f"language-{code}")
-                    for code in selected
-                ]
+                lang_names = [Localization.get(u.locale, f"language-{code}") for code in selected]
                 langs_str = ", ".join(sorted(lang_names))
                 u.speak_l(
                     "transcribers-languages-added",
-                    user=target_username, languages=langs_str,
+                    user=target_username,
+                    languages=langs_str,
                 )
             if from_user_list:
                 self._show_transcribers_by_user(u)

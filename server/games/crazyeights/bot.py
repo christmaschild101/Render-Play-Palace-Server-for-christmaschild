@@ -32,9 +32,7 @@ def _card_priority(game: "CrazyEightsGame", card: Card) -> int:
     return 2
 
 
-def choose_playable_card_id(
-    game: "CrazyEightsGame", player: "CrazyEightsPlayer"
-) -> int | None:
+def choose_playable_card_id(game: "CrazyEightsGame", player: "CrazyEightsPlayer") -> int | None:
     playable = game.get_playable_indices(player)
     if not playable:
         return None

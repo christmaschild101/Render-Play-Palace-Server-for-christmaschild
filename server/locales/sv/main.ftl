@@ -35,6 +35,8 @@ whose-turn = Vems tur
 whos-at-table = Vem är vid bordet
 check-scores = Kontrollera poäng
 check-scores-detailed = Detaljerad poäng
+check-game-options = Kontrollera spelalternativ
+no-game-options = Inga spelalternativ tillgängliga.
 
 # Turn messages
 game-player-skipped = { $player } hoppas över.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] poäng
    *[other] poäng
 }
-status-box-closed = Stängd.
 play = Spela
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = Ditt konto är avstängt och kan inte nås.
 incorrect-username = Användarnamnet du angav finns inte.
 incorrect-password = Lösenordet du angav är felaktigt.
 already-logged-in = Detta konto är redan inloggat.
+
+# Credential validation
+credential-username-length = Användarnamnet måste vara mellan { $min } och { $max } tecken.
+credential-password-length = Lösenordet måste vara mellan { $min } och { $max } tecken.
+
+# Rate limiting
+rate-limit-login-ip = För många inloggningsförsök från den här adressen. Vänta och försök igen.
+rate-limit-login-user = För många misslyckade inloggningsförsök för det här användarnamnet. Vänta och försök igen.
+rate-limit-registration = För många registreringsförsök från den här adressen. Vänta och försök igen.
+rate-limit-refresh = För många uppdateringsförsök från den här adressen. Vänta och försök igen.
+
+# Session/auth errors
+account-not-found = Kontot hittades inte.
+session-expired = Sessionen har gått ut. Logga in igen.
+session-token-mismatch = Sessionstoken matchar inte användarnamnet.
+refresh-token-expired = Uppdateringstoken har gått ut. Logga in igen.
+refresh-token-mismatch = Uppdateringstoken matchar inte användarnamnet.
+
+# Registration
+registration-success = Registreringen lyckades! Ditt konto väntar på godkännande.
+registration-username-taken = Användarnamnet är redan taget. Välj ett annat användarnamn.
+
+# Preference fallback
+pref-invalid-value = Ogiltigt val, använder standard.
 
 # Decline reason
 decline-reason-prompt = Ange en anledning för avslag (eller tryck Escape för att avbryta):

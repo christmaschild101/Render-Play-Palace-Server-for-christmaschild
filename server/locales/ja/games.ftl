@@ -39,7 +39,6 @@ option-on = オン
 option-off = オフ
 
 # ステータスボックス
-status-box-closed = ステータス情報が閉じられました。
 
 # ゲーム終了
 game-leave = ゲームを退出
@@ -64,6 +63,47 @@ game-player-deals = { $player }がカードを配ります。
 # カード名
 card-name = { $suit }の{ $rank }
 no-cards = カードなし
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = 黒
+color-black-m = 黒
+color-black-f = 黒
+color-blue = 青
+color-blue-m = 青
+color-blue-f = 青
+color-brown = 茶色
+color-brown-m = 茶色
+color-brown-f = 茶色
+color-gray = 灰色
+color-gray-m = 灰色
+color-gray-f = 灰色
+color-green = 緑
+color-green-m = 緑
+color-green-f = 緑
+color-indigo = 藍色
+color-indigo-m = 藍色
+color-indigo-f = 藍色
+color-orange = オレンジ
+color-orange-m = オレンジ
+color-orange-f = オレンジ
+color-pink = ピンク
+color-pink-m = ピンク
+color-pink-f = ピンク
+color-purple = 紫
+color-purple-m = 紫
+color-purple-f = 紫
+color-red = 赤
+color-red-m = 赤
+color-red-f = 赤
+color-violet = すみれ色
+color-violet-m = すみれ色
+color-violet-f = すみれ色
+color-white = 白
+color-white-m = 白
+color-white-f = 白
+color-yellow = 黄色
+color-yellow-m = 黄色
+color-yellow-f = 黄色
 
 # スート名
 suit-diamonds = ダイヤ

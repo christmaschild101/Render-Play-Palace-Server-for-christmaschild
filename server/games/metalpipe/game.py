@@ -12,6 +12,7 @@ from datetime import datetime
 from ..base import Game, Player, GameOptions
 from ..registry import register_game
 from ...game_utils.game_result import GameResult, PlayerResult
+from ...game_utils.game_status import GameStatus
 from ...game_utils.options import BoolOption, option_field
 from ...messages.localization import Localization
 
@@ -85,14 +86,12 @@ class MetalPipeGame(Game):
     def get_max_players(cls) -> int:
         return 8
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> MetalPipePlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> MetalPipePlayer:
         return MetalPipePlayer(id=player_id, name=name, is_bot=is_bot)
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
 
         active_players = self.get_active_players()
@@ -120,20 +119,22 @@ class MetalPipeGame(Game):
 
             is_self = bonker_id == bonked_id
 
-            self.schedule_event("bonk", {
-                "bonker_id": bonker_id,
-                "bonked_id": bonked_id,
-                "is_self": is_self,
-            }, delay_ticks=delay)
+            self.schedule_event(
+                "bonk",
+                {
+                    "bonker_id": bonker_id,
+                    "bonked_id": bonked_id,
+                    "is_self": is_self,
+                },
+                delay_ticks=delay,
+            )
 
             alive_ids = [pid for pid in alive_ids if pid != bonked_id]
 
             if single:
                 # Single bonk: bonker wins unless self-bonk
                 if is_self:
-                    winner_names = [
-                        p.name for p in players if p.id != bonker_id
-                    ]
+                    winner_names = [p.name for p in players if p.id != bonker_id]
                 else:
                     bonker = self.get_player_by_id(bonker_id)
                     winner_names = [bonker.name] if bonker else []
@@ -155,9 +156,13 @@ class MetalPipeGame(Game):
                 if len(winner_names) > 1:
                     winner_names = [random.choice(winner_names)]  # nosec B311
 
-        self.schedule_event("winner", {
-            "winner_names": winner_names,
-        }, delay_ticks=delay + 30)
+        self.schedule_event(
+            "winner",
+            {
+                "winner_names": winner_names,
+            },
+            delay_ticks=delay + 30,
+        )
 
     def on_game_event(self, event_type: str, data: dict) -> None:
         """Handle scheduled game events."""
@@ -194,8 +199,7 @@ class MetalPipeGame(Game):
     def build_game_result(self) -> GameResult:
         """Build the game result."""
         all_players = [
-            p for p in self.players
-            if isinstance(p, MetalPipePlayer) and not p.is_spectator
+            p for p in self.players if isinstance(p, MetalPipePlayer) and not p.is_spectator
         ]
 
         return GameResult(
@@ -223,7 +227,6 @@ class MetalPipeGame(Game):
         winner_names = result.custom_data.get("winner_names", [])
         if winner_names:
             return [
-                Localization.get(locale, "metalpipe-winner", player=name)
-                for name in winner_names
+                Localization.get(locale, "metalpipe-winner", player=name) for name in winner_names
             ]
         return []

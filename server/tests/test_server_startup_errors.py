@@ -100,17 +100,29 @@ class DummyTables:
 @pytest.mark.asyncio
 async def test_start_invalid_tick_interval_raises(tmp_path, capsys, monkeypatch):
     cfg = tmp_path / "config.toml"
-    cfg.write_text("tick_interval_ms = \"oops\"")
-    srv = Server(host="127.0.0.1", port=0, db_path=tmp_path / "db.sqlite", config_path=cfg, preload_locales=True)
+    cfg.write_text('tick_interval_ms = "oops"')
+    srv = Server(
+        host="127.0.0.1",
+        port=0,
+        db_path=tmp_path / "db.sqlite",
+        config_path=cfg,
+        preload_locales=True,
+    )
     srv._validate_transport_security = lambda: None  # bypass TLS requirement
     srv._preload_locales = False
     srv._db = DummyDB()
     srv._virtual_bots = DummyBots()
     srv._start_localization_warmup = lambda: None
     srv._lifecycle.resolve_gate = lambda gid: None
-    monkeypatch.setattr("server.core.server.TickScheduler", lambda callback, interval=None: srv._tick_scheduler)
-    monkeypatch.setattr("server.core.server.WebSocketServer", lambda *args, **kwargs: srv._ws_server)
-    monkeypatch.setattr("server.core.server.load_server_config", lambda path: {"tick_interval_ms": "oops"})
+    monkeypatch.setattr(
+        "server.core.server.TickScheduler", lambda callback, interval=None: srv._tick_scheduler
+    )
+    monkeypatch.setattr(
+        "server.core.server.WebSocketServer", lambda *args, **kwargs: srv._ws_server
+    )
+    monkeypatch.setattr(
+        "server.core.server.load_server_config", lambda path: {"tick_interval_ms": "oops"}
+    )
 
     with pytest.raises(SystemExit):
         await srv.start()
@@ -132,8 +144,12 @@ async def test_start_virtual_bot_config_error(tmp_path, capsys, monkeypatch):
     # skip actual WebSocket/Tick setup
     srv._start_localization_warmup = lambda: None
     srv._lifecycle.resolve_gate = lambda gid: None
-    monkeypatch.setattr("server.core.server.TickScheduler", lambda callback, interval=None: srv._tick_scheduler)
-    monkeypatch.setattr("server.core.server.WebSocketServer", lambda *args, **kwargs: srv._ws_server)
+    monkeypatch.setattr(
+        "server.core.server.TickScheduler", lambda callback, interval=None: srv._tick_scheduler
+    )
+    monkeypatch.setattr(
+        "server.core.server.WebSocketServer", lambda *args, **kwargs: srv._ws_server
+    )
     monkeypatch.setattr("server.core.server.load_server_config", lambda path: {})
 
     with pytest.raises(SystemExit):
@@ -176,8 +192,12 @@ async def test_start_with_restored_bots_message(tmp_path, capsys, monkeypatch):
     srv._start_localization_warmup = lambda: None
     srv._lifecycle.resolve_gate = lambda gid: None
     srv._tables = DummyTables()
-    monkeypatch.setattr("server.core.server.TickScheduler", lambda callback, interval=None: srv._tick_scheduler)
-    monkeypatch.setattr("server.core.server.WebSocketServer", lambda *args, **kwargs: srv._ws_server)
+    monkeypatch.setattr(
+        "server.core.server.TickScheduler", lambda callback, interval=None: srv._tick_scheduler
+    )
+    monkeypatch.setattr(
+        "server.core.server.WebSocketServer", lambda *args, **kwargs: srv._ws_server
+    )
     monkeypatch.setattr("server.core.server.load_server_config", lambda path: {})
 
     await srv.start()

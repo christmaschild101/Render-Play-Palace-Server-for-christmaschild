@@ -38,10 +38,7 @@ def test_initial_bank_score_required_for_first_bank_only():
     assert game.current_player == current_before
     assert player1.score == 0
     assert player1.turn_score == 90
-    assert any(
-        "Minimum initial bank score is 100." in msg
-        for msg in user1.get_spoken_messages()
-    )
+    assert any("Minimum initial bank score is 100." in msg for msg in user1.get_spoken_messages())
 
     player1.turn_score = 100
     game.execute_action(player1, "bank")
@@ -190,9 +187,7 @@ def test_bot_avoids_blocked_initial_bank_attempt():
         (1, [5], [1, 1, 2, 3, 4], "score_single_5_5"),
     ],
 )
-def test_bot_lone_five_policy_by_dice_bucket(
-    dice_to_roll, current_roll, banked_dice, expected
-):
+def test_bot_lone_five_policy_by_dice_bucket(dice_to_roll, current_roll, banked_dice, expected):
     game, _, player1 = _setup_game()
 
     player1.score = 0

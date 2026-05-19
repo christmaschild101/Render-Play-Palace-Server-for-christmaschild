@@ -41,16 +41,13 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             else config_manager.get_client_options(server_id)
         )
         self.defaults = config_manager.profiles["client_options_defaults"]
-        self.overrides = config_manager.profiles["servers"][server_id].get(
-            "options_overrides", {}
-        )
+        self.overrides = config_manager.profiles["servers"][server_id].get("options_overrides", {})
 
         # Build games_list from local_table/creation_notifications keys in config
         local_table = self.options.get("local_table", {})
         creation_notifications = local_table.get("creation_notifications", {})
         self.games_list = [
-            {"type": game_type, "name": game_type}
-            for game_type in creation_notifications.keys()
+            {"type": game_type, "name": game_type} for game_type in creation_notifications.keys()
         ]
 
         # Get languages from language_subscriptions keys in config
@@ -69,9 +66,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         if not name:
             name = self.clientoptions["social"]["chat_input_language"]
         try:
-            return tuple(self.lang_codes.keys())[
-                tuple(self.lang_codes.values()).index(name)
-            ]
+            return tuple(self.lang_codes.keys())[tuple(self.lang_codes.values()).index(name)]
         except ValueError:
             return ""
 
@@ -103,16 +98,12 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         self.mode_radio.SetLabel("Profile Selection:")
         self.mode_radio.SetSelection(0)  # Server Profile by default
         self.mode_radio.Bind(wx.EVT_RADIOBOX, self.on_mode_change)
-        main_sizer.Add(
-            self.mode_radio, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10
-        )
+        main_sizer.Add(self.mode_radio, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # Server nickname section
         self.nickname_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.nickname_label = wx.StaticText(panel, label="Server &Nickname:")
-        self.nickname_sizer.Add(
-            self.nickname_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10
-        )
+        self.nickname_sizer.Add(self.nickname_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
 
         server_info = self.config_manager.get_server_by_id(self.server_id)
         current_name = server_info.get("name") or ""
@@ -283,9 +274,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         self.include_lang_filters_table_check.SetValue(
             social.get("include_language_filters_for_table_chat", False)
         )
-        sizer.Add(
-            self.include_lang_filters_table_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10
-        )
+        sizer.Add(self.include_lang_filters_table_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         lang_list = []
         self.displayed_languages = []  # Track languages actually shown in the list
@@ -307,9 +296,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             self.language_choice.SetStringSelection(current_lang)
         else:
             self.language_choice.SetSelection(0)
-        sizer.Add(
-            self.language_choice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10
-        )
+        sizer.Add(self.language_choice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # Language subscriptions
         sub_label = wx.StaticText(panel, label="&Language Channel Subscriptions:")
@@ -355,9 +342,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         self.play_typing_sounds_check = wx.CheckBox(
             panel, label="Play &Typing Sounds While Editing"
         )
-        self.play_typing_sounds_check.SetValue(
-            interface.get("play_typing_sounds", True)
-        )
+        self.play_typing_sounds_check.SetValue(interface.get("play_typing_sounds", True))
         sizer.Add(self.play_typing_sounds_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         panel.SetSizer(sizer)
@@ -371,30 +356,22 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         local_table = self.options.get("local_table", {})
 
         # Start table as publicly visible dropdown
-        visibility_label = wx.StaticText(
-            panel, label="Start table as publicly &visible:"
-        )
+        visibility_label = wx.StaticText(panel, label="Start table as publicly &visible:")
         sizer.Add(visibility_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
         self.public_visibility_choice = wx.Choice(panel, choices=("always", "ask", "never"))
         current_visibility = local_table.get("start_as_visible", "always")
         self.public_visibility_choice.SetStringSelection(current_visibility)
-        sizer.Add(
-            self.public_visibility_choice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10
-        )
+        sizer.Add(self.public_visibility_choice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # Start table with a password dropdown
-        password_prompt_label = wx.StaticText(
-            panel, label="Start table &with a password:"
-        )
+        password_prompt_label = wx.StaticText(panel, label="Start table &with a password:")
         sizer.Add(password_prompt_label, 0, wx.LEFT | wx.RIGHT, 10)
 
         self.password_prompt_choice = wx.Choice(panel, choices=("always", "ask", "never"))
         current_password_prompt = local_table.get("start_with_password", "never")
         self.password_prompt_choice.SetStringSelection(current_password_prompt)
-        sizer.Add(
-            self.password_prompt_choice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10
-        )
+        sizer.Add(self.password_prompt_choice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # Default password text field
         default_password_label = wx.StaticText(panel, label="Default password &text:")
@@ -403,9 +380,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         self.default_password_input = wx.TextCtrl(
             panel, value=local_table.get("default_password_text", "")
         )
-        sizer.Add(
-            self.default_password_input, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10
-        )
+        sizer.Add(self.default_password_input, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # Label
         creation_subscription_label = wx.StaticText(
@@ -466,9 +441,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
 
             # Apply volume changes immediately
             if self.sound_manager:
-                self.sound_manager.set_music_volume(
-                    data_source["audio"]["music_volume"] / 100.0
-                )
+                self.sound_manager.set_music_volume(data_source["audio"]["music_volume"] / 100.0)
                 self.sound_manager.set_ambience_volume(
                     data_source["audio"]["ambience_volume"] / 100.0
                 )
@@ -497,9 +470,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             self.invert_multiline_enter_check.SetValue(
                 interface.get("invert_multiline_enter_behavior", False)
             )
-            self.play_typing_sounds_check.SetValue(
-                interface.get("play_typing_sounds", True)
-            )
+            self.play_typing_sounds_check.SetValue(interface.get("play_typing_sounds", True))
 
         elif current_page == 3:  # Local Table tab
             local_table = data_source.get("local_table", {})
@@ -526,9 +497,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         current_page = self.notebook.GetSelection()
         current_tab_name = self.tab_names[current_page]
 
-        mode_name = (
-            "server profile" if self.profile_mode == "server" else "default profile"
-        )
+        mode_name = "server profile" if self.profile_mode == "server" else "default profile"
         result = wx.MessageBox(
             f"Reset {current_tab_name} settings to last saved {mode_name} values?",
             "Confirm Reset",
@@ -624,9 +593,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             # Save social settings
             mute_global = self.mute_global_check.GetValue()
             mute_table = self.mute_table_check.GetValue()
-            include_lang_filters_table = (
-                self.include_lang_filters_table_check.GetValue()
-            )
+            include_lang_filters_table = self.include_lang_filters_table_check.GetValue()
             input_lang = self.language_choice.GetStringSelection()
 
             self.config_manager.set_client_option(
@@ -687,7 +654,10 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
                 game_type = game_info["type"]  # e.g., "pig", "uno", "milebymile"
                 is_checked = self.creation_subscription_list.IsChecked(i)
                 self.config_manager.set_client_option(
-                    f"local_table/creation_notifications/{game_type}", is_checked, self.server_id, create_mode=True
+                    f"local_table/creation_notifications/{game_type}",
+                    is_checked,
+                    self.server_id,
+                    create_mode=True,
                 )
 
             # Update in-memory options to stay up to date (only for server profile, not default)
@@ -703,9 +673,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             # Save social settings
             mute_global = self.mute_global_check.GetValue()
             mute_table = self.mute_table_check.GetValue()
-            include_lang_filters_table = (
-                self.include_lang_filters_table_check.GetValue()
-            )
+            include_lang_filters_table = self.include_lang_filters_table_check.GetValue()
             input_lang = self.language_choice.GetStringSelection()
 
             # Get language subscriptions
@@ -743,16 +711,16 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             self.config_manager.save_profiles()
 
         # Show success message
-        mode_name = (
-            "Server profile" if self.profile_mode == "server" else "Default profile"
-        )
+        mode_name = "Server profile" if self.profile_mode == "server" else "Default profile"
         wx.MessageBox(
             f"{mode_name} settings saved successfully!",
             "Success",
             wx.OK | wx.ICON_INFORMATION,
         )
 
-    def _apply_audio_defaults(self, music_volume: int | None = None, ambience_volume: int | None = None) -> None:
+    def _apply_audio_defaults(
+        self, music_volume: int | None = None, ambience_volume: int | None = None
+    ) -> None:
         if music_volume is None:
             music_volume = self.music_spin.GetValue()
         if ambience_volume is None:
@@ -790,13 +758,17 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             if "mute_table_chat" in self.defaults["social"]:
                 self.defaults["social"]["mute_table_chat"] = mute_table
             if "include_language_filters_for_table_chat" in self.defaults["social"]:
-                self.defaults["social"]["include_language_filters_for_table_chat"] = include_lang_filters_table
+                self.defaults["social"]["include_language_filters_for_table_chat"] = (
+                    include_lang_filters_table
+                )
             if "chat_input_language" in self.defaults["social"]:
                 self.defaults["social"]["chat_input_language"] = input_lang
             if "language_subscriptions" in self.defaults["social"]:
                 for lang_key in self.defaults["social"]["language_subscriptions"]:
                     if lang_key in lang_subs:
-                        self.defaults["social"]["language_subscriptions"][lang_key] = lang_subs[lang_key]
+                        self.defaults["social"]["language_subscriptions"][lang_key] = lang_subs[
+                            lang_key
+                        ]
 
     def _apply_interface_defaults(
         self,
@@ -809,7 +781,9 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
             play_typing_sounds = self.play_typing_sounds_check.GetValue()
         if "interface" in self.defaults:
             if "invert_multiline_enter_behavior" in self.defaults["interface"]:
-                self.defaults["interface"]["invert_multiline_enter_behavior"] = invert_multiline_enter
+                self.defaults["interface"]["invert_multiline_enter_behavior"] = (
+                    invert_multiline_enter
+                )
             if "play_typing_sounds" in self.defaults["interface"]:
                 self.defaults["interface"]["play_typing_sounds"] = play_typing_sounds
 
@@ -915,12 +889,8 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
 
         # Apply volume changes immediately
         if self.sound_manager:
-            self.sound_manager.set_music_volume(
-                data_source["audio"]["music_volume"] / 100.0
-            )
-            self.sound_manager.set_ambience_volume(
-                data_source["audio"]["ambience_volume"] / 100.0
-            )
+            self.sound_manager.set_music_volume(data_source["audio"]["music_volume"] / 100.0)
+            self.sound_manager.set_ambience_volume(data_source["audio"]["ambience_volume"] / 100.0)
 
         # Repopulate social fields
         social = data_source.get("social", {})
@@ -946,9 +916,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
         self.invert_multiline_enter_check.SetValue(
             interface.get("invert_multiline_enter_behavior", False)
         )
-        self.play_typing_sounds_check.SetValue(
-            interface.get("play_typing_sounds", True)
-        )
+        self.play_typing_sounds_check.SetValue(interface.get("play_typing_sounds", True))
 
         # Repopulate Local Table
         local_table = data_source.get("local_table", {})
@@ -1021,9 +989,7 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
                 )
                 self.config_manager.set_client_option(
                     "social/include_language_filters_for_table_chat",
-                    social_defaults.get(
-                        "include_language_filters_for_table_chat", False
-                    ),
+                    social_defaults.get("include_language_filters_for_table_chat", False),
                     self.server_id,
                     create_mode=True,
                 )
@@ -1071,20 +1037,34 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
                 default_password = local_table_defaults.get("default_password", "")
 
                 self.config_manager.set_client_option(
-                    "local_table/start_as_visible", public_visibility, self.server_id, create_mode=True
+                    "local_table/start_as_visible",
+                    public_visibility,
+                    self.server_id,
+                    create_mode=True,
                 )
                 self.config_manager.set_client_option(
-                    "local_table/start_with_password", password_prompt, self.server_id, create_mode=True
+                    "local_table/start_with_password",
+                    password_prompt,
+                    self.server_id,
+                    create_mode=True,
                 )
                 self.config_manager.set_client_option(
-                    "local_table/default_password", default_password, self.server_id, create_mode=True
+                    "local_table/default_password",
+                    default_password,
+                    self.server_id,
+                    create_mode=True,
                 )
 
-                creation_notifications_defaults = local_table_defaults.get("creation_notifications", {})
+                creation_notifications_defaults = local_table_defaults.get(
+                    "creation_notifications", {}
+                )
 
                 for game_type, enabled in creation_notifications_defaults.items():
                     self.config_manager.set_client_option(
-                        f"local_table/creation_notifications/{game_type}", enabled, self.server_id, create_mode=True
+                        f"local_table/creation_notifications/{game_type}",
+                        enabled,
+                        self.server_id,
+                        create_mode=True,
                     )
 
                 # Update local options cache
@@ -1093,7 +1073,9 @@ class ClientOptionsDialog(wx.Dialog, audio_events.SoundBindingsMixin):
                 self.options["local_table"]["start_as_visible"] = public_visibility
                 self.options["local_table"]["start_with_password"] = password_prompt
                 self.options["local_table"]["default_password"] = default_password
-                self.options["local_table"]["creation_notifications"] = creation_notifications_defaults.copy()
+                self.options["local_table"]["creation_notifications"] = (
+                    creation_notifications_defaults.copy()
+                )
 
             wx.MessageBox(
                 f"{current_tab_name} settings applied to server successfully!",

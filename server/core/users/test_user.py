@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .base import User, MenuItem, EscapeBehavior, generate_uuid
+from .preferences import UserPreferences
 
 
 @dataclass
@@ -22,7 +23,9 @@ class MockUser(User):
     Used in unit tests and play tests to verify game behavior.
     """
 
-    def __init__(self, username: str, locale: str = "en", uuid: str | None = None, approved: bool = True):
+    def __init__(
+        self, username: str, locale: str = "en", uuid: str | None = None, approved: bool = True
+    ):
         """Initialize a mock user for tests."""
         self._uuid = uuid or generate_uuid()
         self._username = username
@@ -31,6 +34,7 @@ class MockUser(User):
         self._connected_at: float = time.time()
         self._client_type: str = ""
         self._platform: str = ""
+        self._preferences: UserPreferences = UserPreferences()
         self.messages: list[Message] = []
         self.menus: dict[str, dict[str, Any]] = {}
         self.editboxes: dict[str, dict[str, Any]] = {}
@@ -54,6 +58,11 @@ class MockUser(User):
     def approved(self) -> bool:
         """Return whether the mock user is approved."""
         return self._approved
+
+    @property
+    def preferences(self) -> UserPreferences:
+        """Return the mock user's preferences."""
+        return self._preferences
 
     @property
     def client_type(self) -> str:
@@ -90,9 +99,7 @@ class MockUser(User):
         """Record a speech event."""
         self.messages.append(Message("speak", {"text": text, "buffer": buffer}))
 
-    def play_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
         """Record a sound playback event."""
         self.messages.append(
             Message(
@@ -181,6 +188,7 @@ class MockUser(User):
         *,
         multiline: bool = False,
         read_only: bool = False,
+        content_format: str = "text",
     ) -> None:
         """Record editbox display state and message."""
         editbox_data = {
@@ -188,11 +196,10 @@ class MockUser(User):
             "default_value": default_value,
             "multiline": multiline,
             "read_only": read_only,
+            "content_format": content_format,
         }
         self.editboxes[input_id] = editbox_data
-        self.messages.append(
-            Message("show_editbox", {"input_id": input_id, **editbox_data})
-        )
+        self.messages.append(Message("show_editbox", {"input_id": input_id, **editbox_data}))
 
     def remove_editbox(self, input_id: str) -> None:
         """Record editbox removal state and message."""

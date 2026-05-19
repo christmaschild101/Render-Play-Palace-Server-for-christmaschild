@@ -162,6 +162,7 @@ from .list_selection import (
 # ACCESSIBILITY HELPERS (Internal)
 # =============================================================================
 
+
 class CheckableWindowProtocol(Protocol):
     """Protocol for windows that support checking/selecting items."""
 
@@ -230,6 +231,7 @@ class CheckableListAccessible(wx.Accessible):
 # MIXINS (Internal Building Blocks)
 # =============================================================================
 
+
 class AccessibleCheckableMixin:
     """
     Mixin that adds accessibility support to wx.CheckListBox controls.
@@ -271,7 +273,10 @@ class AccessibleCheckableMixin:
 # Checkable lists - Legacy (AccessibleCheckListBox)
 # -----------------------------------------------------------------------------
 
-class AccessibleCheckListBox(AccessibleCheckableMixin, ListBoxSelectionManagerMixin, wx.CheckListBox):
+
+class AccessibleCheckListBox(
+    AccessibleCheckableMixin, ListBoxSelectionManagerMixin, wx.CheckListBox
+):
     """
     A wx.CheckListBox with proper accessibility and selection management.
 
@@ -314,10 +319,15 @@ class AccessibleCheckListBox(AccessibleCheckableMixin, ListBoxSelectionManagerMi
         if choices is None:
             choices = []
         super().__init__(
-            parent, id, pos, size, choices, style,
+            parent,
+            id,
+            pos,
+            size,
+            choices,
+            style,
             focus_after_delete=focus_after_delete,
             focus_after_add=focus_after_add,
-            **kwargs
+            **kwargs,
         )
         if name:
             self.SetName(name)
@@ -326,7 +336,9 @@ class AccessibleCheckListBox(AccessibleCheckableMixin, ListBoxSelectionManagerMi
     # Unified API (compatible with AccessibleCheckListCtrl)
     # -------------------------------------------------------------------------
 
-    def AppendColumn(self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT) -> None:
+    def AppendColumn(
+        self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT
+    ) -> None:
         """No-op for single-column CheckListBox (column is implicit)."""
         pass
 
@@ -392,6 +404,7 @@ class AccessibleCheckListBox(AccessibleCheckableMixin, ListBoxSelectionManagerMi
 # -----------------------------------------------------------------------------
 # Checkable lists - Recommended (AccessibleCheckListCtrl)
 # -----------------------------------------------------------------------------
+
 
 def AccessibleCheckListCtrl(
     parent: wx.Window,
@@ -474,17 +487,31 @@ def AccessibleCheckListCtrl(
         packages.AutoSizeColumns()
     """
     if sys.platform == "win32":
-        return _WindowsCheckListCtrl(parent, id, pos, size, focus_after_delete, focus_after_add, name, show_header, **kwargs)
+        return _WindowsCheckListCtrl(
+            parent, id, pos, size, focus_after_delete, focus_after_add, name, show_header, **kwargs
+        )
     elif sys.platform == "darwin" and not multi_column:
         # On macOS, single-column lists use CheckListBox for better VoiceOver support
-        return AccessibleCheckListBox(parent, id, pos, size, focus_after_delete=focus_after_delete, focus_after_add=focus_after_add, name=name, **kwargs)
+        return AccessibleCheckListBox(
+            parent,
+            id,
+            pos,
+            size,
+            focus_after_delete=focus_after_delete,
+            focus_after_add=focus_after_add,
+            name=name,
+            **kwargs,
+        )
     else:
-        return _DataViewCheckListCtrl(parent, id, pos, size, focus_after_delete, focus_after_add, name, show_header, **kwargs)
+        return _DataViewCheckListCtrl(
+            parent, id, pos, size, focus_after_delete, focus_after_add, name, show_header, **kwargs
+        )
 
 
 # =============================================================================
 # INTERNAL PLATFORM-SPECIFIC CLASSES
 # =============================================================================
+
 
 class _WindowsCheckListCtrl(ListCtrlSelectionManagerMixin, wx.ListView):
     """
@@ -531,7 +558,9 @@ class _WindowsCheckListCtrl(ListCtrlSelectionManagerMixin, wx.ListView):
         evt.Skip()
         notify_state_change(self.Handle, evt.GetIndex())
 
-    def AppendColumn(self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT) -> None:
+    def AppendColumn(
+        self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT
+    ) -> None:
         """Add a column to the list."""
         if isinstance(width, ColumnWidth):
             if width == ColumnWidth.AUTO_CONTENT:
@@ -552,7 +581,11 @@ class _WindowsCheckListCtrl(ListCtrlSelectionManagerMixin, wx.ListView):
     def AutoSizeColumns(self, use_header: bool = False) -> None:
         """Resize all columns to fit their content."""
         for col in range(self._column_count):
-            original_width = self._column_widths[col] if col < len(self._column_widths) else ColumnWidth.AUTO_CONTENT
+            original_width = (
+                self._column_widths[col]
+                if col < len(self._column_widths)
+                else ColumnWidth.AUTO_CONTENT
+            )
 
             if isinstance(original_width, ColumnWidth) and original_width == ColumnWidth.FILL:
                 total_width = self.GetClientSize().width
@@ -682,7 +715,9 @@ class _DataViewCheckListCtrl(dv.DataViewListCtrl):
         if self.GetItemCount() > 0 and self.GetSelection() == -1:
             self.SetSelection(0)
 
-    def AppendColumn(self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT) -> None:
+    def AppendColumn(
+        self, heading: str, width: int | ColumnWidth = ColumnWidth.AUTO_CONTENT
+    ) -> None:
         """Add a column to the list."""
         if isinstance(width, ColumnWidth):
             if width in (ColumnWidth.AUTO_CONTENT, ColumnWidth.AUTO_HEADER):
@@ -710,12 +745,17 @@ class _DataViewCheckListCtrl(dv.DataViewListCtrl):
             if column is None:
                 continue
 
-            original_width = self._column_widths[col_idx] if col_idx < len(self._column_widths) else ColumnWidth.AUTO_CONTENT
+            original_width = (
+                self._column_widths[col_idx]
+                if col_idx < len(self._column_widths)
+                else ColumnWidth.AUTO_CONTENT
+            )
 
             if isinstance(original_width, ColumnWidth) and original_width == ColumnWidth.FILL:
                 total_width = self.GetClientSize().width
                 other_cols_width = sum(
-                    self.GetColumn(c).GetWidth() for c in range(self._column_count)
+                    self.GetColumn(c).GetWidth()
+                    for c in range(self._column_count)
                     if c != col_idx and self.GetColumn(c) is not None
                 )
                 fill_width = max(50, total_width - other_cols_width)
@@ -836,7 +876,6 @@ __all__ = [
     "CheckableListAccessible",
     "CheckableWindowProtocol",
     "AccessibleCheckableMixin",
-
     # Ready-to-use controls
     "AccessibleCheckListBox",
     "AccessibleCheckListCtrl",

@@ -59,18 +59,14 @@ class LevelingSystem(DataClassJSONMixin):
     def get_unlocked_skills(self) -> list["Skill"]:
         """Get list of skills unlocked at or below current level."""
         from .skills import ALL_SKILLS
-        return [
-            skill for skill in ALL_SKILLS
-            if skill.required_level <= self.level
-        ]
+
+        return [skill for skill in ALL_SKILLS if skill.required_level <= self.level]
 
     def get_locked_skills(self) -> list["Skill"]:
         """Get list of skills not yet unlocked."""
         from .skills import ALL_SKILLS
-        return [
-            skill for skill in ALL_SKILLS
-            if skill.required_level > self.level
-        ]
+
+        return [skill for skill in ALL_SKILLS if skill.required_level > self.level]
 
     def get_next_skill_unlock(self) -> tuple[int, "Skill"] | None:
         """Get the next skill unlock (level, skill) or None if all unlocked."""
@@ -85,10 +81,8 @@ class LevelingSystem(DataClassJSONMixin):
     def get_skills_at_level(self, level: int) -> list["Skill"]:
         """Get skills that unlock exactly at the given level."""
         from .skills import ALL_SKILLS
-        return [
-            skill for skill in ALL_SKILLS
-            if skill.required_level == level
-        ]
+
+        return [skill for skill in ALL_SKILLS if skill.required_level == level]
 
     def give_xp(
         self,
@@ -96,7 +90,7 @@ class LevelingSystem(DataClassJSONMixin):
         player_name: str,
         base_xp: int,
         golden_moon_multiplier: float = 1.0,
-        global_multiplier: float = 1.0
+        global_multiplier: float = 1.0,
     ) -> list["Skill"]:
         """
         Give XP to this leveling system and process level ups.
@@ -144,10 +138,7 @@ class LevelingSystem(DataClassJSONMixin):
                 if user:
                     user.speak_l("pirates-level-up-you", level=self.level, buffer="table")
                 game.broadcast_l(
-                    "pirates-level-up",
-                    player=player_name,
-                    level=self.level,
-                    exclude=player
+                    "pirates-level-up", player=player_name, level=self.level, exclude=player
                 )
             else:
                 if user:
@@ -162,7 +153,7 @@ class LevelingSystem(DataClassJSONMixin):
                     player=player_name,
                     levels=levels_gained,
                     level=self.level,
-                    exclude=player
+                    exclude=player,
                 )
 
             # Announce unlocked skills in a single message
@@ -178,7 +169,7 @@ class LevelingSystem(DataClassJSONMixin):
                     "pirates-skills-unlocked",
                     player=player_name,
                     skills=skill_names,
-                    exclude=player
+                    exclude=player,
                 )
 
         return skills_unlocked

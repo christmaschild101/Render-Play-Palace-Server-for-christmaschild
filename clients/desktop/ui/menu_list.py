@@ -168,9 +168,7 @@ class MenuList(wx.ListBox):
 
         # Let plain Enter pass through (no modifiers)
         is_enter = (
-            key_code == wx.WXK_RETURN
-            or key_code == wx.WXK_NUMPAD_ENTER
-            or key_code == 13
+            key_code == wx.WXK_RETURN or key_code == wx.WXK_NUMPAD_ENTER or key_code == 13
         )  # 13 is carriage return
 
         if is_enter and not event.ControlDown() and not event.ShiftDown() and not event.AltDown():

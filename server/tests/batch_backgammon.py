@@ -19,13 +19,20 @@ def run_one_game(difficulty: str, game_id: int) -> dict:
     """Run a single backgammon simulation and return the result."""
     result = subprocess.run(
         [
-            sys.executable, str(CLI),
-            "simulate", "backgammon",
-            "--bots", "2",
-            "-o", f"bot_difficulty={difficulty}",
-            "--json", "--quiet",
+            sys.executable,
+            str(CLI),
+            "simulate",
+            "backgammon",
+            "--bots",
+            "2",
+            "-o",
+            f"bot_difficulty={difficulty}",
+            "--json",
+            "--quiet",
         ],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True,
+        text=True,
+        timeout=300,
         cwd=str(SERVER_DIR),
     )
     if result.returncode != 0:
@@ -33,7 +40,7 @@ def run_one_game(difficulty: str, game_id: int) -> dict:
         stderr = result.stderr.strip()
         # Get the last traceback if present
         if "Traceback" in stderr:
-            stderr = stderr[stderr.rfind("Traceback"):]
+            stderr = stderr[stderr.rfind("Traceback") :]
         return {"difficulty": difficulty, "id": game_id, "error": stderr}
 
     data = json.loads(result.stdout)
@@ -77,10 +84,7 @@ def main():
     total = len(all_tasks)
 
     with ProcessPoolExecutor(max_workers=WORKERS) as pool:
-        futures = {
-            pool.submit(run_one_game, diff, gid): (diff, gid)
-            for diff, gid in all_tasks
-        }
+        futures = {pool.submit(run_one_game, diff, gid): (diff, gid) for diff, gid in all_tasks}
         for future in as_completed(futures):
             completed += 1
             try:
@@ -109,8 +113,16 @@ def main():
 
         print(f"\n  Difficulty: {diff}")
         print(f"  Games: {total_games} (errors: {len(errors)}, timeouts: {len(timeouts)})")
-        print(f"  Red wins:   {red_wins:4d}  ({red_wins/total_games*100:5.1f}%)" if total_games else "  Red wins: 0")
-        print(f"  White wins: {white_wins:4d}  ({white_wins/total_games*100:5.1f}%)" if total_games else "  White wins: 0")
+        print(
+            f"  Red wins:   {red_wins:4d}  ({red_wins / total_games * 100:5.1f}%)"
+            if total_games
+            else "  Red wins: 0"
+        )
+        print(
+            f"  White wins: {white_wins:4d}  ({white_wins / total_games * 100:5.1f}%)"
+            if total_games
+            else "  White wins: 0"
+        )
         print(f"  Avg ticks: {avg_ticks:.0f}")
 
         if total_games:

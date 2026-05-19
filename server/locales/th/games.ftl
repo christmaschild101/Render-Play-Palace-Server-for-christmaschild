@@ -39,7 +39,6 @@ option-on = เปิด
 option-off = ปิด
 
 # Status box
-status-box-closed = ปิดข้อมูลสถานะแล้ว
 
 # Game end
 game-leave = ออกจากเกม
@@ -64,6 +63,47 @@ game-player-deals = { $player } แจกไพ่
 # Card names
 card-name = { $rank } ของ { $suit }
 no-cards = ไม่มีไพ่
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = ดำ
+color-black-m = ดำ
+color-black-f = ดำ
+color-blue = น้ำเงิน
+color-blue-m = น้ำเงิน
+color-blue-f = น้ำเงิน
+color-brown = น้ำตาล
+color-brown-m = น้ำตาล
+color-brown-f = น้ำตาล
+color-gray = เทา
+color-gray-m = เทา
+color-gray-f = เทา
+color-green = เขียว
+color-green-m = เขียว
+color-green-f = เขียว
+color-indigo = คราม
+color-indigo-m = คราม
+color-indigo-f = คราม
+color-orange = ส้ม
+color-orange-m = ส้ม
+color-orange-f = ส้ม
+color-pink = ชมพู
+color-pink-m = ชมพู
+color-pink-f = ชมพู
+color-purple = ม่วง
+color-purple-m = ม่วง
+color-purple-f = ม่วง
+color-red = แดง
+color-red-m = แดง
+color-red-f = แดง
+color-violet = ม่วงอ่อน
+color-violet-m = ม่วงอ่อน
+color-violet-f = ม่วงอ่อน
+color-white = ขาว
+color-white-m = ขาว
+color-white-f = ขาว
+color-yellow = เหลือง
+color-yellow-m = เหลือง
+color-yellow-f = เหลือง
 
 # Suit names
 suit-diamonds = ข้าวหลามตัด

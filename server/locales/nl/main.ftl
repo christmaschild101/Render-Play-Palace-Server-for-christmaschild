@@ -35,6 +35,8 @@ whose-turn = Wie is aan de beurt
 whos-at-table = Wie is er aan tafel
 check-scores = Bekijk scores
 check-scores-detailed = Gedetailleerde scores
+check-game-options = Spelopties bekijken
+no-game-options = Geen spelopties beschikbaar.
 
 # Turn messages
 game-player-skipped = { $player } wordt overgeslagen.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] punt
    *[other] punten
 }
-status-box-closed = Gesloten.
 play = Speel
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = Je account is verbannen en kan niet worden geopend.
 incorrect-username = De gebruikersnaam die je invoerde bestaat niet.
 incorrect-password = Het wachtwoord dat je invoerde is onjuist.
 already-logged-in = Dit account is al ingelogd.
+
+# Validatie van inloggegevens
+credential-username-length = Gebruikersnaam moet tussen { $min } en { $max } tekens zijn.
+credential-password-length = Wachtwoord moet tussen { $min } en { $max } tekens zijn.
+
+# Snelheidsbeperking
+rate-limit-login-ip = Te veel inlogpogingen van dit adres. Wacht even en probeer het opnieuw.
+rate-limit-login-user = Te veel mislukte inlogpogingen voor deze gebruikersnaam. Wacht even en probeer het opnieuw.
+rate-limit-registration = Te veel registratiepogingen van dit adres. Wacht even en probeer het opnieuw.
+rate-limit-refresh = Te veel vernieuwingspogingen van dit adres. Wacht even en probeer het opnieuw.
+
+# Sessie- en authenticatiefouten
+account-not-found = Account niet gevonden.
+session-expired = Sessie verlopen. Log opnieuw in.
+session-token-mismatch = Sessietoken komt niet overeen met de gebruikersnaam.
+refresh-token-expired = Vernieuwingstoken verlopen. Log opnieuw in.
+refresh-token-mismatch = Vernieuwingstoken komt niet overeen met de gebruikersnaam.
+
+# Registratie
+registration-success = Registratie geslaagd! Je account wacht op goedkeuring.
+registration-username-taken = Gebruikersnaam al in gebruik. Kies een andere gebruikersnaam.
+
+# Voorkeur standaardwaarde
+pref-invalid-value = Ongeldige selectie, standaardwaarde wordt gebruikt.
 
 # Decline reason
 decline-reason-prompt = Voer een reden in om af te wijzen (of druk op Escape om te annuleren):

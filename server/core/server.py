@@ -19,14 +19,16 @@ import websockets
 from enum import Enum
 from typing import Any
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python <3.11 fallback when available
-    import tomli as tomllib  # type: ignore[import]
+import tomllib
 
 from pydantic import ValidationError
 
-from .config_paths import get_default_config_path, get_example_config_path, ensure_default_config_dir
+from .config_paths import (
+    get_default_config_path,
+    get_example_config_path,
+    ensure_default_config_dir,
+    load_full_config,
+)
 from .state import ModeSnapshot, ServerLifecycleState, ServerMode
 from .tick import TickScheduler, load_server_config
 from .administration import AdministrationMixin
@@ -93,6 +95,7 @@ def _coerce_bool(value: Any, default: bool) -> bool:
         return bool(value)
     return default
 
+
 # Default paths based on module location
 _MODULE_DIR = Path(__file__).parent.parent
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -149,26 +152,22 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             db_path_obj = Path(db_path)
             db_path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-        # Initialize components
         self._db = Database(db_path_obj)
         self._auth: AuthManager | None = None
         self._tables = TableManager()
-        self._tables._server = self  # Enable callbacks from TableManager
+        self._tables._server = self
         self._ws_server: WebSocketServer | None = None
         self._tick_scheduler: TickScheduler | None = None
 
-        # User tracking
-        self._users: dict[str, NetworkUser] = {}  # username -> NetworkUser
-        self._user_states: dict[str, dict] = {}  # username -> UI state
+        self._users: dict[str, NetworkUser] = {}
+        self._user_states: dict[str, dict] = {}
 
-        # Document manager
+        self._contribution_mode = "auto_commit"
         self._documents = DocumentManager(_DOCUMENTS_DIR)
 
-        # Virtual bot manager
         self._virtual_bots = VirtualBotManager(self)
         self._localization_warmup_task: asyncio.Task | None = None
 
-        # Credential limits (overridable via config)
         self._username_min_length = DEFAULT_USERNAME_MIN_LENGTH
         self._username_max_length = DEFAULT_USERNAME_MAX_LENGTH
         self._password_min_length = DEFAULT_PASSWORD_MIN_LENGTH
@@ -176,6 +175,8 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         self._ws_max_message_size = DEFAULT_WS_MAX_MESSAGE_BYTES
         self._config_path = Path(config_path) if config_path else get_default_config_path()
         self._allow_insecure_ws = False
+        self._block_new_accounts = False
+        self._auto_approve_new_accounts = False
         self._preload_locales = preload_locales
         self._login_ip_limit = DEFAULT_LOGIN_ATTEMPTS_PER_MINUTE
         self._login_user_limit = DEFAULT_LOGIN_FAILURES_PER_MINUTE
@@ -274,9 +275,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         )
         await self._ws_server.start()
         if not self._ssl_cert:
-            print(
-                "WARNING: Running without TLS (ws://). Credentials will be sent in plaintext."
-            )
+            print("WARNING: Running without TLS (ws://). Credentials will be sent in plaintext.")
         if self._ws_max_message_size != DEFAULT_WS_MAX_MESSAGE_BYTES:
             print(f"Max inbound websocket message size: {self._ws_max_message_size} bytes")
 
@@ -289,14 +288,10 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         print(f"Server running on {protocol}://{self.host}:{self.port}")
         if self.host == "127.0.0.1":
             # Guidance message only; not a bind default.
-            print(
-                "Bind IP is 127.0.0.1, use 0.0.0.0 to allow connections on all interfaces."
-            )  # nosec B104
+            print("Bind IP is 127.0.0.1, use 0.0.0.0 to allow connections on all interfaces.")  # nosec B104
         elif self.host == "0.0.0.0":  # nosec B104
             # Guidance message only; not a bind default.
-            print(
-                "Bind IP is 0.0.0.0, use 127.0.0.1 to limit to local connections."
-            )  # nosec B104
+            print("Bind IP is 0.0.0.0, use 127.0.0.1 to limit to local connections.")  # nosec B104
         self._start_localization_warmup()
         self._lifecycle.resolve_gate(STARTUP_GATE_ID)
 
@@ -331,15 +326,8 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
     def _load_config_settings(self) -> None:
         """Load credential and network limits from config.toml if available."""
-        path_obj = Path(self._config_path) if self._config_path is not None else None
-        if path_obj is None or not path_obj.exists():
-            return
-
-        try:
-            with open(path_obj, "rb") as f:
-                config: dict[str, Any] = tomllib.load(f)
-        except (OSError, tomllib.TOMLDecodeError) as exc:  # pragma: no cover - logging only
-            print(f"Failed to load config from {path_obj}: {exc}")
+        config = load_full_config(self._config_path)
+        if not config:
             return
 
         auth_cfg = config.get("auth")
@@ -363,17 +351,37 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             try:
                 value_int = int(value)
             except (TypeError, ValueError):
+                LOG.warning(
+                    "Invalid config value for '%s': %r, using default %d",
+                    key, value, current,
+                )
                 return current
             return max(minimum, value_int)
 
         if auth_cfg:
-            self._username_min_length = _read_limit(auth_cfg, "username_min_length", self._username_min_length)
-            self._username_max_length = _read_limit(
-                auth_cfg, "username_max_length", self._username_max_length, self._username_min_length
+            self._auto_approve_new_accounts = _coerce_bool(
+                auth_cfg.get("auto_approve_new_accounts"), self._auto_approve_new_accounts
             )
-            self._password_min_length = _read_limit(auth_cfg, "password_min_length", self._password_min_length)
+            self._block_new_accounts = _coerce_bool(
+                auth_cfg.get("block_new_accounts"), self._block_new_accounts
+            )
+            self._username_min_length = _read_limit(
+                auth_cfg, "username_min_length", self._username_min_length
+            )
+            self._username_max_length = _read_limit(
+                auth_cfg,
+                "username_max_length",
+                self._username_max_length,
+                self._username_min_length,
+            )
+            self._password_min_length = _read_limit(
+                auth_cfg, "password_min_length", self._password_min_length
+            )
             self._password_max_length = _read_limit(
-                auth_cfg, "password_max_length", self._password_max_length, self._password_min_length
+                auth_cfg,
+                "password_max_length",
+                self._password_max_length,
+                self._password_min_length,
             )
             self._refresh_token_ttl_seconds = _read_limit(
                 auth_cfg, "refresh_token_ttl_seconds", self._refresh_token_ttl_seconds, minimum=60
@@ -387,7 +395,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         net_cfg = config.get("network")
         if isinstance(net_cfg, dict):
-            max_bytes = _read_limit(net_cfg, "max_message_bytes", self._ws_max_message_size, minimum=1)
+            max_bytes = _read_limit(
+                net_cfg, "max_message_bytes", self._ws_max_message_size, minimum=1
+            )
             self._ws_max_message_size = max_bytes
             self._allow_insecure_ws = _coerce_bool(
                 net_cfg.get("allow_insecure_ws"), self._allow_insecure_ws
@@ -395,7 +405,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         rate_cfg = auth_cfg.get("rate_limits") if isinstance(auth_cfg, dict) else None
         if isinstance(rate_cfg, dict):
-            self._login_ip_limit = _read_limit(rate_cfg, "login_per_minute", self._login_ip_limit, minimum=0)
+            self._login_ip_limit = _read_limit(
+                rate_cfg, "login_per_minute", self._login_ip_limit, minimum=0
+            )
             self._login_user_limit = _read_limit(
                 rate_cfg, "login_failures_per_minute", self._login_user_limit, minimum=0
             )
@@ -418,6 +430,14 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 rate_cfg, "refresh_window_seconds", self._refresh_ip_window, minimum=1
             )
 
+        docs_cfg = config.get("documents")
+        if isinstance(docs_cfg, dict):
+            mode = docs_cfg.get("contribution_mode")
+            if isinstance(mode, str) and mode.strip().lower() in (
+                "manual", "auto_commit", "auto_pr",
+            ):
+                self._contribution_mode = mode.strip().lower()
+        self._documents.contribution_mode = self._contribution_mode
 
     def _validate_transport_security(self) -> None:
         """Validate TLS/insecure configuration and exit on invalid combos."""
@@ -451,18 +471,34 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         password = password or ""
         return username, password
 
-    def _validate_credentials(self, username: str, password: str) -> tuple[str, str, str | None]:
-        """Validate username/password lengths and return an error message if invalid."""
+    def _validate_credentials(
+        self, username: str, password: str, *, locale: str
+    ) -> tuple[str, str, str | None]:
+        """Validate username/password lengths and return a localized error message if invalid."""
         username, password = self._sanitize_credentials(username, password)
 
         if len(username) < self._username_min_length or len(username) > self._username_max_length:
-            return username, password, (
-                f"Username must be between {self._username_min_length} and {self._username_max_length} characters."
+            return (
+                username,
+                password,
+                Localization.get(
+                    locale,
+                    "credential-username-length",
+                    min=self._username_min_length,
+                    max=self._username_max_length,
+                ),
             )
 
         if len(password) < self._password_min_length or len(password) > self._password_max_length:
-            return username, password, (
-                f"Password must be between {self._password_min_length} and {self._password_max_length} characters."
+            return (
+                username,
+                password,
+                Localization.get(
+                    locale,
+                    "credential-password-length",
+                    min=self._password_min_length,
+                    max=self._password_max_length,
+                ),
             )
 
         return username, password, None
@@ -482,7 +518,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             }
         )
 
-    def _allow_attempt(self, bucket: dict[str, deque[float]], key: str, limit: int, window: float, now: float) -> bool:
+    def _allow_attempt(
+        self, bucket: dict[str, deque[float]], key: str, limit: int, window: float, now: float
+    ) -> bool:
         """Record and evaluate a rate-limit attempt.
 
         Args:
@@ -505,7 +543,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         dq.append(now)
         return True
 
-    def _get_attempt_count(self, bucket: dict[str, deque[float]], key: str, window: float, now: float) -> int:
+    def _get_attempt_count(
+        self, bucket: dict[str, deque[float]], key: str, window: float, now: float
+    ) -> int:
         """Return count of attempts within the window for a key."""
         dq = bucket.get(key)
         if not dq:
@@ -522,17 +562,19 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         dq = bucket.setdefault(key, deque())
         dq.append(now)
 
-    def _check_login_rate_limit(self, client_ip: str, username: str) -> str | None:
-        """Check login rate limits and return an error message if blocked."""
+    def _check_login_rate_limit(self, client_ip: str, username: str, *, locale: str) -> str | None:
+        """Check login rate limits and return a localized error message if blocked."""
         now = time.monotonic()
         if not self._allow_attempt(
             self._login_attempts_ip, client_ip, self._login_ip_limit, self._login_ip_window, now
         ):
-            return "Too many login attempts from this address. Please wait and try again."
+            return Localization.get(locale, "rate-limit-login-ip")
         if username:
-            failures = self._get_attempt_count(self._login_attempts_user, username, self._login_user_window, now)
+            failures = self._get_attempt_count(
+                self._login_attempts_user, username, self._login_user_window, now
+            )
             if self._login_user_limit > 0 and failures >= self._login_user_limit:
-                return "Too many failed login attempts for this username. Please wait and try again."
+                return Localization.get(locale, "rate-limit-login-user")
         return None
 
     def _record_login_failure(self, username: str) -> None:
@@ -543,8 +585,8 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         self._get_attempt_count(self._login_attempts_user, username, self._login_user_window, now)
         self._record_attempt(self._login_attempts_user, username, now)
 
-    def _check_registration_rate_limit(self, client_ip: str) -> str | None:
-        """Check registration rate limits and return an error message if blocked."""
+    def _check_registration_rate_limit(self, client_ip: str, *, locale: str) -> str | None:
+        """Check registration rate limits and return a localized error message if blocked."""
         now = time.monotonic()
         if not self._allow_attempt(
             self._registration_attempts_ip,
@@ -553,11 +595,11 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             self._registration_ip_window,
             now,
         ):
-            return "Too many registration attempts from this address. Please wait and try again."
+            return Localization.get(locale, "rate-limit-registration")
         return None
 
-    def _check_refresh_rate_limit(self, client_ip: str) -> str | None:
-        """Check refresh token rate limits and return an error message if blocked."""
+    def _check_refresh_rate_limit(self, client_ip: str, *, locale: str) -> str | None:
+        """Check refresh token rate limits and return a localized error message if blocked."""
         now = time.monotonic()
         if not self._allow_attempt(
             self._refresh_attempts_ip,
@@ -566,7 +608,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             self._refresh_ip_window,
             now,
         ):
-            return "Too many refresh attempts from this address. Please wait and try again."
+            return Localization.get(locale, "rate-limit-refresh")
         return None
 
     def _warn_if_no_users(self) -> None:
@@ -577,6 +619,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             if self._db.get_user_count() > 0:
                 return
         except Exception:
+            LOG.warning("Failed to check user count at startup", exc_info=True)
             return
 
         print(
@@ -626,7 +669,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             pass
         except Exception:
             logger.exception("Localization preload failed")
-            self._lifecycle.enter_maintenance(message="Localization preload failed. Check server logs.")
+            self._lifecycle.enter_maintenance(
+                message="Localization preload failed. Check server logs."
+            )
             await self._disconnect_clients_for_status(self._lifecycle.snapshot())
         finally:
             Localization.set_warmup_active(False)
@@ -669,7 +714,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         self._localization_gate_registered = True
         self._lifecycle.add_gate(LOCALIZATION_GATE_ID, message="Compiling localization bundles...")
 
-    async def _reject_client_during_unavailable(self, client: ClientConnection, snapshot: ModeSnapshot) -> None:
+    async def _reject_client_during_unavailable(
+        self, client: ClientConnection, snapshot: ModeSnapshot
+    ) -> None:
         """Inform a newly connected client about current server status and disconnect."""
         await self._send_status_and_disconnect(client, snapshot)
 
@@ -694,7 +741,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         finally:
             self._lifecycle.exit_maintenance()
 
-    async def _send_status_and_disconnect(self, client: ClientConnection, snapshot: ModeSnapshot) -> None:
+    async def _send_status_and_disconnect(
+        self, client: ClientConnection, snapshot: ModeSnapshot
+    ) -> None:
         """Send a lifecycle status update followed by a disconnect packet."""
         retry_after = self._calculate_retry_after(snapshot)
         status_packet = self._build_status_packet(snapshot, retry_after)
@@ -716,7 +765,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             payload["resume_at"] = self._format_datetime(snapshot.resume_at)
         return payload
 
-    def _build_status_disconnect(self, snapshot: ModeSnapshot, retry_after: int) -> dict[str, object]:
+    def _build_status_disconnect(
+        self, snapshot: ModeSnapshot, retry_after: int
+    ) -> dict[str, object]:
         """Construct the disconnect payload paired with a lifecycle notification."""
         message_text = self._format_status_message(snapshot)
         return {
@@ -813,7 +864,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         print(f"Saved {len(tables)} tables to database.")
 
     def _on_tick(self) -> None:
-        """Called every tick (50ms)."""
+        """Called every tick."""
         # Tick all tables
         self._tables.on_tick()
 
@@ -831,27 +882,45 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 client = self._ws_server.get_client_by_username(username)
                 if client:
                     for msg in messages:
-                        asyncio.create_task(client.send(msg))
+                        task = asyncio.create_task(client.send(msg))
+                        task.add_done_callback(self._log_send_task_exception)
 
-    async def _handoff_existing_session(self, user: NetworkUser, new_client: ClientConnection) -> None:
+    @staticmethod
+    def _log_send_task_exception(task: asyncio.Task) -> None:
+        """Log exceptions from fire-and-forget send tasks."""
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            LOG.warning("Error sending queued message: %s", exc)
+
+    async def _handoff_existing_session(
+        self, user: NetworkUser, new_client: ClientConnection
+    ) -> None:
         """Disconnect the existing client session for a user and bind the new connection."""
         old_client = user.connection
         if old_client:
             old_client.replaced = True
             try:
-                await old_client.send({
-                    "type": "disconnect",
-                    "reconnect": False,
-                    "show_message": True,
-                    "return_to_login": True,
-                    "message": Localization.get(user.locale, "already-logged-in"),
-                })
+                await old_client.send(
+                    {
+                        "type": "disconnect",
+                        "reconnect": False,
+                        "show_message": True,
+                        "return_to_login": True,
+                        "message": Localization.get(user.locale, "already-logged-in"),
+                    }
+                )
             except (OSError, RuntimeError, websockets.exceptions.ConnectionClosed) as exc:
                 LOG.debug("Failed to notify replaced session: %s", exc)
-            with contextlib.suppress(Exception):
+            try:
                 await old_client.close()
+            except (OSError, RuntimeError, websockets.exceptions.ConnectionClosed) as exc:
+                LOG.debug("Failed to close replaced session: %s", exc)
         new_client.username = user.username
         new_client.authenticated = True
+        if self._ws_server:
+            self._ws_server.register_username(new_client)
         user.set_connection(new_client)
 
     def _queue_transcript_replay(self, user: NetworkUser, game, player_id: str) -> None:
@@ -912,28 +981,26 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             self._users.pop(username, None)
             self._user_states.pop(username, None)
 
-    def _broadcast_presence_l(
-        self, message_id: str, player_name: str, sound: str
-    ) -> None:
-        """Broadcast a localized presence announcement to all approved online users with sound."""
+    def _iter_approved_users(self):
+        """Yield (username, user) for all approved online users."""
         for username, user in self._users.items():
-            if not user.approved:
-                continue  # Don't send broadcasts to unapproved users
+            if user.approved:
+                yield username, user
+
+    def _broadcast_presence_l(self, message_id: str, player_name: str, sound: str) -> None:
+        """Broadcast a localized presence announcement to all approved online users with sound."""
+        for _username, user in self._iter_approved_users():
             user.speak_l(message_id, buffer="activity", player=player_name)
             user.play_sound(sound)
 
     def _broadcast_admin_announcement(self, admin_name: str) -> None:
         """Broadcast an admin announcement to all approved online users."""
-        for username, user in self._users.items():
-            if not user.approved:
-                continue  # Don't send broadcasts to unapproved users
+        for _username, user in self._iter_approved_users():
             user.speak_l("user-is-admin", buffer="activity", player=admin_name)
 
     def _broadcast_server_owner_announcement(self, owner_name: str) -> None:
         """Broadcast a server owner announcement to all approved online users."""
-        for username, user in self._users.items():
-            if not user.approved:
-                continue  # Don't send broadcasts to unapproved users
+        for _username, user in self._iter_approved_users():
             user.speak_l("user-is-server-owner", buffer="activity", player=owner_name)
 
     def _broadcast_table_created(self, host_name: str, game_type: str) -> None:
@@ -942,9 +1009,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         if not game_class:
             return
         name_key = game_class.get_name_key()
-        for username, user in self._users.items():
-            if not user.approved:
-                continue
+        for username, user in self._iter_approved_users():
             state = self._user_states.get(username, {})
             if state.get("menu") == "in_game":
                 continue
@@ -1015,6 +1080,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         client: ClientConnection,
         username: str,
         *,
+        locale: str,
         session_token: str,
         session_expires_at: int,
         refresh_token: str,
@@ -1025,7 +1091,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         # Create or update network user with preferences and persistent UUID
         user_record = self._auth.get_user(username)
         if not user_record:
-            await self._send_credential_error(client, "Account not found.")
+            await self._send_credential_error(
+                client, Localization.get(locale, "account-not-found")
+            )
             return
         preferences = self._load_user_preferences(user_record)
         user, is_new_login = await self._attach_or_update_user(
@@ -1071,8 +1139,11 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             try:
                 prefs_data = json.loads(user_record.preferences_json)
                 return UserPreferences.from_dict(prefs_data)
-            except (json.JSONDecodeError, KeyError):
-                pass
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+                LOG.warning(
+                    "Corrupt preferences for user '%s', resetting to defaults: %s",
+                    user_record.uuid, exc,
+                )
         return UserPreferences()
 
     async def _attach_or_update_user(
@@ -1102,6 +1173,8 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         client.username = username
         client.authenticated = True
+        if self._ws_server:
+            self._ws_server.register_username(client)
         user = NetworkUser(
             username,
             locale,
@@ -1152,12 +1225,14 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         user.speak_l("account-banned", buffer="activity")
         for msg in user.get_queued_messages():
             await user.connection.send(msg)
-        await user.connection.send({
-            "type": "disconnect",
-            "reconnect": False,
-            "show_message": True,
-            "message": ban_message,
-        })
+        await user.connection.send(
+            {
+                "type": "disconnect",
+                "reconnect": False,
+                "show_message": True,
+                "message": ban_message,
+            }
+        )
         return True
 
     def _handle_unapproved_login(self, user: NetworkUser) -> bool:
@@ -1171,9 +1246,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
     def _broadcast_login_presence(self, user: NetworkUser) -> None:
         """Broadcast login presence and role announcements."""
         online_sound = (
-            "onlineadmin.ogg"
-            if user.trust_level.value >= TrustLevel.ADMIN.value
-            else "online.ogg"
+            "onlineadmin.ogg" if user.trust_level.value >= TrustLevel.ADMIN.value else "online.ogg"
         )
         self._broadcast_presence_l("user-online", user.username, online_sound)
 
@@ -1238,23 +1311,25 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             token_username = self._auth.validate_session(session_token)
             if not token_username:
                 await self._send_credential_error(
-                    client, "Session expired. Please log in again."
+                    client, Localization.get(locale, "session-expired")
                 )
                 return
             if username_raw and token_username.lower() != username_raw.lower():
                 await self._send_credential_error(
-                    client, "Session token does not match username."
+                    client, Localization.get(locale, "session-token-mismatch")
                 )
                 return
             username = token_username
         else:
-            username, password, error = self._validate_credentials(username_raw, password_raw)
+            username, password, error = self._validate_credentials(
+                username_raw, password_raw, locale=locale
+            )
             if error:
                 await self._send_credential_error(client, error)
                 return
 
             client_ip = self._get_client_ip(client)
-            throttle_message = self._check_login_rate_limit(client_ip, username)
+            throttle_message = self._check_login_rate_limit(client_ip, username, locale=locale)
             if throttle_message:
                 await self._send_credential_error(client, throttle_message)
                 return
@@ -1267,33 +1342,43 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     # Username exists but password is wrong - show error dialog
                     error_message = Localization.get(locale, "incorrect-password")
                     await client.send({"type": "play_sound", "name": "accounterror.ogg"})
-                    await client.send({"type": "speak", "text": error_message, "buffer": "activity"})
-                    await client.send({
-                        "type": "disconnect",
-                        "reconnect": False,
-                        "show_message": True,
-                        "return_to_login": True,
-                        "message": error_message,
-                    })
+                    await client.send(
+                        {"type": "speak", "text": error_message, "buffer": "activity"}
+                    )
+                    await client.send(
+                        {
+                            "type": "disconnect",
+                            "reconnect": False,
+                            "show_message": True,
+                            "return_to_login": True,
+                            "message": error_message,
+                        }
+                    )
                     return
 
                 # User not found - check if this will be a new user that needs approval
-                needs_approval = self._db.get_user_count() > 0
-
-                # Try to register
-                if not self._auth.register(username, password, locale=locale):
+                needs_approval = not self._auto_approve_new_accounts and self._db.get_user_count() > 0
+                # Try to register if accounts are not blocked
+                if self._block_new_accounts:
+                    await self._send_accounts_blocked(client, locale)
+                    return
+                if not self._auth.register(username, password, approved=self._auto_approve_new_accounts, locale=locale):
                     self._record_login_failure(username)
                     # Registration failed (shouldn't happen if user not found, but handle anyway)
                     error_message = Localization.get(locale, "incorrect-username")
                     await client.send({"type": "play_sound", "name": "accounterror.ogg"})
-                    await client.send({"type": "speak", "text": error_message, "buffer": "activity"})
-                    await client.send({
-                        "type": "disconnect",
-                        "reconnect": False,
-                        "show_message": True,
-                        "return_to_login": True,
-                        "message": error_message,
-                    })
+                    await client.send(
+                        {"type": "speak", "text": error_message, "buffer": "activity"}
+                    )
+                    await client.send(
+                        {
+                            "type": "disconnect",
+                            "reconnect": False,
+                            "show_message": True,
+                            "return_to_login": True,
+                            "message": error_message,
+                        }
+                    )
                     return
 
                 # New user registered - notify admins if approval is needed
@@ -1310,12 +1395,14 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         await self._finalize_login(
             client,
             username,
+            locale=locale,
             session_token=access_token,
             session_expires_at=access_expires,
             refresh_token=refresh_token,
             refresh_expires_at=refresh_expires,
             success_type="authorize_success",
         )
+
     async def _handle_register(self, client: ClientConnection, packet: dict) -> None:
         """Register a new user from the registration dialog.
 
@@ -1328,45 +1415,81 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         # email and bio are sent but not stored yet
         locale = packet.get("locale") or self._default_locale
 
-        username, password, error = self._validate_credentials(username_raw, password_raw)
+        username, password, error = self._validate_credentials(
+            username_raw, password_raw, locale=locale
+        )
         if error:
             await client.send({"type": "speak", "text": error, "buffer": "activity"})
             return
 
         client_ip = self._get_client_ip(client)
-        throttle_message = self._check_registration_rate_limit(client_ip)
+        throttle_message = self._check_registration_rate_limit(client_ip, locale=locale)
         if throttle_message:
             await client.send({"type": "speak", "text": throttle_message, "buffer": "activity"})
             return
 
-        # All self-registered users require approval.
-        needs_approval = True
 
+        # All self-registered users require approval.
+        needs_approval = not self._auto_approve_new_accounts and self._db.get_user_count() > 0
         # Try to register the user
-        if self._auth.register(username, password, locale=locale):
+        if self._block_new_accounts:
+            await self._send_accounts_blocked(client, locale)
+            return
+        if self._auth.register(username, password, approved=self._auto_approve_new_accounts, locale=locale):
             await client.send({
                 "type": "speak",
-                "text": "Registration successful! Your account is waiting for approval.",
+                "text": Localization.get(locale, "registration-success"),
                 "buffer": "activity",
             })
             # Notify admins of new account request (only if user needs approval)
             if needs_approval:
                 self._notify_admins("account-request", "accountrequest.ogg")
         else:
-            await client.send({
-                "type": "speak",
-                "text": "Username already taken. Please choose a different username.",
-                "buffer": "activity",
-            })
+            await client.send(
+                {
+                    "type": "speak",
+                    "text": Localization.get(locale, "registration-username-taken"),
+                    "buffer": "activity",
+                }
+            )
+
+    @staticmethod
+    async def _send_accounts_blocked(client: ClientConnection, locale: str) -> None:
+        """Inform the client that new account registration is disabled and disconnect."""
+        error_message = Localization.get(locale, "accounts-blocked")
+        await client.send({"type": "play_sound", "name": "accounterror.ogg"})
+        await client.send({"type": "speak", "text": error_message, "buffer": "activity"})
+        await client.send({
+            "type": "disconnect",
+            "reconnect": False,
+            "show_message": True,
+            "return_to_login": True,
+            "message": error_message,
+        })
+
+    @staticmethod
+    async def _send_refresh_failure(client: ClientConnection, reason: str, locale: str) -> None:
+        """Send a refresh failure with a specific reason and disconnect the client."""
+        await client.send({"type": "refresh_session_failure", "message": reason})
+        await client.send(
+            {
+                "type": "disconnect",
+                "reconnect": False,
+                "show_message": True,
+                "return_to_login": True,
+                "message": Localization.get(locale, "session-expired"),
+            }
+        )
 
     async def _handle_refresh_session(self, client: ClientConnection, packet: dict) -> None:
         """Refresh an access session using a refresh token."""
         refresh_token = packet.get("refresh_token", "")
         username_hint = packet.get("username", "")
+        locale = packet.get("locale") or self._default_locale
         client.client_type = packet.get("client_type") or ""
         client.platform = packet.get("platform") or ""
         client_ip = self._get_client_ip(client)
-        throttle_message = self._check_refresh_rate_limit(client_ip)
+        throttle_message = self._check_refresh_rate_limit(client_ip, locale=locale)
         if throttle_message:
             await self._send_credential_error(client, throttle_message)
             return
@@ -1375,37 +1498,22 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             refresh_token, self._access_token_ttl_seconds, self._refresh_token_ttl_seconds
         )
         if not result:
-            await client.send({
-                "type": "refresh_session_failure",
-                "message": "Refresh token expired. Please log in again.",
-            })
-            await client.send({
-                "type": "disconnect",
-                "reconnect": False,
-                "show_message": True,
-                "return_to_login": True,
-                "message": "Session expired. Please log in again.",
-            })
+            await self._send_refresh_failure(
+                client, Localization.get(locale, "refresh-token-expired"), locale
+            )
             return
 
         username, access_token, access_expires, new_refresh_token, refresh_expires = result
         if username_hint and username_hint.lower() != username.lower():
-            await client.send({
-                "type": "refresh_session_failure",
-                "message": "Refresh token does not match username.",
-            })
-            await client.send({
-                "type": "disconnect",
-                "reconnect": False,
-                "show_message": True,
-                "return_to_login": True,
-                "message": "Session expired. Please log in again.",
-            })
+            await self._send_refresh_failure(
+                client, Localization.get(locale, "refresh-token-mismatch"), locale
+            )
             return
 
         await self._finalize_login(
             client,
             username,
+            locale=locale,
             session_token=access_token,
             session_expires_at=access_expires,
             refresh_token=new_refresh_token,
@@ -1424,12 +1532,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 }
             )
 
-        await client.send(
-            {
-                "type": "update_options_lists",
-                "games": games
-            }
-        )
+        await client.send({"type": "update_options_lists", "games": games})
 
     def _show_main_menu(self, user: NetworkUser, *, reset_history: bool = False) -> None:
         """Show the main menu to a user."""
@@ -1450,29 +1553,25 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     text=Localization.get(user.locale, "view-active-tables"),
                     id="active_tables",
                 ),
-                MenuItem(
-                    text=Localization.get(user.locale, "saved-tables"), id="saved_tables"
-                ),
-                MenuItem(
-                    text=Localization.get(user.locale, "leaderboards"), id="leaderboards"
-                ),
-                MenuItem(
-                    text=Localization.get(user.locale, "my-stats"), id="my_stats"
-                ),
+                MenuItem(text=Localization.get(user.locale, "saved-tables"), id="saved_tables"),
+                MenuItem(text=Localization.get(user.locale, "leaderboards"), id="leaderboards"),
+                MenuItem(text=Localization.get(user.locale, "my-stats"), id="my_stats"),
                 MenuItem(text=Localization.get(user.locale, "options"), id="options"),
-                MenuItem(text=Localization.get(user.locale, "documents-menu-title"), id="documents"),
+                MenuItem(
+                    text=Localization.get(user.locale, "documents-menu-title"), id="documents"
+                ),
             ]
             # Add administration menu for admins
             if user.trust_level.value >= TrustLevel.ADMIN.value:
                 items.append(
-                    MenuItem(text=Localization.get(user.locale, "administration"), id="administration")
+                    MenuItem(
+                        text=Localization.get(user.locale, "administration"), id="administration"
+                    )
                 )
         else:
             # Limited menu for users waiting for approval
             items = [
-                MenuItem(
-                    text=Localization.get(user.locale, "leaderboards"), id="leaderboards"
-                ),
+                MenuItem(text=Localization.get(user.locale, "leaderboards"), id="leaderboards"),
                 MenuItem(text=Localization.get(user.locale, "options"), id="options"),
                 MenuItem(
                     text=Localization.get(user.locale, "documents-menu-title"), id="documents"
@@ -1537,23 +1636,15 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         tables = self._tables.get_waiting_tables(game_type)
         game_class = get_game_class(game_type)
         game_name = (
-            Localization.get(user.locale, game_class.get_name_key())
-            if game_class
-            else game_type
+            Localization.get(user.locale, game_class.get_name_key()) if game_class else game_type
         )
 
-        items = [
-            MenuItem(
-                text=Localization.get(user.locale, "create-table"), id="create_table"
-            )
-        ]
+        items = [MenuItem(text=Localization.get(user.locale, "create-table"), id="create_table")]
 
         for table in tables:
             member_count = len(table.members)
             member_names = [
-                member.username
-                for member in table.members
-                if member.username != table.host
+                member.username for member in table.members if member.username != table.host
             ]
             members_str = Localization.format_list_and(user.locale, member_names)
             if member_count == 1:
@@ -1608,9 +1699,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             )
             member_count = len(table.members)
             member_names = [
-                member.username
-                for member in table.members
-                if member.username != table.host
+                member.username for member in table.members if member.username != table.host
             ]
             members_str = Localization.format_list_and(user.locale, member_names)
             if member_count == 1:
@@ -1656,16 +1745,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             if current_lang == lang_key:
                 current_lang = user.locale
         else:
-            languages = Localization.get_available_languages(
-                user.locale, fallback=user.locale
-            )
+            languages = Localization.get_available_languages(user.locale, fallback=user.locale)
             current_lang = languages.get(user.locale, user.locale)
 
         items = [
             MenuItem(
-                text=Localization.get(
-                    user.locale, "language-option", language=current_lang
-                ),
+                text=Localization.get(user.locale, "language-option", language=current_lang),
                 id="language",
             ),
             MenuItem(
@@ -1684,10 +1769,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             items.append(MenuItem(text=cat_name, id=f"pref_cat_{cat_key}"))
 
         # Reset all
-        items.append(MenuItem(
-            text=Localization.get(user.locale, "pref-reset-all"),
-            id="pref_reset_all",
-        ))
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "pref-reset-all"),
+                id="pref_reset_all",
+            )
+        )
 
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
@@ -1724,10 +1811,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             if cat_key == category:
                 cat_name = Localization.get(user.locale, cat_fluent)
                 break
-        items.append(MenuItem(
-            text=Localization.get(user.locale, "pref-reset-category", category=cat_name),
-            id=f"pref_reset_cat_{category}",
-        ))
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "pref-reset-category", category=cat_name),
+                id=f"pref_reset_cat_{category}",
+            )
+        )
 
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
@@ -1774,7 +1863,8 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         # Global default line
         global_display = self._format_pref_value(user.locale, meta, global_value)
         default_label = Localization.get(
-            user.locale, "pref-per-game-for",
+            user.locale,
+            "pref-per-game-for",
             game=Localization.get(user.locale, "pref-default"),
             value=global_display,
         )
@@ -1796,8 +1886,10 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     value_text = Localization.get(user.locale, "pref-default")
 
                 label = Localization.get(
-                    user.locale, "pref-per-game-for",
-                    game=game_name, value=value_text,
+                    user.locale,
+                    "pref-per-game-for",
+                    game=game_name,
+                    value=value_text,
                 )
                 items.append(MenuItem(text=label, id=f"detail_game_{game_type}"))
 
@@ -1819,8 +1911,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 "pref_category": meta.category,
             }
 
-    def _show_pref_menu_choices(self, user: NetworkUser, field_name: str,
-                                 game_type: str | None = None) -> None:
+    def _show_pref_menu_choices(
+        self, user: NetworkUser, field_name: str, game_type: str | None = None
+    ) -> None:
         """Show menu choices for a menu-type preference.
 
         If game_type is set, shows choices for a per-game override
@@ -1842,10 +1935,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             # Default option
             is_default = current_override is None
             prefix = "* " if is_default else ""
-            items.append(MenuItem(
-                text=f"{prefix}{Localization.get(user.locale, 'pref-default')}",
-                id="choice_default",
-            ))
+            items.append(
+                MenuItem(
+                    text=f"{prefix}{Localization.get(user.locale, 'pref-default')}",
+                    id="choice_default",
+                )
+            )
             if is_default:
                 selected_position = 1
 
@@ -1896,9 +1991,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         """Generate the localized label for a preference field."""
         value = getattr(prefs, name)
         if meta.kind == "bool":
-            status = Localization.get(
-                locale, "option-on" if value else "option-off"
-            )
+            status = Localization.get(locale, "option-on" if value else "option-off")
             return Localization.get(locale, meta.label, status=status)
         elif meta.kind == "menu" and meta.choices:
             raw = value.value if isinstance(value, Enum) else value
@@ -1912,9 +2005,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
     def _format_pref_value(self, locale: str, meta: PrefMeta, raw: Any) -> str:
         """Format a raw preference value for display."""
         if meta.kind == "bool":
-            return Localization.get(
-                locale, "option-on" if raw else "option-off"
-            )
+            return Localization.get(locale, "option-on" if raw else "option-off")
         elif meta.kind == "menu" and meta.choices:
             val_str = raw.value if isinstance(raw, Enum) else str(raw)
             for choice_val, fluent_key in meta.choices:
@@ -1939,6 +2030,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
     async def _handle_language_menu_dispatch(self, user: NetworkUser, selection_id: str) -> None:
         """Thin wrapper that delegates to the common language menu handler."""
         from server.core.ui.common_flows import handle_language_menu_selection
+
         await handle_language_menu_selection(user, selection_id)
 
     def _show_saved_tables_menu(self, user: NetworkUser) -> bool:
@@ -1970,9 +2062,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         """Show actions for a saved table (restore, delete)."""
         items = [
             MenuItem(text=Localization.get(user.locale, "restore-table"), id="restore"),
-            MenuItem(
-                text=Localization.get(user.locale, "delete-saved-table"), id="delete"
-            ),
+            MenuItem(text=Localization.get(user.locale, "delete-saved-table"), id="delete"),
             MenuItem(text=Localization.get(user.locale, "back"), id="back"),
         ]
         user.show_menu(
@@ -2018,6 +2108,17 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 if game_user is not user:
                     table.remove_member(username)
                     self._show_main_menu(user, reset_history=True)
+            return
+
+        if not self._selection_allowed_for_current_menu(user, current_menu, selection_id):
+            LOG.warning(
+                "Rejected invalid menu selection",
+                extra={
+                    "username": user.username,
+                    "menu": current_menu,
+                    "selection_id": selection_id,
+                },
+            )
             return
 
         await self._dispatch_menu_selection(user, selection_id, state, current_menu)
@@ -2078,6 +2179,41 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 menu_state["position"] = index
                 return
 
+    def _selection_allowed_for_current_menu(
+        self,
+        user: NetworkUser,
+        current_menu: str | None,
+        selection_id: str,
+    ) -> bool:
+        """Return whether a selection belongs to the user's currently shown menu."""
+        if not current_menu or not selection_id:
+            return True
+
+        current_menus = getattr(user, "_current_menus", None)
+        if not isinstance(current_menus, dict):
+            return True
+
+        menu_state = current_menus.get(current_menu)
+        if not isinstance(menu_state, dict):
+            return True
+
+        items = menu_state.get("items")
+        if not isinstance(items, list):
+            return True
+
+        allowed_ids: set[str] = set()
+        for item in items:
+            if isinstance(item, dict):
+                item_id = item.get("id")
+                if isinstance(item_id, str) and item_id:
+                    allowed_ids.add(item_id)
+            elif isinstance(item, str) and item:
+                allowed_ids.add(item)
+
+        if not allowed_ids:
+            return True
+        return selection_id in allowed_ids
+
     async def _dispatch_menu_selection(
         self,
         user: NetworkUser,
@@ -2096,28 +2232,62 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "join_menu": (self._handle_join_selection, (user, selection_id, state)),
             "options_menu": (self._handle_options_selection, (user, selection_id)),
             "language_menu": (self._handle_language_menu_dispatch, (user, selection_id)),
-            "dice_keeping_style_menu": (self._handle_dice_keeping_style_selection, (user, selection_id)),
+            "dice_keeping_style_menu": (
+                self._handle_dice_keeping_style_selection,
+                (user, selection_id),
+            ),
             "pref_category_menu": (self._handle_pref_category_selection, (user, selection_id)),
             "pref_detail_menu": (self._handle_pref_detail_selection, (user, selection_id)),
             "pref_choices_menu": (self._handle_pref_choices_selection, (user, selection_id)),
             "saved_tables_menu": (self._handle_saved_tables_selection, (user, selection_id, state)),
-            "saved_table_actions_menu": (self._handle_saved_table_actions_selection, (user, selection_id, state)),
+            "saved_table_actions_menu": (
+                self._handle_saved_table_actions_selection,
+                (user, selection_id, state),
+            ),
             "leaderboards_menu": (self._handle_leaderboards_selection, (user, selection_id, state)),
-            "leaderboard_types_menu": (self._handle_leaderboard_types_selection, (user, selection_id, state)),
-            "game_leaderboard": (self._handle_game_leaderboard_selection, (user, selection_id, state)),
+            "leaderboard_types_menu": (
+                self._handle_leaderboard_types_selection,
+                (user, selection_id, state),
+            ),
+            "game_leaderboard": (
+                self._handle_game_leaderboard_selection,
+                (user, selection_id, state),
+            ),
             "my_stats_menu": (self._handle_my_stats_selection, (user, selection_id, state)),
             "my_game_stats": (self._handle_my_game_stats_selection, (user, selection_id, state)),
             **self._get_document_menu_handlers(user, selection_id, state),
             "online_users": (self._restore_previous_menu, (user, state)),
             "admin_menu": (self._handle_admin_menu_selection, (user, selection_id)),
-            "account_approval_menu": (self._handle_account_approval_selection, (user, selection_id)),
-            "pending_user_actions_menu": (self._handle_pending_user_actions_selection, (user, selection_id, state)),
+            "account_approval_menu": (
+                self._handle_account_approval_selection,
+                (user, selection_id),
+            ),
+            "pending_user_actions_menu": (
+                self._handle_pending_user_actions_selection,
+                (user, selection_id, state),
+            ),
             "promote_admin_menu": (self._handle_promote_admin_selection, (user, selection_id)),
             "demote_admin_menu": (self._handle_demote_admin_selection, (user, selection_id)),
-            "promote_confirm_menu": (self._handle_promote_confirm_selection, (user, selection_id, state)),
-            "demote_confirm_menu": (self._handle_demote_confirm_selection, (user, selection_id, state)),
-            "broadcast_choice_menu": (self._handle_broadcast_choice_selection, (user, selection_id, state)),
-            "transfer_ownership_menu": (self._handle_transfer_ownership_selection, (user, selection_id)),
+            "reset_password_user_menu": (
+                self._handle_reset_password_user_selection,
+                (user, selection_id),
+            ),
+            "promote_confirm_menu": (
+                self._handle_promote_confirm_selection,
+                (user, selection_id, state),
+            ),
+            "demote_confirm_menu": (
+                self._handle_demote_confirm_selection,
+                (user, selection_id, state),
+            ),
+            "broadcast_choice_menu": (
+                self._handle_broadcast_choice_selection,
+                (user, selection_id, state),
+            ),
+            "transfer_ownership_menu": (
+                self._handle_transfer_ownership_selection,
+                (user, selection_id),
+            ),
             "transfer_ownership_confirm_menu": (
                 self._handle_transfer_ownership_confirm_selection,
                 (user, selection_id, state),
@@ -2129,9 +2299,15 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "ban_user_menu": (self._handle_ban_user_selection, (user, selection_id)),
             "unban_user_menu": (self._handle_unban_user_selection, (user, selection_id)),
             "ban_confirm_menu": (self._handle_ban_confirm_selection, (user, selection_id, state)),
-            "unban_confirm_menu": (self._handle_unban_confirm_selection, (user, selection_id, state)),
+            "unban_confirm_menu": (
+                self._handle_unban_confirm_selection,
+                (user, selection_id, state),
+            ),
             "virtual_bots_menu": (self._handle_virtual_bots_selection, (user, selection_id)),
-            "virtual_bots_clear_confirm_menu": (self._handle_virtual_bots_clear_confirm_selection, (user, selection_id)),
+            "virtual_bots_clear_confirm_menu": (
+                self._handle_virtual_bots_clear_confirm_selection,
+                (user, selection_id),
+            ),
         }
         if not current_menu:
             return
@@ -2153,9 +2329,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         self._show_main_menu(user)
         return False
 
-    async def _handle_main_menu_selection(
-        self, user: NetworkUser, selection_id: str
-    ) -> None:
+    async def _handle_main_menu_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle main menu selections.
 
         Args:
@@ -2201,9 +2375,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         show_yes_no_menu(user, "logout_confirm_menu", question)
         self._user_states[user.username] = {"menu": "logout_confirm_menu"}
 
-    async def _handle_logout_confirm_selection(
-        self, user: NetworkUser, selection_id: str
-    ) -> None:
+    async def _handle_logout_confirm_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle logout confirmation menu selection."""
         if selection_id == "yes":
             user.speak_l("goodbye", buffer="activity")
@@ -2211,14 +2383,14 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         else:
             self._show_main_menu(user)
 
-    async def _handle_options_selection(
-        self, user: NetworkUser, selection_id: str
-    ) -> None:
+    async def _handle_options_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle top-level options menu selections."""
         if selection_id == "language":
             from server.core.ui.common_flows import show_language_menu
+
             if show_language_menu(
-                user, include_native_names=True,
+                user,
+                include_native_names=True,
                 on_select=self._apply_locale_change,
                 on_back=lambda u: self._show_options_menu(u),
             ):
@@ -2313,9 +2485,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
     # Declarative preference handlers
     # ------------------------------------------------------------------
 
-    async def _handle_pref_category_selection(
-        self, user: NetworkUser, selection_id: str
-    ) -> None:
+    async def _handle_pref_category_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle selections within a preference category menu."""
         state = self._user_states.get(user.username, {})
         category = state.get("pref_category", "")
@@ -2333,9 +2503,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 prefs = user.preferences
                 new_val = not getattr(prefs, field_name)
                 setattr(prefs, field_name, new_val)
-                user.play_sound(
-                    "checkbox_list_on.wav" if new_val else "checkbox_list_off.wav"
-                )
+                user.play_sound("checkbox_list_on.wav" if new_val else "checkbox_list_off.wav")
                 self._save_user_preferences(user)
                 self._show_pref_category_menu(user, category, refresh=True)
             elif meta.kind == "menu":
@@ -2350,9 +2518,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         elif selection_id == "back":
             self._show_options_menu(user)
 
-    async def _handle_pref_detail_selection(
-        self, user: NetworkUser, selection_id: str
-    ) -> None:
+    async def _handle_pref_detail_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle selections in the pref detail menu (global + per-game lines)."""
         state = self._user_states.get(user.username, {})
         field_name = state.get("pref_field", "")
@@ -2367,9 +2533,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 prefs = user.preferences
                 new_val = not getattr(prefs, field_name)
                 setattr(prefs, field_name, new_val)
-                user.play_sound(
-                    "checkbox_list_on.wav" if new_val else "checkbox_list_off.wav"
-                )
+                user.play_sound("checkbox_list_on.wav" if new_val else "checkbox_list_off.wav")
                 self._save_user_preferences(user)
                 self._show_pref_detail_menu(user, field_name, refresh=True)
             elif meta.kind == "menu":
@@ -2396,9 +2560,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         elif selection_id == "back":
             self._show_pref_category_menu(user, category)
 
-    async def _handle_pref_choices_selection(
-        self, user: NetworkUser, selection_id: str
-    ) -> None:
+    async def _handle_pref_choices_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle menu choice selection for a preference."""
         state = self._user_states.get(user.username, {})
         field_name = state.get("pref_field", "")
@@ -2425,6 +2587,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                         new_val = meta.enum_class(value_str)
                     except (ValueError, KeyError):
                         new_val = meta.default
+                        LOG.warning(
+                            "User '%s' sent invalid preference value '%s' for '%s', "
+                            "falling back to default",
+                            user.username, value_str, field_name,
+                        )
+                        user.speak_l("pref-invalid-value")
                 else:
                     new_val = value_str
                 setattr(prefs, field_name, new_val)
@@ -2540,9 +2708,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             else:
                 self._show_categories_menu(user)
 
-    async def _handle_active_tables_selection(
-        self, user: NetworkUser, selection_id: str
-    ) -> None:
+    async def _handle_active_tables_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle active tables menu selection.
 
         Args:
@@ -2561,9 +2727,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         elif selection_id == "back":
             self._show_main_menu(user)
 
-    def _auto_join_table(
-        self, user: NetworkUser, table: "Table", game_type: str
-    ) -> None:
+    def _auto_join_table(self, user: NetworkUser, table: "Table", game_type: str) -> None:
         """Automatically join a table as player or spectator.
 
         Joins as player if:
@@ -2851,9 +3015,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         for category_key in sorted(categories.keys()):
             for game_class in categories[category_key]:
                 game_name = Localization.get(user.locale, game_class.get_name_key())
-                items.append(
-                    MenuItem(text=game_name, id=f"lb_{game_class.get_type()}")
-                )
+                items.append(MenuItem(text=game_name, id=f"lb_{game_class.get_type()}"))
 
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
 
@@ -2968,9 +3130,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         return game_results
 
-    def _show_wins_leaderboard(
-        self, user: NetworkUser, game_type: str, game_name: str
-    ) -> None:
+    def _show_wins_leaderboard(self, user: NetworkUser, game_type: str, game_name: str) -> None:
         """Show win count leaderboard for a game.
 
         Args:
@@ -3001,9 +3161,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     player_stats[p.player_id]["losses"] += 1
 
         # Sort by wins descending
-        sorted_players = sorted(
-            player_stats.items(), key=lambda x: x[1]["wins"], reverse=True
-        )
+        sorted_players = sorted(player_stats.items(), key=lambda x: x[1]["wins"], reverse=True)
 
         items = []
 
@@ -3041,9 +3199,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "game_name": game_name,
         }
 
-    def _show_rating_leaderboard(
-        self, user: NetworkUser, game_type: str, game_name: str
-    ) -> None:
+    def _show_rating_leaderboard(self, user: NetworkUser, game_type: str, game_name: str) -> None:
         """Show skill rating leaderboard.
 
         Args:
@@ -3138,9 +3294,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     player_scores[p.player_id]["total"] += score
 
         # Sort by total score descending
-        sorted_players = sorted(
-            player_scores.items(), key=lambda x: x[1]["total"], reverse=True
-        )
+        sorted_players = sorted(player_scores.items(), key=lambda x: x[1]["total"], reverse=True)
 
         items = []
 
@@ -3198,9 +3352,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     player_high[p.player_id]["high"] = score
 
         # Sort by high score descending
-        sorted_players = sorted(
-            player_high.items(), key=lambda x: x[1]["high"], reverse=True
-        )
+        sorted_players = sorted(player_high.items(), key=lambda x: x[1]["high"], reverse=True)
 
         items = []
 
@@ -3255,9 +3407,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 player_games[p.player_id]["count"] += 1
 
         # Sort by games played descending
-        sorted_players = sorted(
-            player_games.items(), key=lambda x: x[1]["count"], reverse=True
-        )
+        sorted_players = sorted(player_games.items(), key=lambda x: x[1]["count"], reverse=True)
 
         items = []
 
@@ -3484,9 +3634,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             if game_class:
                 for config in game_class.get_leaderboard_types():
                     if config["id"] == lb_id:
-                        self._show_custom_leaderboard(
-                            user, game_type, game_name, config
-                        )
+                        self._show_custom_leaderboard(user, game_type, game_name, config)
                         return
 
     async def _handle_game_leaderboard_selection(
@@ -3530,9 +3678,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 )
                 if has_stats:
                     game_name = Localization.get(user.locale, game_class.get_name_key())
-                    items.append(
-                        MenuItem(text=game_name, id=f"stats_{game_type}")
-                    )
+                    items.append(MenuItem(text=game_name, id=f"stats_{game_type}"))
 
         if not items:
             user.speak_l("my-stats-no-games")
@@ -3716,9 +3862,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             user, config, game_results
         )
 
-        final_value = self._aggregate_custom_stat(
-            values, num_values, denom_values, aggregate
-        )
+        final_value = self._aggregate_custom_stat(values, num_values, denom_values, aggregate)
         if final_value is None:
             return None
 
@@ -3769,10 +3913,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
     def _resolve_stat_path(self, path: str, player_name: str, player_id: str) -> str:
         """Substitute player tokens in stat paths."""
-        return (
-            path.replace("{player_name}", player_name)
-            .replace("{player_id}", player_id)
-        )
+        return path.replace("{player_name}", player_name).replace("{player_id}", player_id)
 
     def _aggregate_custom_stat(
         self,
@@ -3805,9 +3946,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             return f"{value:.{decimals}f}"
         return str(round(value))
 
-    def _format_custom_stat_text(
-        self, user: NetworkUser, lb_id: str, formatted_value: str
-    ) -> str:
+    def _format_custom_stat_text(self, user: NetworkUser, lb_id: str, formatted_value: str) -> str:
         """Build the localized text for a custom stat."""
         loc_key = f"my-stats-{lb_id.replace('_', '-')}"
         text = Localization.get(user.locale, loc_key, value=formatted_value)
@@ -3989,9 +4128,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     table.remove_member(username)
                     self._show_main_menu(user, reset_history=True)
 
-    async def _handle_document_editor_packet(
-        self, client: ClientConnection, packet: dict
-    ) -> None:
+    async def _handle_document_editor_packet(self, client: ClientConnection, packet: dict) -> None:
         """Forward document editor responses to the browsing mixin."""
         username = client.username
         if not username:
@@ -4037,6 +4174,11 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         if current_menu == "unban_reason_editbox":
             text = packet.get("text", "")
             await self._handle_unban_reason_editbox(user, text, state)
+            return
+
+        if current_menu == "reset_password_editbox":
+            text = packet.get("text", "")
+            await self._handle_reset_password_editbox(user, text, state)
             return
 
         # Forward to game if user is in a table
@@ -4162,8 +4304,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             previous_menu = current_menus.get(previous_menu_id)
 
         items = [
-            MenuItem(text=line, id="online_user")
-            for line in self._format_online_users_lines(user)
+            MenuItem(text=line, id="online_user") for line in self._format_online_users_lines(user)
         ]
         user.show_menu(
             "online_users",
@@ -4243,6 +4384,8 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         if table and table.game:
             player = table.game.get_player_by_id(user.uuid)
             if player:
+                if table.game._is_transient_display_open(player):
+                    return
                 table.game.status_box(player, self._format_online_users_lines(user))
                 return
 
@@ -4255,7 +4398,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
 async def run_server(
     host: str | None = None,
-    port: int = 8000,
+    port: int | None = None,
     ssl_cert: str | Path | None = None,
     ssl_key: str | Path | None = None,
     preload_locales: bool = False,
@@ -4263,10 +4406,10 @@ async def run_server(
     """Run the server.
 
     Args:
-        host: Host address to bind to
-        port: Port number to listen on
-        ssl_cert: Path to SSL certificate file (for WSS support)
-        ssl_key: Path to SSL private key file (for WSS support)
+        host: Host address to bind to (falls back to [server].bind_ip in config)
+        port: Port number to listen on (falls back to [server].port in config, then 8000)
+        ssl_cert: Path to SSL certificate file (falls back to [network].ssl_cert in config)
+        ssl_key: Path to SSL private key file (falls back to [network].ssl_key in config)
         preload_locales: Whether to block on localization compilation.
     """
     _configure_logging()
@@ -4284,6 +4427,8 @@ async def run_server(
         _ensure_server_owner(db_path, config_path, db_created)
 
     host = _resolve_bind_host(host, config_path)
+    port = _resolve_port(port, config_path)
+    ssl_cert, ssl_key = _resolve_ssl(ssl_cert, ssl_key, config_path)
 
     print(f"Starting PlayPalace v{VERSION} server...")
     server = Server(
@@ -4327,6 +4472,7 @@ def _configure_logging() -> None:
 
 def _install_exception_handlers(loop: asyncio.AbstractEventLoop) -> None:
     """Install top-level exception handlers for the event loop."""
+
     def _log_uncaught(exc_type, exc, tb):
         """Log uncaught exceptions while skipping shutdown interrupts."""
         if exc_type in (KeyboardInterrupt, asyncio.CancelledError):
@@ -4341,13 +4487,9 @@ def _install_exception_handlers(loop: asyncio.AbstractEventLoop) -> None:
         if isinstance(exc, asyncio.CancelledError):
             return
         if exc:
-            logging.getLogger("playpalace").exception(
-                "Asyncio exception", exc_info=exc
-            )
+            logging.getLogger("playpalace").exception("Asyncio exception", exc_info=exc)
         else:
-            logging.getLogger("playpalace").error(
-                "Asyncio error: %s", context.get("message")
-            )
+            logging.getLogger("playpalace").error("Asyncio error: %s", context.get("message"))
 
     sys.excepthook = _log_uncaught
     loop.set_exception_handler(_asyncio_exception_handler)
@@ -4418,9 +4560,7 @@ def _ensure_server_owner(db_path: Path, config_path: Path, db_created: bool) -> 
         )
         raise SystemExit(1)
 
-    min_user_len, max_user_len, min_pass_len, max_pass_len = _load_auth_limits(
-        config_path
-    )
+    min_user_len, max_user_len, min_pass_len, max_pass_len = _load_auth_limits(config_path)
 
     username = _prompt_username(min_user_len, max_user_len)
     password = _prompt_password(min_pass_len, max_pass_len)
@@ -4497,3 +4637,47 @@ def _resolve_bind_host(host: str | None, config_path: Path) -> str:
     if isinstance(bind_ip, str) and bind_ip.strip():
         return bind_ip.strip()
     return "127.0.0.1"
+
+
+def _resolve_port(port: int | None, config_path: Path) -> int:
+    """Resolve port from config when none provided on the command line."""
+    if port is not None:
+        return port
+    server_config = load_server_config(config_path)
+    cfg_port = server_config.get("port")
+    if isinstance(cfg_port, int) and 1 <= cfg_port <= 65535:
+        return cfg_port
+    if cfg_port is not None:
+        LOG.warning(
+            "Invalid port %r in config.toml [server].port (must be 1–65535). "
+            "Falling back to 8000.",
+            cfg_port,
+        )
+    return 8000
+
+
+def _resolve_ssl(
+    ssl_cert: str | Path | None,
+    ssl_key: str | Path | None,
+    config_path: Path,
+) -> tuple[str | Path | None, str | Path | None]:
+    """Resolve SSL cert/key from config when not provided on the command line.
+
+    CLI arguments take precedence. If neither cert nor key was given via CLI,
+    both are read from [network] in config.toml. A partial CLI override (one
+    but not the other) is caught upstream in main.py before this is called.
+    """
+    if ssl_cert is not None or ssl_key is not None:
+        return ssl_cert, ssl_key
+    cfg = load_full_config(config_path)
+    net_cfg = cfg.get("network", {})
+    cfg_cert = net_cfg.get("ssl_cert")
+    cfg_key = net_cfg.get("ssl_key")
+    if cfg_cert and cfg_key:
+        return cfg_cert, cfg_key
+    if bool(cfg_cert) != bool(cfg_key):
+        LOG.warning(
+            "SSL misconfiguration in config.toml: both [network].ssl_cert and "
+            "[network].ssl_key must be set together. SSL will not be enabled."
+        )
+    return None, None

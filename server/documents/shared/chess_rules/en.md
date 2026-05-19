@@ -82,7 +82,7 @@ The board is presented as an 8-by-8 grid. You navigate it using arrow keys:
 * **Enter or Space:** Select the focused square. Use this to pick up a piece (first click) and then to place it (second click).
 * **B:** View the full board state. Reads out every rank from 8 to 1, listing what is on each square.
 * **S:** Check game status. Announces who is white, who is black, whose turn it is, and the move count.
-* **Shift+F:** Flip the board orientation. By default, rank 1 is at the bottom (white's perspective). Flipping puts rank 8 at the bottom (black's perspective). This only affects your view, not the game itself.
+* **Shift+F:** Flip the board orientation. By default, if you are playing as white, rank 1 is at the bottom (white's perspective). Flipping puts rank 8 at the bottom (black's perspective). This is the default view if you are playing as black. This only affects your view, not the game itself.
 * **Shift+D:** Offer a draw to your opponent.
 * **Y:** Accept a pending draw offer or undo request.
 * **N:** Decline a pending draw offer or undo request.
@@ -94,6 +94,14 @@ The board is presented as an 8-by-8 grid. You navigate it using arrow keys:
 * **R:** Promote pawn to rook (when a promotion is pending).
 * **Shift+B:** Promote pawn to bishop (when a promotion is pending).
 * **K:** Promote pawn to knight (when a promotion is pending).
+* **M:** Type a move. Opens an edit box allowing you to type your move. You can type a move in the most common universally accepted Chess notations:
+    * ***e2e4***.
+    * ***pe2e4***.
+    * ***o-o or o-o-o*** King side and queen side castling.
+    * ***e1g1/e1c1 or e8g8/e8c8*: another alternative way for king side and queen side castling.
+    * In all cases, you can optionally enter a dash between the starting and the destination square to clearly separate them.
+
+
 
 ### How Grid Navigation Works
 When it is your turn, the board is displayed as a grid of 64 squares. Your screen reader will announce the content of each square as you move to it. Squares containing pieces are announced with their color and piece type, such as "E2: white pawn." Empty squares are announced by their coordinate alone, such as "E4."

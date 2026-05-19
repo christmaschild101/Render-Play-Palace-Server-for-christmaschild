@@ -69,12 +69,15 @@ def setup_game() -> tuple[TwentyOneGame, object, object]:
 def test_twentyone_creation() -> None:
     game = TwentyOneGame()
     assert game.get_name() == "21 (Survival Rules)"
-    assert game.get_name_key() == "21"
+    assert game.get_name_key() == "game-name-twentyone"
+    assert Localization.get("en", game.get_name_key()) == "21 (Survival Rules)"
     assert game.get_type() == "twentyone"
     assert game.get_min_players() == 2
     assert game.get_max_players() == 2
     assert Localization.get("en", MODIFIER_LABELS[MODIFIER_RAISE_1]) == "raise one"
-    assert Localization.get("en", MODIFIER_LABELS[MODIFIER_RAISE_2_PLUS]) == "withdraw and raise two"
+    assert (
+        Localization.get("en", MODIFIER_LABELS[MODIFIER_RAISE_2_PLUS]) == "withdraw and raise two"
+    )
     assert Localization.get("en", MODIFIER_LABELS[MODIFIER_GUARD]) == "defend"
     assert Localization.get("en", MODIFIER_LABELS[MODIFIER_LOCKDOWN]) == "delete double enhanced"
 
@@ -91,7 +94,9 @@ def test_twentyone_modifier_draw_weights_apply_enhanced_tiers() -> None:
     assert MODIFIER_DRAW_WEIGHTS[MODIFIER_BREAK_PLUS] == ENHANCED_MODIFIER_DRAW_WEIGHT
     assert MODIFIER_DRAW_WEIGHTS[MODIFIER_LOCKDOWN] == DOUBLE_ENHANCED_MODIFIER_DRAW_WEIGHT
     assert MODIFIER_DRAW_WEIGHTS[MODIFIER_PRECISION_DRAW] == DEFAULT_MODIFIER_DRAW_WEIGHT
-    assert MODIFIER_DRAW_WEIGHTS[MODIFIER_PRECISION_DRAW_PLUS] == DOUBLE_ENHANCED_MODIFIER_DRAW_WEIGHT
+    assert (
+        MODIFIER_DRAW_WEIGHTS[MODIFIER_PRECISION_DRAW_PLUS] == DOUBLE_ENHANCED_MODIFIER_DRAW_WEIGHT
+    )
     assert MODIFIER_DRAW_WEIGHTS[MODIFIER_PRIME_DRAW] == ENHANCED_MODIFIER_DRAW_WEIGHT
     assert MODIFIER_DRAW_WEIGHTS[MODIFIER_BREAK_SHIELDS] == DEFAULT_MODIFIER_DRAW_WEIGHT
     assert MODIFIER_DRAW_WEIGHTS[MODIFIER_BREAK_SHIELDS_PLUS] == ENHANCED_MODIFIER_DRAW_WEIGHT
@@ -402,9 +407,9 @@ def test_twentyone_hides_opponent_hole_card_on_round_start() -> None:
         game.deck = Deck(
             cards=[
                 make_card(1, 11),  # Host hidden
-                make_card(2, 3),   # Guest hidden
-                make_card(3, 4),   # Host shown
-                make_card(4, 5),   # Guest shown
+                make_card(2, 3),  # Guest hidden
+                make_card(3, 4),  # Host shown
+                make_card(4, 5),  # Guest shown
             ]
         )
 
@@ -1054,7 +1059,13 @@ def test_twentyone_lockdown_expire_plays_end_sound() -> None:
     p1.hp = 10
     p2.hp = 10
     p1.modifiers = [MODIFIER_TARGET_24]
-    p1.table_modifiers = [MODIFIER_LOCKDOWN, MODIFIER_GUARD, MODIFIER_GUARD, MODIFIER_GUARD, MODIFIER_GUARD]
+    p1.table_modifiers = [
+        MODIFIER_LOCKDOWN,
+        MODIFIER_GUARD,
+        MODIFIER_GUARD,
+        MODIFIER_GUARD,
+        MODIFIER_GUARD,
+    ]
 
     host_user.clear_messages()
     guest_user.clear_messages()
@@ -1184,6 +1195,45 @@ def test_twentyone_hit_keeps_turn_until_stand() -> None:
     assert game.current_player == p1
     assert game.phase == "turns"
     assert len(p1.hand) == 3
+
+
+def test_twentyone_empty_deck_hit_forces_stand_and_advances_turn() -> None:
+    game, p1, p2 = setup_game()
+    game.status = "playing"
+    game.game_active = True
+    game.phase = "turns"
+    game.set_turn_players([p1, p2], reset_index=True)
+    p1.hp = 10
+    p2.hp = 10
+    p1.hand = [make_card(1, 10), make_card(2, 7)]
+    p2.hand = [make_card(3, 9), make_card(4, 8)]
+    game.deck = Deck(cards=[])
+
+    game.execute_action(p1, "hit")
+
+    assert p1.stand_pending is True
+    assert game.current_player == p2
+    assert game.phase == "turns"
+
+
+def test_twentyone_empty_deck_hit_settles_when_both_players_are_done() -> None:
+    game, p1, p2 = setup_game()
+    game.status = "playing"
+    game.game_active = True
+    game.phase = "turns"
+    game.set_turn_players([p1, p2], reset_index=True)
+    p1.hp = 10
+    p2.hp = 10
+    p1.hand = [make_card(1, 10), make_card(2, 9)]
+    p2.hand = [make_card(3, 8), make_card(4, 9)]
+    p2.stand_pending = True
+    game.deck = Deck(cards=[])
+
+    game.execute_action(p1, "hit")
+
+    assert p1.stand_pending is True
+    assert p2.stand_pending is True
+    assert game.phase == "between_rounds"
 
 
 def test_twentyone_play_modifier_keeps_turn_until_stand() -> None:

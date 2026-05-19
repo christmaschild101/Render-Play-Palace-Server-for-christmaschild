@@ -39,7 +39,6 @@ option-on = 开启
 option-off = 关闭
 
 # 状态框
-status-box-closed = 状态信息已关闭。
 
 # 游戏结束
 game-leave = 离开游戏
@@ -64,6 +63,47 @@ game-player-deals = { $player } 发牌。
 # 牌名
 card-name = { $suit }{ $rank }
 no-cards = 没有牌
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = 黑色
+color-black-m = 黑色
+color-black-f = 黑色
+color-blue = 蓝色
+color-blue-m = 蓝色
+color-blue-f = 蓝色
+color-brown = 棕色
+color-brown-m = 棕色
+color-brown-f = 棕色
+color-gray = 灰色
+color-gray-m = 灰色
+color-gray-f = 灰色
+color-green = 绿色
+color-green-m = 绿色
+color-green-f = 绿色
+color-indigo = 靖蓝色
+color-indigo-m = 靖蓝色
+color-indigo-f = 靖蓝色
+color-orange = 橙色
+color-orange-m = 橙色
+color-orange-f = 橙色
+color-pink = 粉色
+color-pink-m = 粉色
+color-pink-f = 粉色
+color-purple = 紫色
+color-purple-m = 紫色
+color-purple-f = 紫色
+color-red = 红色
+color-red-m = 红色
+color-red-f = 红色
+color-violet = 紫罗兰色
+color-violet-m = 紫罗兰色
+color-violet-f = 紫罗兰色
+color-white = 白色
+color-white-m = 白色
+color-white-f = 白色
+color-yellow = 黄色
+color-yellow-m = 黄色
+color-yellow-f = 黄色
 
 # 花色名称
 suit-diamonds = 方块

@@ -530,6 +530,7 @@ class TestImportIntegration:
 
         # Snapshot
         import copy
+
         snapshot = copy.deepcopy(cm.identities)
 
         # Make changes

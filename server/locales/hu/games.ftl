@@ -39,7 +39,6 @@ option-on = be
 option-off = ki
 
 # Status box
-status-box-closed = Státuszinformáció bezárva.
 
 # Game end
 game-leave = Játék elhagyása
@@ -64,6 +63,47 @@ game-player-deals = { $player } oszt.
 # Card names
 card-name = { $suit } { $rank }
 no-cards = Nincsenek kártyák
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = fekete
+color-black-m = fekete
+color-black-f = fekete
+color-blue = kék
+color-blue-m = kék
+color-blue-f = kék
+color-brown = barna
+color-brown-m = barna
+color-brown-f = barna
+color-gray = szürke
+color-gray-m = szürke
+color-gray-f = szürke
+color-green = zöld
+color-green-m = zöld
+color-green-f = zöld
+color-indigo = indigó
+color-indigo-m = indigó
+color-indigo-f = indigó
+color-orange = narancssárga
+color-orange-m = narancssárga
+color-orange-f = narancssárga
+color-pink = rózsaszín
+color-pink-m = rózsaszín
+color-pink-f = rózsaszín
+color-purple = lila
+color-purple-m = lila
+color-purple-f = lila
+color-red = piros
+color-red-m = piros
+color-red-f = piros
+color-violet = ibolya
+color-violet-m = ibolya
+color-violet-f = ibolya
+color-white = fehér
+color-white-m = fehér
+color-white-f = fehér
+color-yellow = sárga
+color-yellow-m = sárga
+color-yellow-f = sárga
 
 # Suit names
 suit-diamonds = káró

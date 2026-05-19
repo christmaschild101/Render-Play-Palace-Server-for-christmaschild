@@ -11,6 +11,7 @@ from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.options import GameOptions, IntOption, option_field, BoolOption
 from ...game_utils.teams import TeamResultBuilder
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 from .bot import bot_think
 
@@ -69,9 +70,7 @@ class LudoGame(Game):
     players: list[LudoPlayer] = field(default_factory=list)
     options: LudoOptions = field(default_factory=LudoOptions)
 
-    player_colors: list[str] = field(
-        default_factory=lambda: ["Red", "Blue", "Green", "Yellow"]
-    )
+    player_colors: list[str] = field(default_factory=lambda: ["Red", "Blue", "Green", "Yellow"])
 
     last_roll: int = 0
     consecutive_sixes: int = 0
@@ -80,9 +79,7 @@ class LudoGame(Game):
 
     track_length: int = 52
     home_column_length: int = 6
-    safe_squares: list[int] = field(
-        default_factory=lambda: [9, 22, 35, 48]
-    )
+    safe_squares: list[int] = field(default_factory=lambda: [9, 22, 35, 48])
 
     @classmethod
     def get_name(cls) -> str:
@@ -104,9 +101,7 @@ class LudoGame(Game):
     def get_max_players(cls) -> int:
         return 4
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> LudoPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> LudoPlayer:
         """Create a new player."""
         return LudoPlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -191,7 +186,7 @@ class LudoGame(Game):
 
     def on_start(self) -> None:
         """Start the game."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.last_roll = 0
 
@@ -207,8 +202,7 @@ class LudoGame(Game):
         for i, player in enumerate(active_players):
             player.color = self.player_colors[i]
             player.tokens = [
-                LudoToken(state="yard", position=0, token_number=j + 1)
-                for j in range(4)
+                LudoToken(state="yard", position=0, token_number=j + 1) for j in range(4)
             ]
             player.finished_count = 0
             player.move_options = {}
@@ -350,9 +344,7 @@ class LudoGame(Game):
             return token.position + roll <= self.home_column_length
         return False
 
-    def _get_moveable_tokens(
-        self, player: LudoPlayer, roll: int
-    ) -> list[tuple[int, LudoToken]]:
+    def _get_moveable_tokens(self, player: LudoPlayer, roll: int) -> list[tuple[int, LudoToken]]:
         moveable = []
         for i, token in enumerate(player.tokens):
             if self._can_token_move(token, roll):
@@ -565,9 +557,7 @@ class LudoGame(Game):
         """Build game result with winner information."""
         from datetime import datetime
 
-        sorted_teams, winner, final_scores = TeamResultBuilder.summarize(
-            self._team_manager
-        )
+        sorted_teams, winner, final_scores = TeamResultBuilder.summarize(self._team_manager)
 
         return GameResult(
             game_type=self.get_type(),

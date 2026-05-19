@@ -39,7 +39,6 @@ option-on = activat
 option-off = dezactivat
 
 # Status box
-status-box-closed = Informații despre stare închise.
 
 # Game end
 game-leave = Părăsește jocul
@@ -64,6 +63,47 @@ game-player-deals = { $player } împarte cărțile.
 # Card names
 card-name = { $rank } de { $suit }
 no-cards = Fără cărți
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = negru
+color-black-m = negru
+color-black-f = neagră
+color-blue = albastru
+color-blue-m = albastru
+color-blue-f = albastră
+color-brown = maro
+color-brown-m = maro
+color-brown-f = maro
+color-gray = gri
+color-gray-m = gri
+color-gray-f = gri
+color-green = verde
+color-green-m = verde
+color-green-f = verde
+color-indigo = indigo
+color-indigo-m = indigo
+color-indigo-f = indigo
+color-orange = portocaliu
+color-orange-m = portocaliu
+color-orange-f = portocalie
+color-pink = roz
+color-pink-m = roz
+color-pink-f = roz
+color-purple = purpuriu
+color-purple-m = purpuriu
+color-purple-f = purpurie
+color-red = roșu
+color-red-m = roșu
+color-red-f = roșie
+color-violet = violet
+color-violet-m = violet
+color-violet-f = violetă
+color-white = alb
+color-white-m = alb
+color-white-f = albă
+color-yellow = galben
+color-yellow-m = galben
+color-yellow-f = galbenă
 
 # Suit names
 suit-diamonds = romburi

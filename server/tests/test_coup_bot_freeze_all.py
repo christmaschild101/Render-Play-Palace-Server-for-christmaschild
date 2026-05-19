@@ -2,6 +2,7 @@ import pytest
 from server.games.coup.game import CoupGame
 from server.game_utils.bot_helper import BotHelper
 
+
 def test_bot_executes_all_actions():
     game = CoupGame()
     player_bot = game.create_player(player_id="b1", name="BotBob", is_bot=True)
@@ -33,12 +34,18 @@ def test_bot_executes_all_actions():
         BotHelper.on_tick(game)
 
         # Check if it succeeded
-        print(f"Action {action} result: pending_action={player_bot.bot_pending_action}, is_resolving={game.is_resolving}, turn_phase={game.turn_phase}")
+        print(
+            f"Action {action} result: pending_action={player_bot.bot_pending_action}, is_resolving={game.is_resolving}, turn_phase={game.turn_phase}"
+        )
         if action == "income":
             assert game.turn_phase == "main"
-            assert game.current_player == player_human # turn advanced
+            assert game.current_player == player_human  # turn advanced
         elif action in ["foreign_aid", "tax", "exchange", "steal", "assassinate", "coup"]:
-            assert game.turn_phase == "action_declared" or game.is_resolving or game.turn_phase == "exchanging"
+            assert (
+                game.turn_phase == "action_declared"
+                or game.is_resolving
+                or game.turn_phase == "exchanging"
+            )
 
         # Restore turn for next test
         game.turn_player_ids = [player_bot.id, player_human.id]

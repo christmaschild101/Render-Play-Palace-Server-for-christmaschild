@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run hadolint over all Containerfiles using podman."""
+
 from __future__ import annotations
 
 import shutil

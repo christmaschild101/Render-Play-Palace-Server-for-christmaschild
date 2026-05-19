@@ -151,7 +151,9 @@ def test_blackjack_on_start_waits_for_bets_then_deals_and_posts_bets() -> None:
     assert any(sound in SHUFFLE_SOUND_SET for sound in sounds)
     assert any(sound in DEAL_SOUND_SET for sound in sounds)
     spoken_messages = host_user.get_spoken_messages()
-    hand_msg_index = next(i for i, msg in enumerate(spoken_messages) if "Hand 1. Place your bets." in msg)
+    hand_msg_index = next(
+        i for i, msg in enumerate(spoken_messages) if "Hand 1. Place your bets." in msg
+    )
     bet_msg_index = next(i for i, msg in enumerate(spoken_messages) if "You bet 10." in msg)
     assert hand_msg_index < bet_msg_index
 
@@ -295,10 +297,10 @@ def test_blackjack_initial_blackjack_plays_blackjack_sound() -> None:
     game, host_player, host_user = create_game_with_host()
     game.deck = Deck(
         cards=[
-            make_card(1, 1, 1),   # host
-            make_card(2, 9, 2),   # dealer up
+            make_card(1, 1, 1),  # host
+            make_card(2, 9, 2),  # dealer up
             make_card(3, 13, 1),  # host
-            make_card(4, 7, 2),   # dealer hole
+            make_card(4, 7, 2),  # dealer hole
         ]
     )
 
@@ -547,7 +549,6 @@ def test_blackjack_whose_turn_between_hands_all_bets_in_uses_default_whose_turn(
 
     spoken = host_user.get_last_spoken() or ""
     assert spoken == "No one's turn right now."
-
 
 
 def test_blackjack_between_hands_timer_timeout_uses_base_bet_for_missing_entries() -> None:

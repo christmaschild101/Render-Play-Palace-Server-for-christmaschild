@@ -161,9 +161,7 @@ class Deck(DataClassJSONMixin):
         for _ in range(3 * attack_multiplier):
             self.cards.append(self._create_card(CardType.HAZARD, HazardType.ACCIDENT))
         for _ in range(4 * attack_multiplier):
-            self.cards.append(
-                self._create_card(CardType.HAZARD, HazardType.SPEED_LIMIT)
-            )
+            self.cards.append(self._create_card(CardType.HAZARD, HazardType.SPEED_LIMIT))
         for _ in range(5 * attack_multiplier):
             self.cards.append(self._create_card(CardType.HAZARD, HazardType.STOP))
 
@@ -175,9 +173,7 @@ class Deck(DataClassJSONMixin):
         for _ in range(6 * defense_multiplier):
             self.cards.append(self._create_card(CardType.REMEDY, RemedyType.REPAIRS))
         for _ in range(6 * defense_multiplier):
-            self.cards.append(
-                self._create_card(CardType.REMEDY, RemedyType.END_OF_LIMIT)
-            )
+            self.cards.append(self._create_card(CardType.REMEDY, RemedyType.END_OF_LIMIT))
         for _ in range(14 * defense_multiplier):
             self.cards.append(self._create_card(CardType.REMEDY, RemedyType.ROLL))
 
@@ -206,9 +202,7 @@ class Deck(DataClassJSONMixin):
         """Draw a card that isn't already in the hand (for disallow duplicates mode)."""
         # First try to find a non-duplicate
         for i, card in enumerate(self.cards):
-            if not any(
-                c.card_type == card.card_type and c.value == card.value for c in hand
-            ):
+            if not any(c.card_type == card.card_type and c.value == card.value for c in hand):
                 return self.cards.pop(i)
         # Fall back to normal draw if all are duplicates
         return self.draw()

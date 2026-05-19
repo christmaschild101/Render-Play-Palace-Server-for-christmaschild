@@ -33,6 +33,8 @@ whose-turn = Czyja tura?
 whos-at-table = Kto jest przy stole?
 check-scores = Sprawdź wyniki
 check-scores-detailed = Szczegółowe wyniki
+check-game-options = Sprawdź opcje gry
+no-game-options = Brak opcji gry.
 
 # Turn messages
 game-player-skipped = { $player } został pominięty.
@@ -154,7 +156,6 @@ game-points = { $count } { $count ->
     [one] punkt
    *[other] punktów
 }
-status-box-closed = Zamknięty.
 play = Graj
 
 # Leaderboards
@@ -257,6 +258,30 @@ account-banned = Twoje konto zostało zbanowane i nie można uzyskać do niego d
 incorrect-username = Wprowadzona nazwa użytkownika nie istnieje.
 incorrect-password = Wprowadzone hasło jest nieprawidłowe.
 already-logged-in = To konto jest już zalogowane.
+
+# Walidacja danych logowania
+credential-username-length = Nazwa użytkownika musi mieć od { $min } do { $max } znaków.
+credential-password-length = Hasło musi mieć od { $min } do { $max } znaków.
+
+# Ograniczenie liczby prób
+rate-limit-login-ip = Zbyt wiele prób logowania z tego adresu. Poczekaj chwilę i spróbuj ponownie.
+rate-limit-login-user = Zbyt wiele nieudanych prób logowania dla tej nazwy użytkownika. Poczekaj chwilę i spróbuj ponownie.
+rate-limit-registration = Zbyt wiele prób rejestracji z tego adresu. Poczekaj chwilę i spróbuj ponownie.
+rate-limit-refresh = Zbyt wiele prób odświeżenia z tego adresu. Poczekaj chwilę i spróbuj ponownie.
+
+# Błędy sesji i autoryzacji
+account-not-found = Nie znaleziono konta.
+session-expired = Sesja wygasła. Zaloguj się ponownie.
+session-token-mismatch = Token sesji nie pasuje do nazwy użytkownika.
+refresh-token-expired = Token odświeżania wygasł. Zaloguj się ponownie.
+refresh-token-mismatch = Token odświeżania nie pasuje do nazwy użytkownika.
+
+# Rejestracja
+registration-success = Rejestracja zakończona pomyślnie! Twoje konto oczekuje na zatwierdzenie.
+registration-username-taken = Ta nazwa użytkownika jest już zajęta. Wybierz inną nazwę użytkownika.
+
+# Domyślne preferencje
+pref-invalid-value = Nieprawidłowy wybór, używam wartości domyślnej.
 
 # Powód odrzucenia
 decline-reason-prompt = Podaj powód odrzucenia (lub naciśnij Escape, aby anulować):

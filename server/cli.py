@@ -49,8 +49,9 @@ Localization.init(_MODULE_DIR / "locales")
 
 from server.games.registry import GameRegistry, get_game_class  # noqa: E402
 from server.games.base import Game, BOT_NAMES  # noqa: E402
-from server.core.users.base import User, TrustLevel, generate_uuid  # noqa: E402
+from server.core.users.base import User, MenuItem, TrustLevel, generate_uuid  # noqa: E402
 from server.core.users.bot import Bot  # noqa: E402
+from server.core.ui.keybinds import KeybindState  # noqa: E402
 from server.persistence.database import Database  # noqa: E402
 from server.auth.auth import AuthManager  # noqa: E402
 
@@ -67,8 +68,10 @@ class SpectatorUser(User):
     _uuid: str = field(default_factory=generate_uuid)
     _messages: list = field(default_factory=list)
     _menus: dict = field(default_factory=dict)  # menu_id -> items
+    _sounds: list = field(default_factory=list)  # {tick, sound}
     _json_mode: bool = False
     _quiet: bool = False
+    _tick: int = 0
 
     @property
     def username(self) -> str:
@@ -94,10 +97,8 @@ class SpectatorUser(User):
     def speak(self, text: str, buffer: str = "misc") -> None:
         self._log(text)
 
-    def play_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
-        pass  # Ignore sounds
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
+        self._sounds.append({"tick": self._tick, "sound": name})
 
     def play_music(self, name: str, looping: bool = True) -> None:
         pass  # Ignore music
@@ -135,9 +136,7 @@ class SpectatorUser(User):
     def remove_menu(self, menu_id: str) -> None:
         self._menus.pop(menu_id, None)
 
-    def show_editbox(
-        self, input_id: str, prompt: str, default_value: str = "", **kwargs
-    ) -> None:
+    def show_editbox(self, input_id: str, prompt: str, default_value: str = "", **kwargs) -> None:
         pass
 
     def remove_editbox(self, input_id: str) -> None:
@@ -145,6 +144,51 @@ class SpectatorUser(User):
 
     def clear_ui(self) -> None:
         self._menus.clear()
+
+
+class CapturingBot(Bot):
+    """
+    A bot that captures menus, speech, and sound events for CLI inspection.
+    Used instead of plain Bot when the CLI needs to report what players see.
+    """
+
+    def __init__(self, name: str, locale: str = "en"):
+        super().__init__(name, locale=locale)
+        self.captured_menus: list[dict] = []  # {tick, menu_id, items}
+        self.captured_speech: list[str] = []
+        self.captured_sounds: list[dict] = []  # {tick, sound, volume, pan, pitch}
+        self._tick: int = 0
+
+    def speak(self, text: str, buffer: str = "misc") -> None:
+        self.captured_speech.append(text)
+
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
+        self.captured_sounds.append(
+            {"tick": self._tick, "sound": name, "volume": volume, "pan": pan, "pitch": pitch}
+        )
+
+    def show_menu(self, menu_id: str, items: list, **kwargs) -> None:
+        item_texts = []
+        for item in items:
+            if hasattr(item, "text"):
+                item_texts.append(item.text)
+            elif isinstance(item, dict):
+                item_texts.append(item.get("text", str(item)))
+            else:
+                item_texts.append(str(item))
+        self.captured_menus.append(
+            {"tick": self._tick, "menu_id": menu_id, "items": item_texts}
+        )
+
+    def update_menu(
+        self,
+        menu_id: str,
+        items: list,
+        position: int | None = None,
+        selection_id: str | None = None,
+        play_selection_sound: bool = False,
+    ) -> None:
+        self.show_menu(menu_id, items)
 
 
 class GameSimulator:
@@ -159,6 +203,8 @@ class GameSimulator:
         quiet: bool = False,
         max_ticks: int = 10000000,
         test_serialization: bool = False,
+        locale: str = "en",
+        validate_keybinds: bool = False,
     ):
         self.game_type = game_type
         self.bot_names = bot_names
@@ -167,10 +213,13 @@ class GameSimulator:
         self.quiet = quiet
         self.max_ticks = max_ticks
         self.test_serialization = test_serialization
+        self.locale = locale
+        self.validate_keybinds = validate_keybinds
 
         self.game: Game | None = None
         self.spectator: SpectatorUser | None = None
         self.game_class: type | None = None
+        self.capturing_bots: dict[str, CapturingBot] = {}  # name -> CapturingBot
 
     def setup(self) -> bool:
         """Set up the game. Returns True on success."""
@@ -188,9 +237,7 @@ class GameSimulator:
 
         if len(self.bot_names) < min_players:
             if not self.json_mode:
-                print(
-                    f"Error: {self.game_type} requires at least {min_players} players"
-                )
+                print(f"Error: {self.game_type} requires at least {min_players} players")
             return False
 
         if len(self.bot_names) > max_players:
@@ -220,22 +267,28 @@ class GameSimulator:
 
         # Create spectator to watch the game
         self.spectator = SpectatorUser(
-            _username="__spectator__", _json_mode=self.json_mode, _quiet=self.quiet
+            _username="__spectator__",
+            _locale=self.locale,
+            _json_mode=self.json_mode,
+            _quiet=self.quiet,
         )
 
         # Set up host
         self.game.host = self.bot_names[0]
 
-        # Add bot players
+        # Add bot players using CapturingBot for menu/sound inspection
         for name in self.bot_names:
-            bot_user = Bot(name)
+            bot_user = CapturingBot(name, locale=self.locale)
+            self.capturing_bots[name] = bot_user
             player = self.game.create_player(bot_user.uuid, name, is_bot=True)
             self.game.players.append(player)
             self.game.attach_user(player.id, bot_user)
             self.game.setup_player_actions(player)
 
         # Add spectator as a player to receive broadcasts
-        spectator_player = self.game.create_player(self.spectator.uuid, "__spectator__", is_bot=False)
+        spectator_player = self.game.create_player(
+            self.spectator.uuid, "__spectator__", is_bot=False
+        )
         spectator_player.is_spectator = True
         self.game.players.append(spectator_player)
         self.game.attach_user(spectator_player.id, self.spectator)
@@ -253,7 +306,7 @@ class GameSimulator:
         saved_table = self.game._table
         saved_keybinds = dict(self.game._keybinds)
         saved_pending_actions = dict(self.game._pending_actions)
-        saved_status_box_open = set(self.game._status_box_open)
+        saved_transient_display_state = dict(self.game._transient_display_state)
         saved_actions_menu_open = set(self.game._actions_menu_open)
         saved_turn_index = self.game.turn_index
 
@@ -274,7 +327,7 @@ class GameSimulator:
         self.game._table = saved_table
         self.game._keybinds = saved_keybinds
         self.game._pending_actions = saved_pending_actions
-        self.game._status_box_open = saved_status_box_open
+        self.game._transient_display_state = saved_transient_display_state
         self.game._actions_menu_open = saved_actions_menu_open
 
         # Restore turn_index before rebuild
@@ -288,9 +341,7 @@ class GameSimulator:
 
         if not self.json_mode and not self.quiet:
             mode_str = " [testing serialization]" if self.test_serialization else ""
-            print(
-                f"\n=== {self.game.get_name()} ({len(self.bot_names)} bots){mode_str} ===\n"
-            )
+            print(f"\n=== {self.game.get_name()} ({len(self.bot_names)} bots){mode_str} ===\n")
 
         # Validate before starting
         errors = self.game.prestart_validate()
@@ -312,6 +363,11 @@ class GameSimulator:
         tick = 0
         serialization_error = None
         while self.game.game_active and tick < self.max_ticks:
+            # Update tick counters for event logging
+            self.spectator._tick = tick
+            for bot in self.capturing_bots.values():
+                bot._tick = tick
+
             self.game.on_tick()
             tick += 1
 
@@ -331,21 +387,20 @@ class GameSimulator:
             print(f"\nWarning: Game timed out after {self.max_ticks} ticks")
 
         # Build results - filter out spectator references
-        filtered_messages = [
-            m for m in self.spectator._messages if "__spectator__" not in m
-        ]
+        filtered_messages = [m for m in self.spectator._messages if "__spectator__" not in m]
         filtered_menu = [
             item
             for item in self.spectator._menus.get("game_over", [])
             if "__spectator__" not in item
         ]
 
-        results = {
+        results: dict[str, Any] = {
             "game_type": self.game_type,
             "game_name": self.game.get_name(),
             "ticks": tick,
             "rounds": self.game.round,
             "timed_out": timed_out,
+            "locale": self.locale,
             "messages": filtered_messages,
             "final_menu": filtered_menu,
         }
@@ -358,7 +413,102 @@ class GameSimulator:
             else:
                 results["serialization_passed"] = True
 
+        # Per-player menu captures
+        player_menus: dict[str, list[dict]] = {}
+        player_sounds: dict[str, list[dict]] = {}
+        for name, bot in self.capturing_bots.items():
+            if bot.captured_menus:
+                player_menus[name] = bot.captured_menus
+            if bot.captured_sounds:
+                player_sounds[name] = bot.captured_sounds
+        results["player_menus"] = player_menus
+        results["player_sounds"] = player_sounds
+
+        # Sound summary
+        spectator_sound_count = len(self.spectator._sounds)
+        total_player_sounds = sum(len(s) for s in player_sounds.values())
+        results["sound_events"] = {
+            "spectator": spectator_sound_count,
+            "players": total_player_sounds,
+            "total": spectator_sound_count + total_player_sounds,
+        }
+
+        # Keybind validation
+        if self.validate_keybinds:
+            results["keybind_validation"] = self._validate_keybinds()
+
         return results
+
+    def _validate_keybinds(self) -> dict[str, Any]:
+        """Validate keybinds: check action IDs exist and fire smoke tests."""
+        if not self.game:
+            return {"error": "no game"}
+
+        issues: list[str] = []
+        keybind_summary: list[dict] = []
+
+        # Collect all action IDs across all players
+        all_action_ids: set[str] = set()
+        for player in self.game.players:
+            if player.is_spectator:
+                continue
+            for action_set in self.game.player_action_sets.get(player.id, []):
+                for aid in action_set._order:
+                    all_action_ids.add(aid)
+
+        # Static validation: check every keybind references real action IDs
+        for key, keybinds in self.game._keybinds.items():
+            for keybind in keybinds:
+                entry = {
+                    "key": key,
+                    "name": keybind.name,
+                    "actions": keybind.actions,
+                    "state": keybind.state.name,
+                }
+                keybind_summary.append(entry)
+
+                for action_id in keybind.actions:
+                    if action_id not in all_action_ids:
+                        issues.append(
+                            f"Keybind '{key}' ({keybind.name}): "
+                            f"action '{action_id}' not found in any action set"
+                        )
+
+        # Smoke test: fire each keybind against the first non-spectator player
+        smoke_results: list[dict] = []
+        test_player = None
+        for p in self.game.players:
+            if not p.is_spectator:
+                test_player = p
+                break
+
+        if test_player:
+            for key, keybinds in self.game._keybinds.items():
+                # Build synthetic event
+                event = {"type": "keybind", "key": key}
+                if key.startswith("ctrl+"):
+                    event["control"] = True
+                    event["key"] = key.removeprefix("ctrl+")
+                if key.startswith("shift+"):
+                    event["shift"] = True
+                    event["key"] = key.removeprefix("shift+")
+                if key.startswith("alt+"):
+                    event["alt"] = True
+                    event["key"] = key.removeprefix("alt+")
+
+                try:
+                    self.game.handle_event(test_player, event)
+                    smoke_results.append({"key": key, "status": "ok"})
+                except Exception as e:
+                    smoke_results.append({"key": key, "status": "error", "error": str(e)})
+                    issues.append(f"Keybind '{key}' smoke test crashed: {e}")
+
+        return {
+            "keybinds": keybind_summary,
+            "issues": issues,
+            "smoke_tests": smoke_results,
+            "passed": len(issues) == 0,
+        }
 
 
 def cmd_list_games(args):
@@ -384,9 +534,7 @@ def cmd_list_games(args):
             print(f"  {game_class.get_type()}")
             print(f"    Name: {game_class.get_name()}")
             print(f"    Category: {game_class.get_category()}")
-            print(
-                f"    Players: {game_class.get_min_players()}-{game_class.get_max_players()}"
-            )
+            print(f"    Players: {game_class.get_min_players()}-{game_class.get_max_players()}")
             print()
 
 
@@ -435,9 +583,7 @@ def cmd_show_options(args):
         options_list.append(option_data)
 
     if args.json:
-        print(
-            json.dumps({"game_type": args.game_type, "options": options_list}, indent=2)
-        )
+        print(json.dumps({"game_type": args.game_type, "options": options_list}, indent=2))
     else:
         print(f"Options for {args.game_type}:\n")
         for opt in options_list:
@@ -507,6 +653,8 @@ def _run_simulate(args):
         quiet=args.quiet,
         max_ticks=args.max_ticks,
         test_serialization=args.test_serialization,
+        locale=args.locale,
+        validate_keybinds=args.validate_keybinds,
     )
 
     if not simulator.setup():
@@ -522,14 +670,46 @@ def _run_simulate(args):
     if args.json:
         print(json.dumps(results, indent=2))
     elif not args.quiet:
-        print(
-            f"\n=== Finished: {results['ticks']} ticks, {results['rounds']} rounds ==="
-        )
+        print(f"\n=== Finished: {results['ticks']} ticks, {results['rounds']} rounds ===")
+        if results.get("locale") != "en":
+            print(f"Locale: {results['locale']}")
         if results.get("final_menu"):
             print("\nFinal standings:")
             for line in results["final_menu"]:
                 if line and not line.lower().startswith("leave"):
                     print(f"  {line}")
+
+        # Player menu summary
+        player_menus = results.get("player_menus", {})
+        if player_menus:
+            print("\nPlayer menus captured:")
+            for name, menus in player_menus.items():
+                # Group by menu_id and show the last snapshot of each
+                latest: dict[str, list[str]] = {}
+                for m in menus:
+                    latest[m["menu_id"]] = m["items"]
+                for menu_id, items in latest.items():
+                    print(f"  {name} [{menu_id}]: {', '.join(items[:8])}")
+                    if len(items) > 8:
+                        print(f"    ... and {len(items) - 8} more items")
+
+        # Sound summary
+        sound_info = results.get("sound_events", {})
+        total_sounds = sound_info.get("total", 0)
+        if total_sounds == 0:
+            print("\nWarning: 0 sound events fired. Silence is a bug.")
+        else:
+            print(f"\nSound events: {total_sounds} total ({sound_info.get('spectator', 0)} broadcast, {sound_info.get('players', 0)} per-player)")
+
+        # Keybind validation
+        kb = results.get("keybind_validation")
+        if kb:
+            if kb["passed"]:
+                print(f"\nKeybind validation: passed ({len(kb['keybinds'])} keybinds, {len(kb['smoke_tests'])} smoke tests)")
+            else:
+                print(f"\nKeybind validation: FAILED")
+                for issue in kb["issues"]:
+                    print(f"  - {issue}")
 
 
 def _prompt_for_password() -> str:
@@ -652,9 +832,7 @@ def main():
     list_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     # show-options command
-    options_parser = subparsers.add_parser(
-        "show-options", help="Show options for a game"
-    )
+    options_parser = subparsers.add_parser("show-options", help="Show options for a game")
     options_parser.add_argument("game_type", help="Game type (e.g., lightturret, pig)")
     options_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
@@ -674,9 +852,7 @@ def main():
         help="Set game option (e.g., -o starting_power=15)",
     )
     sim_parser.add_argument("--json", action="store_true", help="Output as JSON")
-    sim_parser.add_argument(
-        "--quiet", "-q", action="store_true", help="Suppress game output"
-    )
+    sim_parser.add_argument("--quiet", "-q", action="store_true", help="Suppress game output")
     sim_parser.add_argument(
         "--max-ticks",
         type=int,
@@ -688,6 +864,18 @@ def main():
         "-s",
         action="store_true",
         help="Save and restore game state after each tick to test serialization",
+    )
+    sim_parser.add_argument(
+        "--locale",
+        "-l",
+        default="en",
+        help="Locale for output (e.g., fr, es). Non-English exposes hardcoded strings.",
+    )
+    sim_parser.add_argument(
+        "--validate-keybinds",
+        "-k",
+        action="store_true",
+        help="Validate keybind action IDs and run smoke tests after game",
     )
     sim_parser.add_argument(
         "--clip",

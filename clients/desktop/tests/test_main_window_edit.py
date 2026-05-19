@@ -23,6 +23,9 @@ class DummyWidget:
     def SetLabel(self, text):  # noqa: N802
         self.label = text
 
+    def SetName(self, name):  # noqa: N802
+        self.name = name
+
     def SetFocus(self):  # noqa: N802
         self.focused = True
 
@@ -107,7 +110,9 @@ def make_minimal_window(monkeypatch):
 def test_switch_to_edit_mode_selects_default_value(monkeypatch):
     window = make_minimal_window(monkeypatch)
 
-    window.switch_to_edit_mode(prompt="Max score", default_value="500", multiline=False, read_only=False)
+    window.switch_to_edit_mode(
+        prompt="Max score", default_value="500", multiline=False, read_only=False
+    )
 
     assert window.edit_input.selection == (0, 3)
     assert window._pending_edit_clear is True
@@ -116,7 +121,9 @@ def test_switch_to_edit_mode_selects_default_value(monkeypatch):
 
 def test_on_edit_char_clears_pending_text(monkeypatch):
     window = make_minimal_window(monkeypatch)
-    window.switch_to_edit_mode(prompt="Score", default_value="500", multiline=False, read_only=False)
+    window.switch_to_edit_mode(
+        prompt="Score", default_value="500", multiline=False, read_only=False
+    )
 
     event = DummyKeyEvent(ord("1"))
     window.on_edit_char(event)
@@ -128,7 +135,9 @@ def test_on_edit_char_clears_pending_text(monkeypatch):
 
 def test_on_edit_multiline_char_clears_pending_text(monkeypatch):
     window = make_minimal_window(monkeypatch)
-    window.switch_to_edit_mode(prompt="Notes", default_value="Hello", multiline=True, read_only=False)
+    window.switch_to_edit_mode(
+        prompt="Notes", default_value="Hello", multiline=True, read_only=False
+    )
 
     event = DummyKeyEvent(ord("A"))
     window.on_edit_multiline_char(event)

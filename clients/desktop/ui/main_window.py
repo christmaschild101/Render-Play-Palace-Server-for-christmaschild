@@ -21,6 +21,7 @@ from config_manager import set_item_in_dict
 
 LOG = logging.getLogger(__name__)
 
+
 @dataclass(frozen=True)
 class UiPlatformConfig:
     window_size: tuple[int, int]
@@ -284,9 +285,7 @@ class MainWindow(wx.Frame):
             wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F9, self.ID_VOLUME_DOWN),
             wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F10, self.ID_VOLUME_UP),
             wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F2, self.ID_LIST_ONLINE),
-            wx.AcceleratorEntry(
-                wx.ACCEL_SHIFT, wx.WXK_F2, self.ID_LIST_ONLINE_WITH_GAMES
-            ),
+            wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F2, self.ID_LIST_ONLINE_WITH_GAMES),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("P"), self.ID_PING),
         ]
 
@@ -307,9 +306,7 @@ class MainWindow(wx.Frame):
         ]
 
         # Create two accelerator tables
-        self.accel_table_with_buffers = wx.AcceleratorTable(
-            common_entries + buffer_entries
-        )
+        self.accel_table_with_buffers = wx.AcceleratorTable(common_entries + buffer_entries)
         self.accel_table_without_buffers = wx.AcceleratorTable(common_entries)
 
         # Start without buffer keys (will be enabled when menu gets focus)
@@ -318,9 +315,7 @@ class MainWindow(wx.Frame):
         # Bind the accelerator events
         self.Bind(wx.EVT_MENU, self.on_focus_menu, id=self.ID_FOCUS_MENU)
         self.Bind(wx.EVT_MENU, self.on_toggle_table_chat, id=self.ID_TOGGLE_TABLE_CHAT)
-        self.Bind(
-            wx.EVT_MENU, self.on_toggle_global_chat, id=self.ID_TOGGLE_GLOBAL_CHAT
-        )
+        self.Bind(wx.EVT_MENU, self.on_toggle_global_chat, id=self.ID_TOGGLE_GLOBAL_CHAT)
         self.Bind(wx.EVT_MENU, self.on_ambience_down, id=self.ID_AMBIENCE_DOWN)
         self.Bind(wx.EVT_MENU, self.on_ambience_up, id=self.ID_AMBIENCE_UP)
         self.Bind(wx.EVT_MENU, self.on_volume_down, id=self.ID_VOLUME_DOWN)
@@ -389,9 +384,11 @@ class MainWindow(wx.Frame):
     def modify_option_value(self, key_path: str, value, *, create_mode: bool = True) -> bool:
         if not self.config_manager or not self.server_id:
             return False
-        self.config_manager.set_client_option(key_path, value, self.server_id, create_mode= create_mode)
+        self.config_manager.set_client_option(
+            key_path, value, self.server_id, create_mode=create_mode
+        )
         # Update local cache
-        set_item_in_dict(self.client_options, key_path, value, create_mode= create_mode)
+        set_item_in_dict(self.client_options, key_path, value, create_mode=create_mode)
 
     def on_ambience_down(self, event):
         """Handle F7 to decrease ambience volume."""
@@ -432,6 +429,7 @@ class MainWindow(wx.Frame):
     def on_ping(self, event):
         """Handle Alt+P to ping the server and measure latency."""
         import time
+
         self._ping_start_time = time.time()
         self.sound_manager.play("pingstart.ogg")
         self.network.send_packet({"type": "ping"})
@@ -451,6 +449,7 @@ class MainWindow(wx.Frame):
     def on_server_pong(self, packet):
         """Handle pong response from server."""
         import time
+
         if self._ping_start_time is not None:
             elapsed_ms = int((time.time() - self._ping_start_time) * 1000)
             self._ping_start_time = None
@@ -462,9 +461,7 @@ class MainWindow(wx.Frame):
         if not self.config_manager or not self.server_id:
             return
         # Get current state
-        current_state = self.client_options.get("social", {}).get(
-            "mute_table_chat", False
-        )
+        current_state = self.client_options.get("social", {}).get("mute_table_chat", False)
         # Toggle it
         current_state = not current_state
         # Announce
@@ -477,9 +474,7 @@ class MainWindow(wx.Frame):
         if not self.config_manager or not self.server_id:
             return
         # Get current state
-        current_state = self.client_options.get("social", {}).get(
-            "mute_global_chat", False
-        )
+        current_state = self.client_options.get("social", {}).get("mute_global_chat", False)
         # Toggle it
         current_state = not current_state
         # Announce
@@ -643,9 +638,7 @@ class MainWindow(wx.Frame):
             return True
         if self.escape_behavior == "escape_event":
             if self.connected:
-                self.network.send_packet(
-                    {"type": "escape", "menu_id": self.current_menu_id}
-                )
+                self.network.send_packet({"type": "escape", "menu_id": self.current_menu_id})
             return True
         return False
 
@@ -660,8 +653,10 @@ class MainWindow(wx.Frame):
         if function_key is not None:
             return function_key
 
-        if key_code in (wx.WXK_ESCAPE, wx.WXK_BACK):
+        if key_code == wx.WXK_ESCAPE:
             return "escape"
+        if key_code == wx.WXK_BACK:
+            return "backspace"
         if key_code == wx.WXK_SPACE:
             return "space"
 
@@ -679,9 +674,7 @@ class MainWindow(wx.Frame):
 
         return None
 
-    def _map_direction_key(
-        self, event, key_code: int, menu_is_empty: bool
-    ) -> str | None:
+    def _map_direction_key(self, event, key_code: int, menu_is_empty: bool) -> str | None:
         key_map = {
             wx.WXK_UP: "up",
             wx.WXK_DOWN: "down",
@@ -839,11 +832,7 @@ class MainWindow(wx.Frame):
             else:
                 prefix = message
                 message = ""
-            func = (
-                self.send_global_chat
-                if prefix[0] == "."
-                else slash_commands.process_command
-            )
+            func = self.send_global_chat if prefix[0] == "." else slash_commands.process_command
             prefix = prefix[1:]
             func(prefix, message)
         else:
@@ -867,9 +856,7 @@ class MainWindow(wx.Frame):
         if not name:
             name = self.client_options["social"]["chat_input_language"]
         try:
-            return tuple(self.lang_codes.keys())[
-                tuple(self.lang_codes.values()).index(name)
-            ]
+            return tuple(self.lang_codes.keys())[tuple(self.lang_codes.values()).index(name)]
         except ValueError:
             return ""
 
@@ -878,7 +865,7 @@ class MainWindow(wx.Frame):
         if not message:
             return
         # For now send all chats in English
-        lang = "English" #self.get_language_name()
+        lang = "English"  # self.get_language_name()
         if not lang:
             return
         self.network.send_packet(
@@ -890,7 +877,7 @@ class MainWindow(wx.Frame):
         if not message:
             return
         # For now send all chats in English
-        lang = "English" #self.get_language_name(prefix)
+        lang = "English"  # self.get_language_name(prefix)
         if not lang:
             return
         self.network.send_packet(
@@ -910,9 +897,7 @@ class MainWindow(wx.Frame):
         self.buffer_system.add_item(buffer_name, text)
 
         # Only update UI if current buffer is not muted
-        if not self.buffer_system.is_muted(
-            self.buffer_system.get_current_buffer_name()
-        ):
+        if not self.buffer_system.is_muted(self.buffer_system.get_current_buffer_name()):
             current = self.history_text.GetValue()
             if current and not current.endswith("\n"):
                 text = "\n" + text
@@ -1160,7 +1145,10 @@ class MainWindow(wx.Frame):
                 self.switch_to_list_mode()
                 return True
         return False
-    def _schedule_pending_clear(self, ctrl, multiline: bool, default_value: str, read_only: bool) -> None:
+
+    def _schedule_pending_clear(
+        self, ctrl, multiline: bool, default_value: str, read_only: bool
+    ) -> None:
         should_select = bool(default_value) and not read_only and ctrl.IsEnabled()
         if multiline:
             self._pending_edit_clear = False
@@ -1201,9 +1189,7 @@ class MainWindow(wx.Frame):
         """
         wx.CallAfter(self.sound_manager.play, sound_name, volume, pan, pitch)
 
-    def play_music(
-        self, music_name: str, looping: bool = True, fade_out_old: bool = True
-    ):
+    def play_music(self, music_name: str, looping: bool = True, fade_out_old: bool = True):
         """
         Play background music (called via CallAfter for non-blocking).
 
@@ -1236,7 +1222,7 @@ class MainWindow(wx.Frame):
         """Auto-connect to server using login credentials."""
         username = self.credentials.get("username", "Guest")
         password = self.credentials.get("password", "")
-        refresh_token = self.credentials.get("refresh_token", "")
+        refresh_token = self.credentials.get("refresh_token")
         refresh_expires_at = self.credentials.get("refresh_expires_at")
         server_url = self.credentials.get("server_url", "ws://localhost:8000")
 
@@ -1256,9 +1242,7 @@ class MainWindow(wx.Frame):
         """Check if connection succeeded within timeout period."""
         # Don't timeout if we're in the middle of reconnecting or returning to login
         if not self.connected and not self.expecting_reconnect and not self.returning_to_login:
-            self._show_connection_error(
-                "Connection timeout: Could not connect to server."
-            )
+            self._show_connection_error("Connection timeout: Could not connect to server.")
 
     def on_connection_lost(self):
         """Handle connection loss."""
@@ -1357,9 +1341,7 @@ class MainWindow(wx.Frame):
             if server_url and username:
                 self.speaker.speak("Reconnecting...", interrupt=False)
                 self.network.disconnect()
-                wx.CallLater(
-                    1000, lambda: self._do_reconnect(server_url, username, password)
-                )
+                wx.CallLater(1000, lambda: self._do_reconnect(server_url, username, password))
 
         wx.CallLater(delay_ms, reconnect)
 
@@ -1377,25 +1359,19 @@ class MainWindow(wx.Frame):
         if self.reconnect_attempts > self.max_reconnect_attempts:
             self.expecting_reconnect = False
             self.reconnect_attempts = 0
-            self.speaker.speak(
-                "Failed to reconnect after multiple attempts.", interrupt=False
-            )
+            self.speaker.speak("Failed to reconnect after multiple attempts.", interrupt=False)
             self.Close()
             return
 
         # Attempt to connect
-        self.add_history(
-            f"Reconnecting as {username}... (attempt {self.reconnect_attempts})"
-        )
+        self.add_history(f"Reconnecting as {username}... (attempt {self.reconnect_attempts})")
         self.network.disconnect()
 
-        refresh_token = self.credentials.get("refresh_token", "")
+        refresh_token = self.credentials.get("refresh_token")
         refresh_expires_at = self.credentials.get("refresh_expires_at")
         if self.network.connect(server_url, username, password, refresh_token, refresh_expires_at):
             # Wait 3 seconds then check again
-            wx.CallLater(
-                3000, lambda: self._do_reconnect(server_url, username, password)
-            )
+            wx.CallLater(3000, lambda: self._do_reconnect(server_url, username, password))
         else:
             self.expecting_reconnect = False
             self.reconnect_attempts = 0
@@ -1473,7 +1449,7 @@ class MainWindow(wx.Frame):
             server_url = new_credentials.get("server_url")
             username = new_credentials.get("username")
             password = new_credentials.get("password", "")
-            refresh_token = new_credentials.get("refresh_token", "")
+            refresh_token = new_credentials.get("refresh_token")
             refresh_expires_at = new_credentials.get("refresh_expires_at")
 
             self.add_history(f"Connecting to {server_url} as {username}...", "activity")
@@ -1573,10 +1549,10 @@ class MainWindow(wx.Frame):
         # Update games in both default profile and server profile
         if self.games_list:
             # Update default profile
-            default_local_table = profiles["client_options_defaults"].setdefault(
-                "local_table", {}
+            default_local_table = profiles["client_options_defaults"].setdefault("local_table", {})
+            default_creation_notifications = default_local_table.setdefault(
+                "creation_notifications", {}
             )
-            default_creation_notifications = default_local_table.setdefault("creation_notifications", {})
             for game_info in self.games_list:
                 game_name = game_info["name"]
                 if game_name not in default_creation_notifications:
@@ -1586,7 +1562,9 @@ class MainWindow(wx.Frame):
             # Update server profile
             server_profiles = profiles.get("server_options", {})
             if self.server_id in server_profiles:
-                server_overrides = server_profiles[self.server_id].setdefault("options_overrides", {})
+                server_overrides = server_profiles[self.server_id].setdefault(
+                    "options_overrides", {}
+                )
                 server_local_table = server_overrides.setdefault("local_table", {})
                 server_creation_notifications = server_local_table.setdefault(
                     "creation_notifications", {}
@@ -1602,13 +1580,13 @@ class MainWindow(wx.Frame):
         if languages:
             # Update default profile - rebuild to match server order
             default_social = profiles["client_options_defaults"].setdefault("social", {})
-            default_lang_subscriptions = default_social.get(
-                "language_subscriptions", {}
-            )
+            default_lang_subscriptions = default_social.get("language_subscriptions", {})
             new_default_subscriptions = {}
             for language in languages:
                 # Preserve existing value or default to False
-                new_default_subscriptions[language] = default_lang_subscriptions.get(language, False)
+                new_default_subscriptions[language] = default_lang_subscriptions.get(
+                    language, False
+                )
             # Update if keys changed (order or new languages added)
             if list(new_default_subscriptions.keys()) != list(default_lang_subscriptions.keys()):
                 default_social["language_subscriptions"] = new_default_subscriptions
@@ -1617,11 +1595,11 @@ class MainWindow(wx.Frame):
             # Update server profile - rebuild to match server order
             server_profiles = profiles.get("server_options", {})
             if self.server_id in server_profiles:
-                server_overrides = server_profiles[self.server_id].setdefault("options_overrides", {})
-                social_overrides = server_overrides.setdefault("social", {})
-                lang_subscriptions = social_overrides.get(
-                    "language_subscriptions", {}
+                server_overrides = server_profiles[self.server_id].setdefault(
+                    "options_overrides", {}
                 )
+                social_overrides = server_overrides.setdefault("social", {})
+                lang_subscriptions = social_overrides.get("language_subscriptions", {})
                 new_subscriptions = {}
                 for language in languages:
                     # Preserve existing value or default to False
@@ -1653,17 +1631,17 @@ class MainWindow(wx.Frame):
         # Get server profile options (defaults + overrides merged)
         options = self.config_manager.get_client_options(self.server_id)
 
-        self.network.send_packet({
-            "type": "client_options",
-            "options": options,
-        })
+        self.network.send_packet(
+            {
+                "type": "client_options",
+                "options": options,
+            }
+        )
 
     def on_open_client_options(self, packet):
         """Handle server request to open client options dialog (includes server nickname)."""
         if not self.config_manager or not self.server_id:
-            wx.MessageBox(
-                "Client options not available", "Error", wx.OK | wx.ICON_ERROR
-            )
+            wx.MessageBox("Client options not available", "Error", wx.OK | wx.ICON_ERROR)
             return
 
         # Import the dialog
@@ -1687,12 +1665,8 @@ class MainWindow(wx.Frame):
     def on_server_speak(self, packet):
         """Handle speak packet from server."""
         text = packet.get("text", "")
-        buffer_name = packet.get(
-            "buffer", "misc"
-        )  # Optional buffer parameter, defaults to "misc"
-        is_muted = packet.get(
-            "muted", False
-        )  # Check if message should be muted (no TTS)
+        buffer_name = packet.get("buffer", "misc")  # Optional buffer parameter, defaults to "misc"
+        is_muted = packet.get("muted", False)  # Check if message should be muted (no TTS)
 
         if text:
             # Store last message for error display on disconnect
@@ -1754,9 +1728,7 @@ class MainWindow(wx.Frame):
     def on_server_play_music(self, packet):
         """Handle play_music packet from server."""
         music = packet.get("name", packet.get("music", ""))  # Server sends "name"
-        looping = packet.get(
-            "looping", True
-        )  # Default to True for backwards compatibility
+        looping = packet.get("looping", True)  # Default to True for backwards compatibility
         if music:
             self.sound_manager.music(music, looping=looping)
 
@@ -1810,9 +1782,7 @@ class MainWindow(wx.Frame):
     def on_server_get_playlist_duration(self, packet):
         """Handle get_playlist_duration packet from server."""
         playlist_id = packet.get("playlist_id", "music_playlist")
-        duration_type = packet.get(
-            "duration_type", "total"
-        )  # "total", "elapsed", or "remaining"
+        duration_type = packet.get("duration_type", "total")  # "total", "elapsed", or "remaining"
         request_id = packet.get("request_id")
 
         playlist = self.sound_manager.get_playlist(playlist_id)
@@ -2082,9 +2052,7 @@ class MainWindow(wx.Frame):
         )
         position = packet.get("position", None)
         selection_id = packet.get("selection_id", None)
-        grid_enabled = packet.get(
-            "grid_enabled", previous_state.get("grid_enabled", False)
-        )
+        grid_enabled = packet.get("grid_enabled", previous_state.get("grid_enabled", False))
         grid_width = packet.get("grid_width", previous_state.get("grid_width", 1))
 
         items = []
@@ -2180,9 +2148,7 @@ class MainWindow(wx.Frame):
         old_item_ids: list[str | None],
         position: int | None,
     ) -> None:
-        old_items = [
-            self.menu_list.GetString(i) for i in range(self.menu_list.GetCount())
-        ]
+        old_items = [self.menu_list.GetString(i) for i in range(self.menu_list.GetCount())]
         old_selection = self.menu_list.GetSelection()
         operations = self.compute_menu_diff(old_items, items, old_item_ids, item_ids)
         new_selection = self.apply_menu_diff(operations, old_selection)
@@ -2214,6 +2180,7 @@ class MainWindow(wx.Frame):
         default_value = packet.get("default_value", "")
         multiline = packet.get("multiline", False)
         read_only = packet.get("read_only", False)
+        content_format = packet.get("content_format", "text")
 
         def on_submit(text):
             # Send editbox event back to server
@@ -2221,6 +2188,21 @@ class MainWindow(wx.Frame):
             if input_id:
                 event_packet["input_id"] = input_id
             self.network.send_packet(event_packet)
+
+        # When the server explicitly requests markdown rendering, show the
+        # content in the markdown viewer instead of a plain text control.
+        if content_format == "markdown":
+            if not default_value:
+                default_value = "*No documentation available.*"
+                
+            from .markdown_viewer_dialog import MarkdownViewerDialog
+
+            dlg = MarkdownViewerDialog(self, prompt, default_value)
+            dlg.ShowModal()
+            dlg.Destroy()
+            # Send empty response so the server navigates back
+            on_submit("")
+            return
 
         self.switch_to_edit_mode(prompt, on_submit, default_value, multiline, read_only)
 
@@ -2236,23 +2218,29 @@ class MainWindow(wx.Frame):
         prompt = packet.get("prompt", "Edit document")
 
         def on_save(text):
-            self.network.send_packet({
-                "type": "document_editor",
-                "dialog_id": dialog_id,
-                "action": "save",
-                "content": text,
-            })
+            self.network.send_packet(
+                {
+                    "type": "document_editor",
+                    "dialog_id": dialog_id,
+                    "action": "save",
+                    "content": text,
+                }
+            )
 
         def on_cancel():
-            self.network.send_packet({
-                "type": "document_editor",
-                "dialog_id": dialog_id,
-                "action": "cancel",
-                "content": "",
-            })
+            self.network.send_packet(
+                {
+                    "type": "document_editor",
+                    "dialog_id": dialog_id,
+                    "action": "cancel",
+                    "content": "",
+                }
+            )
 
         dlg = DocumentEditorDialog(
-            self, prompt, content,
+            self,
+            prompt,
+            content,
             content_label=content_label,
             source_content=source_content,
             source_label=source_label,

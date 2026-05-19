@@ -1,11 +1,14 @@
 """Mixin providing game duration estimation via simulation."""
 
+import logging
 import subprocess  # nosec B404
 import sys
 import json as json_module
 import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+LOG = logging.getLogger("playpalace.game_utils.duration_estimate")
 
 if TYPE_CHECKING:
     from ..games.base import Player
@@ -61,10 +64,14 @@ class DurationEstimateMixin:
         # Build CLI command
         cli_path = Path(__file__).parent.parent / "cli.py"
         base_cmd = [
-            sys.executable, str(cli_path), "simulate",
+            sys.executable,
+            str(cli_path),
+            "simulate",
             self.get_type(),
-            "--bots", str(num_bots),
-            "--json", "--quiet"
+            "--bots",
+            str(num_bots),
+            "--json",
+            "--quiet",
         ] + options_args
 
         # Reset results
@@ -142,7 +149,9 @@ class DurationEstimateMixin:
 
             # Format outlier info
             if outliers:
-                outlier_info = f"{len(outliers)} outlier{'s' if len(outliers) > 1 else ''} removed. "
+                outlier_info = (
+                    f"{len(outliers)} outlier{'s' if len(outliers) > 1 else ''} removed. "
+                )
             else:
                 outlier_info = ""
 
@@ -155,8 +164,11 @@ class DurationEstimateMixin:
             )
         else:
             if errors:
-                # Show the first error for debugging
-                self.broadcast(f"Estimation failed: {errors[0][:200]}")
+                LOG.warning(
+                    "Duration estimation failed with %d error(s): %s",
+                    len(errors), errors[0][:200],
+                )
+                self.broadcast_l("estimate-error")
             else:
                 self.broadcast_l("estimate-error")
 
@@ -165,7 +177,7 @@ class DurationEstimateMixin:
         if len(values) < 2:
             return 0.0
         variance = sum((x - mean) ** 2 for x in values) / len(values)
-        return variance ** 0.5
+        return variance**0.5
 
     def _detect_outliers(self, values: list[int]) -> list[int]:
         """Detect outliers using IQR method. Returns list of outlier values."""

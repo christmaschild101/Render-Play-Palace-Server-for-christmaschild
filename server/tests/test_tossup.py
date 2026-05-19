@@ -49,9 +49,7 @@ class TestTossUpGameUnit:
 
     def test_custom_options(self):
         """Test custom game options."""
-        options = TossUpOptions(
-            target_score=200, starting_dice=15, rules_variant="PlayPalace"
-        )
+        options = TossUpOptions(target_score=200, starting_dice=15, rules_variant="PlayPalace")
         game = TossUpGame(options=options)
         assert game.options.target_score == 200
         assert game.options.starting_dice == 15
@@ -339,9 +337,7 @@ class TestTossUpPlayTest:
         """Test game with PlayPalace rules."""
         random.seed(789)
 
-        game = TossUpGame(
-            options=TossUpOptions(target_score=30, rules_variant="PlayPalace")
-        )
+        game = TossUpGame(options=TossUpOptions(target_score=30, rules_variant="PlayPalace"))
         bot1 = Bot("Bot1")
         bot2 = Bot("Bot2")
         game.add_player("Bot1", bot1)
@@ -362,9 +358,7 @@ class TestTossUpPlayTest:
         """Test game with Standard rules."""
         random.seed(321)
 
-        game = TossUpGame(
-            options=TossUpOptions(target_score=30, rules_variant="Standard")
-        )
+        game = TossUpGame(options=TossUpOptions(target_score=30, rules_variant="Standard"))
         bot1 = Bot("Bot1")
         bot2 = Bot("Bot2")
         game.add_player("Bot1", bot1)
@@ -456,9 +450,7 @@ class TestTossUpPlayTest:
         for dice_count in [5, 15, 20]:
             random.seed(100 + dice_count)
 
-            game = TossUpGame(
-                options=TossUpOptions(target_score=30, starting_dice=dice_count)
-            )
+            game = TossUpGame(options=TossUpOptions(target_score=30, starting_dice=dice_count))
             bot1 = Bot("Bot1")
             bot2 = Bot("Bot2")
             game.add_player("Bot1", bot1)
@@ -473,9 +465,7 @@ class TestTossUpPlayTest:
                 game.on_tick()
 
             # Game should complete
-            assert (
-                not game.game_active
-            ), f"Game with {dice_count} starting dice should complete"
+            assert not game.game_active, f"Game with {dice_count} starting dice should complete"
 
 
 class TestTossUpPersistence:
@@ -484,9 +474,7 @@ class TestTossUpPersistence:
     def test_full_state_preserved(self):
         """Test that all game state is preserved through save/load."""
         game = TossUpGame(
-            options=TossUpOptions(
-                target_score=150, starting_dice=12, rules_variant="PlayPalace"
-            )
+            options=TossUpOptions(target_score=150, starting_dice=12, rules_variant="PlayPalace")
         )
         user1 = MockUser("Alice")
         user2 = MockUser("Bob")

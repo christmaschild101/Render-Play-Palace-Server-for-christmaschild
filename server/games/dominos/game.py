@@ -16,6 +16,7 @@ from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.options import IntOption, MenuOption, BoolOption, TeamModeOption, option_field
 from ...game_utils.teams import TeamManager
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 
@@ -31,7 +32,13 @@ SET_LABELS = {
     "double9": "dominos-set-double9",
 }
 
-OPENING_RULE_CHOICES = ["highest_double", "highest_tile", "set_max_double", "random", "round_winner"]
+OPENING_RULE_CHOICES = [
+    "highest_double",
+    "highest_tile",
+    "set_max_double",
+    "random",
+    "round_winner",
+]
 OPENING_RULE_LABELS = {
     "highest_double": "dominos-opening-highest-double",
     "highest_tile": "dominos-opening-highest-tile",
@@ -323,9 +330,15 @@ class DominosGame(Game):
         super().setup_keybinds()
         self.define_keybind("space", "Draw", ["draw"], state=KeybindState.ACTIVE)
         self.define_keybind("p", "Knock", ["knock"], state=KeybindState.ACTIVE)
-        self.define_keybind("v", "View chain", ["view_chain"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("c", "Read ends", ["read_ends"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("e", "Read counts", ["read_counts"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind(
+            "v", "View chain", ["view_chain"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "c", "Read ends", ["read_ends"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "e", "Read counts", ["read_counts"], state=KeybindState.ACTIVE, include_spectators=True
+        )
         self.define_keybind("w", "Read hand", ["read_hand"], state=KeybindState.ACTIVE)
 
     def rebuild_player_menu(self, player: Player) -> None:
@@ -462,7 +475,12 @@ class DominosGame(Game):
 
     def _is_read_hand_hidden(self, player: Player) -> Visibility:
         user = self.get_user(player)
-        if user and getattr(user, "client_type", "") == "web" and self.status == "playing" and not player.is_spectator:
+        if (
+            user
+            and getattr(user, "client_type", "") == "web"
+            and self.status == "playing"
+            and not player.is_spectator
+        ):
             return Visibility.VISIBLE
         return Visibility.HIDDEN
 
@@ -528,7 +546,7 @@ class DominosGame(Game):
         )
 
     def on_start(self) -> None:
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self._sync_table_status()
         self.game_active = True
         self.round = 0
@@ -631,11 +649,7 @@ class DominosGame(Game):
             rule = "highest_tile"
 
         best = max(
-            (
-                (player, tile)
-                for player in active_players
-                for tile in player.hand
-            ),
+            ((player, tile) for player in active_players for tile in player.hand),
             key=lambda item: self._opening_tile_key(item[1]),
         )
         return best
@@ -790,7 +804,9 @@ class DominosGame(Game):
         if not legal:
             user = self.get_user(player)
             if user:
-                user.speak_l("dominos-no-play-for-tile", buffer="table", tile=self._format_tile(tile))
+                user.speak_l(
+                    "dominos-no-play-for-tile", buffer="table", tile=self._format_tile(tile)
+                )
             return
         if input_value is not None:
             branch = self._branch_from_input(input_value, self._player_locale(player), legal)
@@ -892,11 +908,7 @@ class DominosGame(Game):
             self.team_manager.add_to_team_score(winning_team.members[0], points)
 
         opening_player = next(
-            (
-                player
-                for player in self.get_active_players()
-                if player.name in winning_team.members
-            ),
+            (player for player in self.get_active_players() if player.name in winning_team.members),
             None,
         )
         self.previous_round_winner_id = opening_player.id if opening_player else None
@@ -990,7 +1002,9 @@ class DominosGame(Game):
         if dom_player is None:
             return
         action_sets = self.player_action_sets.get(player.id, [])
-        turn_set = next((action_set for action_set in action_sets if action_set.name == "turn"), None)
+        turn_set = next(
+            (action_set for action_set in action_sets if action_set.name == "turn"), None
+        )
         if turn_set is None:
             return
 
@@ -1050,7 +1064,9 @@ class DominosGame(Game):
             )
 
         utility_ids = ["draw", "knock"]
-        turn_set._order = tile_ids + [action_id for action_id in utility_ids if turn_set.get_action(action_id)]
+        turn_set._order = tile_ids + [
+            action_id for action_id in utility_ids if turn_set.get_action(action_id)
+        ]
 
     def _update_all_turn_actions(self) -> None:
         for player in self.get_active_players():
@@ -1065,7 +1081,11 @@ class DominosGame(Game):
             lines.append(Localization.get(locale, "dominos-chain-empty"))
             return lines
 
-        lines.append(Localization.get(locale, "dominos-chain-center", tile=self._format_tile(self.center_tile)))
+        lines.append(
+            Localization.get(
+                locale, "dominos-chain-center", tile=self._format_tile(self.center_tile)
+            )
+        )
         visible_branches = BRANCH_ORDER if self.spinner_active else ["left", "right"]
         for branch in visible_branches:
             placements = self.branches.get(branch, [])
@@ -1220,7 +1240,9 @@ class DominosGame(Game):
         return Localization.get(locale, f"dominos-side-{branch}")
 
     def _join_branch_names(self, branches: list[str], locale: str) -> str:
-        return Localization.format_list_and(locale, [self._branch_name(branch, locale) for branch in branches])
+        return Localization.format_list_and(
+            locale, [self._branch_name(branch, locale) for branch in branches]
+        )
 
     def _as_dominos_player(self, player: Player | None) -> DominosPlayer | None:
         return player if isinstance(player, DominosPlayer) else None

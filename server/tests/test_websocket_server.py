@@ -51,11 +51,15 @@ async def test_websocket_server_broadcast_and_send_to_user():
     c3.authenticated = True
     c3.username = "carol"
 
-    server.clients.update({
-        c1.address: c1,
-        c2.address: c2,
-        c3.address: c3,
-    })
+    server.clients.update(
+        {
+            c1.address: c1,
+            c2.address: c2,
+            c3.address: c3,
+        }
+    )
+    server.register_username(c1)
+    server.register_username(c3)
 
     broadcast_packet = {
         "type": "chat",

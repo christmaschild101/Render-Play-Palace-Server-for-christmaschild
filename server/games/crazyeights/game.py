@@ -12,6 +12,7 @@ from ...game_utils.options import IntOption, MenuOption, option_field
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.poker_timer import PokerTurnTimer
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 from server.core.users.bot import Bot
 from server.core.users.base import User
@@ -95,7 +96,7 @@ class CrazyEightsGame(Game):
     intro_wait_ticks: int = 0
     hand_wait_ticks: int = 0
     _turn_sound_player_id: str | None = None
-    max_hand_size: int = 15 # future removal
+    max_hand_size: int = 15  # future removal
 
     def __post_init__(self):
         super().__post_init__()
@@ -138,11 +139,7 @@ class CrazyEightsGame(Game):
             from ...game_utils.lobby_actions_mixin import BOT_NAMES
 
             bot_name = next(
-                (
-                    n
-                    for n in BOT_NAMES
-                    if n.lower() not in {x.name.lower() for x in self.players}
-                ),
+                (n for n in BOT_NAMES if n.lower() not in {x.name.lower() for x in self.players}),
                 None,
             )
             if not bot_name:
@@ -188,7 +185,9 @@ class CrazyEightsGame(Game):
         self.player_action_sets.pop(player.id, None)
         self._users.pop(player.id, None)
         self.broadcast_l("table-left", player=player.name)
-        leave_sound = "game_crazyeights/botleave.ogg" if player.is_bot else "game_crazyeights/personleave.ogg"
+        leave_sound = (
+            "game_crazyeights/botleave.ogg" if player.is_bot else "game_crazyeights/personleave.ogg"
+        )
         self.play_sound(leave_sound)
 
         has_humans = any(not p.is_bot for p in self.players)
@@ -320,9 +319,19 @@ class CrazyEightsGame(Game):
         super().setup_keybinds()
         self.define_keybind("space", "Draw", ["draw"], state=KeybindState.ACTIVE)
         self.define_keybind("p", "Pass", ["pass"], state=KeybindState.ACTIVE)
-        self.define_keybind("c", "Read top card", ["read_top"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("e", "Read counts", ["read_counts"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("shift+t", "Turn timer", ["check_turn_timer"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind(
+            "c", "Read top card", ["read_top"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "e", "Read counts", ["read_counts"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "shift+t",
+            "Turn timer",
+            ["check_turn_timer"],
+            state=KeybindState.ACTIVE,
+            include_spectators=True,
+        )
         # Suit selection overrides (keybind only)
         self.define_keybind("c", "Choose clubs", ["suit_clubs"], state=KeybindState.ACTIVE)
         self.define_keybind("d", "Choose diamonds", ["suit_diamonds"], state=KeybindState.ACTIVE)
@@ -401,7 +410,7 @@ class CrazyEightsGame(Game):
     # ==========================================================================
 
     def on_start(self) -> None:
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 0
         self.turn_direction = 1
@@ -415,9 +424,7 @@ class CrazyEightsGame(Game):
         self.play_music("game_crazyeights/mus.ogg")
 
         self._team_manager.team_mode = "individual"
-        self._team_manager.setup_teams(
-            [p.name for p in self.players if not p.is_spectator]
-        )
+        self._team_manager.setup_teams([p.name for p in self.players if not p.is_spectator])
         self._sync_team_scores()
 
         self.play_sound("game_crazyeights/intro.ogg")
@@ -527,11 +534,7 @@ class CrazyEightsGame(Game):
         self._stop_turn_loop()
         self._start_turn_loop(player)
 
-        self.broadcast_personal_l(
-            player,
-            "game-your-turn",
-            "game-turn-start"
-        )
+        self.broadcast_personal_l(player, "game-your-turn", "game-turn-start")
 
         if player.is_bot:
             BotHelper.jolt_bot(player, ticks=random.randint(30, 40))  # nosec B311
@@ -937,7 +940,7 @@ class CrazyEightsGame(Game):
     # ==========================================================================
 
     def _is_number_card(self, card: Card) -> bool:
-        if card.rank in (8,11, 12, 13):
+        if card.rank in (8, 11, 12, 13):
             return False
         return True
 
@@ -1055,12 +1058,15 @@ class CrazyEightsGame(Game):
         }[suit]
 
     def _suit_name(self, suit: int, locale: str) -> str:
-        return Localization.get(locale, {
-            1: "suit-diamonds",
-            2: "suit-clubs",
-            3: "suit-hearts",
-            4: "suit-spades",
-        }[suit])
+        return Localization.get(
+            locale,
+            {
+                1: "suit-diamonds",
+                2: "suit-clubs",
+                3: "suit-hearts",
+                4: "suit-spades",
+            }[suit],
+        )
 
     def _get_card_label(self, player: Player, action_id: str) -> str:
         if not isinstance(player, CrazyEightsPlayer):
@@ -1255,12 +1261,18 @@ class CrazyEightsGame(Game):
             if not user:
                 continue
             card_text = self.format_card(card, user.locale)
-            one_card_text = Localization.get(user.locale, 'crazyeights-one-card') if len(player.hand) == 1 else ""
+            one_card_text = (
+                Localization.get(user.locale, "crazyeights-one-card")
+                if len(player.hand) == 1
+                else ""
+            )
 
             if p.id == player.id:
                 msg = Localization.get(user.locale, "crazyeights-you-play", card=card_text)
             else:
-                msg = Localization.get(user.locale, "crazyeights-player-plays", player=player.name, card=card_text)
+                msg = Localization.get(
+                    user.locale, "crazyeights-player-plays", player=player.name, card=card_text
+                )
 
             if one_card_text:
                 user.speak(f"{msg} {one_card_text}", buffer="table")
@@ -1301,11 +1313,7 @@ class CrazyEightsGame(Game):
 
         for p in self.players:
             user = self.get_user(p)
-            if (
-                not user
-                or not isinstance(p, CrazyEightsPlayer)
-                or p.is_spectator
-            ):
+            if not user or not isinstance(p, CrazyEightsPlayer) or p.is_spectator:
                 continue
             if p.id == winner.id:
                 user.play_sound(win_sound)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Rebuild packet schemas whenever packet models change."""
+
 from __future__ import annotations
 
 import shutil

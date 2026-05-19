@@ -54,7 +54,7 @@ class TestSnakesAndLaddersUnit:
 
         assert loaded.players[0].position == 50
         assert loaded.players[0].finished is False
-        assert loaded.round == 0 # Base game has round 0 usually unless incremented
+        assert loaded.round == 0  # Base game has round 0 usually unless incremented
 
     def test_check_positions_not_enabled_while_waiting(self):
         game = SnakesAndLaddersGame()
@@ -84,7 +84,7 @@ class TestSnakesAndLaddersGameFlow:
         self.p1 = self.game.add_player("Alice", self.user1)
         self.p2 = self.game.add_player("Bob", self.user2)
         self.game.on_start()
-        self.game.reset_turn_order() # Ensure Alice starts
+        self.game.reset_turn_order()  # Ensure Alice starts
 
     def test_roll_moves_player(self):
         """Test that rolling moves the player."""

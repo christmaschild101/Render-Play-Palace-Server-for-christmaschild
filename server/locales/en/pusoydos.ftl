@@ -4,7 +4,7 @@ game-name-pusoydos = Pusoy Dos
 # Option descriptions
 # =============================================================================
 
-pusoydos-desc-game-mode = How the game is scored and how the winner is decided.
+pusoydos-desc-game-mode = Elimination: win rounds to go out, last player is the loser. Losses: last-place finishers accumulate strikes, first to the limit loses. Points: round winner collects penalty points from losers, first to the target wins. Points Elimination: losers collect their own penalty points, hit the limit and you're out, last one standing wins.
 pusoydos-desc-rounds-to-win = How many rounds a player must win before they are eliminated as a winner.
 pusoydos-desc-target-score = The point total a player must reach to win the game (points mode) or be eliminated (points elimination mode).
 pusoydos-desc-turn-timer = Time limit per turn. Set to unlimited for no limit.
@@ -181,6 +181,7 @@ pusoydos-error-wrong-length = You must play exactly { $count } { $count ->
 } to beat the current trick.
 pusoydos-error-lower-combo = Your combination is lower than the current trick.
 pusoydos-error-must-play = You cannot pass when starting a new trick.
+pusoydos-confirm-pass = Use the pass action again to confirm.
 
 # =============================================================================
 # Broadcasts

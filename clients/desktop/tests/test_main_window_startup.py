@@ -88,10 +88,12 @@ def make_window_stub(monkeypatch, should_connect=True):
     window.max_reconnect_attempts = 30
     window._apply_client_audio_options = lambda: None
     window.add_history_calls = []
-    window.add_history = lambda text, buffer="misc", *_: window.add_history_calls.append((text, buffer))
+    window.add_history = lambda text, buffer="misc", *_: window.add_history_calls.append(
+        (text, buffer)
+    )
     window._show_connection_error_calls = []
-    window._show_connection_error = lambda message, return_to_login=False: window._show_connection_error_calls.append(
-        message
+    window._show_connection_error = lambda message, return_to_login=False: (
+        window._show_connection_error_calls.append(message)
     )
     window.Close = lambda: None
     return window
@@ -128,7 +130,9 @@ def test_check_connection_timeout_triggers_error(monkeypatch):
 
     window._check_connection_timeout()
 
-    assert window._show_connection_error_calls == ["Connection timeout: Could not connect to server."]
+    assert window._show_connection_error_calls == [
+        "Connection timeout: Could not connect to server."
+    ]
 
 
 def test_on_server_disconnect_reconnect_flow(monkeypatch, stub_call_later):
@@ -136,7 +140,11 @@ def test_on_server_disconnect_reconnect_flow(monkeypatch, stub_call_later):
     window.connected = False
     window.speaker = types.SimpleNamespace(speak=lambda *args, **kwargs: None)
     reconnect_calls = []
-    monkeypatch.setattr(main_mod.wx, "CallLater", lambda delay, func, *args, **kwargs: reconnect_calls.append((delay, func, args, kwargs)))
+    monkeypatch.setattr(
+        main_mod.wx,
+        "CallLater",
+        lambda delay, func, *args, **kwargs: reconnect_calls.append((delay, func, args, kwargs)),
+    )
 
     window.on_server_disconnect({"reconnect": True})
 
@@ -149,7 +157,10 @@ def test_on_server_disconnect_status_mode(monkeypatch):
     window = make_window_stub(monkeypatch, should_connect=True)
     window.connected = False
     window.speaker = types.SimpleNamespace(speak=lambda *args, **kwargs: None)
-    window.last_server_status_packet = {"message": "Maintenance in progress.", "resume_at": "2026-02-07T18:00:00Z"}
+    window.last_server_status_packet = {
+        "message": "Maintenance in progress.",
+        "resume_at": "2026-02-07T18:00:00Z",
+    }
     reconnect_calls = []
     monkeypatch.setattr(
         main_mod.wx,

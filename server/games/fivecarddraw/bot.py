@@ -28,9 +28,7 @@ def _choose_discards(game: "FiveCardDrawGame", player: "FiveCardDrawPlayer") -> 
     ranks = [card.rank for card in player.hand]
     counts = _count_ranks(ranks)
     keep_ranks = _select_keep_ranks(category, ranks, counts)
-    discard_indices = [
-        i for i, card in enumerate(player.hand) if card.rank not in keep_ranks
-    ]
+    discard_indices = [i for i, card in enumerate(player.hand) if card.rank not in keep_ranks]
     discard_indices = _limit_discards(player.hand, discard_indices)
     player.to_discard = set(discard_indices)
 
@@ -69,9 +67,7 @@ def _count_ranks(ranks: list[int]) -> dict[int, int]:
     return counts
 
 
-def _select_keep_ranks(
-    category: int, ranks: list[int], counts: dict[int, int]
-) -> set[int]:
+def _select_keep_ranks(category: int, ranks: list[int], counts: dict[int, int]) -> set[int]:
     if category >= 4:  # straight or better
         return set(ranks)
     if category in (1, 2):  # one pair or two pair

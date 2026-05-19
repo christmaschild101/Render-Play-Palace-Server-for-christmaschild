@@ -39,7 +39,6 @@ option-on = روشن
 option-off = خاموش
 
 # Status box
-status-box-closed = اطلاعات وضعیت بسته شد.
 
 # Game end
 game-leave = خروج از بازی
@@ -64,6 +63,47 @@ game-player-deals = { $player } کارت‌ها را پخش می‌کند.
 # Card names
 card-name = { $rank } { $suit }
 no-cards = بدون کارت
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = سیاه
+color-black-m = سیاه
+color-black-f = سیاه
+color-blue = آبی
+color-blue-m = آبی
+color-blue-f = آبی
+color-brown = قهوه‌ای
+color-brown-m = قهوه‌ای
+color-brown-f = قهوه‌ای
+color-gray = خاکستری
+color-gray-m = خاکستری
+color-gray-f = خاکستری
+color-green = سبز
+color-green-m = سبز
+color-green-f = سبز
+color-indigo = نیلی
+color-indigo-m = نیلی
+color-indigo-f = نیلی
+color-orange = نارنجی
+color-orange-m = نارنجی
+color-orange-f = نارنجی
+color-pink = صورتی
+color-pink-m = صورتی
+color-pink-f = صورتی
+color-purple = بنفش
+color-purple-m = بنفش
+color-purple-f = بنفش
+color-red = قرمز
+color-red-m = قرمز
+color-red-f = قرمز
+color-violet = بنفش
+color-violet-m = بنفش
+color-violet-f = بنفش
+color-white = سفید
+color-white-m = سفید
+color-white-f = سفید
+color-yellow = زرد
+color-yellow-m = زرد
+color-yellow-f = زرد
 
 # Suit names
 suit-diamonds = خشت

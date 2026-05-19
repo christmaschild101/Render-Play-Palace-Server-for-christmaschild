@@ -106,7 +106,9 @@ def test_add_and_remove_playlist(monkeypatch, tmp_path):
     created = {}
 
     class DummyPlaylist:
-        def __init__(self, tracks, audio_type, sound_manager, shuffle, repeats, auto_start, auto_remove):
+        def __init__(
+            self, tracks, audio_type, sound_manager, shuffle, repeats, auto_start, auto_remove
+        ):
             self.tracks = list(tracks)
             self.audio_type = audio_type
             self.sound_manager = sound_manager

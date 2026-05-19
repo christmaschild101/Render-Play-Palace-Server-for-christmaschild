@@ -143,15 +143,11 @@ class TestDeck:
         assert deck.size() > 0
 
         # Check resource cards (12 of each standard + 6 gold = 54)
-        resource_count = sum(
-            1 for c in deck.cards if c.card_type == CardType.RESOURCE
-        )
+        resource_count = sum(1 for c in deck.cards if c.card_type == CardType.RESOURCE)
         assert resource_count == 54
 
         # Check special resources (only for 4 tribes, 6 each = 24)
-        special_count = sum(
-            1 for c in deck.cards if c.card_type == CardType.SPECIAL
-        )
+        special_count = sum(1 for c in deck.cards if c.card_type == CardType.SPECIAL)
         assert special_count == 24
 
     def test_deck_draw(self):
@@ -403,9 +399,7 @@ class TestBotAI:
         player.tribe_state = TribeState(tribe=Tribe.EGYPTIANS)
 
         # Own special resource should never be discarded
-        own_special = Card(
-            id=0, card_type=CardType.SPECIAL, subtype=SpecialResourceType.LIMESTONE
-        )
+        own_special = Card(id=0, card_type=CardType.SPECIAL, subtype=SpecialResourceType.LIMESTONE)
         assert score_card_for_discard(own_special, player) == 0
 
         # Hero card should have low discard score (valuable)

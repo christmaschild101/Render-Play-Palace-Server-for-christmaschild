@@ -64,7 +64,6 @@ option-deselected-count = Wybrano { $count } { $count ->
 }.
 
 # Status box
-status-box-closed = Informacja o statusie zamknięta.
 
 # Game end
 game-leave = Opuść grę
@@ -90,20 +89,46 @@ game-player-deals = { $player } deals out the cards.
 card-name = { $rank } of { $suit }
 no-cards = No cards
 
-# Colors
+# Colors (with gendered forms: m = masculine, f = feminine)
 color-black = czarny
+color-black-m = czarny
+color-black-f = czarna
 color-blue = niebieski
+color-blue-m = niebieski
+color-blue-f = niebieska
 color-brown = brązowy
+color-brown-m = brązowy
+color-brown-f = brązowa
 color-gray = szary
+color-gray-m = szary
+color-gray-f = szara
 color-green = zielony
+color-green-m = zielony
+color-green-f = zielona
 color-indigo = indygo
+color-indigo-m = indygo
+color-indigo-f = indygo
 color-orange = pomarańczowy
+color-orange-m = pomarańczowy
+color-orange-f = pomarańczowa
 color-pink = różowy
+color-pink-m = różowy
+color-pink-f = różowa
 color-purple = purpurowy
+color-purple-m = purpurowy
+color-purple-f = purpurowa
 color-red = czerwony
+color-red-m = czerwony
+color-red-f = czerwona
 color-violet = fioletowy
+color-violet-m = fioletowy
+color-violet-f = fioletowa
 color-white = biały
+color-white-m = biały
+color-white-f = biała
 color-yellow = żółty
+color-yellow-m = żółty
+color-yellow-f = żółta
 
 # Suit names
 suit-diamonds = diamonds

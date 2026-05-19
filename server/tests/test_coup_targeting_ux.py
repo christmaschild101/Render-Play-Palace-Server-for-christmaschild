@@ -3,6 +3,7 @@ from server.games.coup.game import CoupGame
 from server.game_utils.bot_helper import BotHelper
 from server.messages.localization import Localization
 
+
 def test_coup_target_options_format():
     game = CoupGame()
     p1 = game.create_player(player_id="p1", name="Alice")
@@ -28,6 +29,7 @@ def test_coup_target_options_format():
     extracted = game._extract_target_name(bob_opt)
     assert extracted == "Bob"
 
+
 def test_bot_select_target_parsing():
     game = CoupGame()
     p1 = game.create_player(player_id="b1", name="BotMan", is_bot=True)
@@ -35,13 +37,14 @@ def test_bot_select_target_parsing():
     game.players = [p1, p2]
     game.on_start()
 
-    p2.coins = 6 # huge threat
+    p2.coins = 6  # huge threat
     options = game._target_options(p1)
 
     # Bot evaluates and correctly returns the full formatted string
     selected = game._bot_select_target(p1, options)
     assert selected in options
     assert game._extract_target_name(selected) == "Bob"
+
 
 def test_handler_extraction():
     game = CoupGame()

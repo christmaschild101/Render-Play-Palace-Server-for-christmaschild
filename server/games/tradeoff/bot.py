@@ -70,9 +70,7 @@ def _merge_counts(counts: dict[int, int], values: list[int]) -> None:
 def _select_keep_indices(
     rolled_dice: list[int], counts: dict[int, int], min_keeps: int
 ) -> list[int]:
-    desired_keeps = [
-        i for i, value in enumerate(rolled_dice) if counts.get(value, 0) > 1
-    ]
+    desired_keeps = [i for i, value in enumerate(rolled_dice) if counts.get(value, 0) > 1]
     if len(desired_keeps) >= min_keeps:
         return desired_keeps
 
@@ -96,9 +94,7 @@ def _next_trade_toggle(trading_indices: set[int], desired_keeps: list[int]) -> s
     return None
 
 
-def _select_best_pool_value(
-    counts: dict[int, int], pool_counts: dict[int, int]
-) -> int | None:
+def _select_best_pool_value(counts: dict[int, int], pool_counts: dict[int, int]) -> int | None:
     best_value = None
     best_score = -1
     for value, count in pool_counts.items():

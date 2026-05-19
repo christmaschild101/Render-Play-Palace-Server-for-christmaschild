@@ -14,68 +14,98 @@ from datetime import datetime
 
 from config_schemas import Identities, Server, UserAccount, validate_identities
 
-def get_item_from_dict(dictionary: dict, key_path: (str, tuple), *, create_mode: bool= False):
-  """Return the item in a dictionary, typically a nested layer dict.
-  Optionally create keys that don't exist, or require the full path to exist already.
-  This function supports an infinite number of layers."""
-  if isinstance(key_path, str)  and len(key_path)>0:
-    if key_path[0] == "/": key_path = key_path[1:]
-    if key_path[-1] == "/": key_path = key_path[:-1]
-    key_path = key_path.split("/")
-  scope= dictionary
-  for l in range(len(key_path)):
-    if key_path[l] == "": continue
-    layer= key_path[l]
-    if layer not in scope:
-      if not create_mode: raise KeyError(f"Key '{layer}' not in "+ (("nested dictionary "+ '/'.join(key_path[:l])) if l>0 else "root dictionary")+ ".")
-      scope[layer] = {}
-    scope= scope[layer]
-  return scope
 
-def set_item_in_dict(dictionary: dict, key_path: (str, tuple), value, *, create_mode: bool= False) -> bool:
-  """Modify the value of an item in a dictionary.
-  Optionally create keys that don't exist, or require the full path to exist already.
-  This function supports an infinite number of layers."""
-  if isinstance(key_path, str) and len(key_path)>0:
-    if key_path[0] == "/": key_path = key_path[1:]
-    if key_path[-1] == "/": key_path = key_path[:-1]
-    key_path = key_path.split("/")
-  if not key_path or key_path[-1] == "": raise ValueError("No dictionary key path was specified.")
-  final_key = key_path.pop(-1)
-  obj = get_item_from_dict(dictionary, key_path, create_mode = create_mode)
-  if not isinstance(obj, dict): raise TypeError(f"Expected type 'dict', instead got '{type(obj)}'.")
-  if not create_mode and final_key not in obj: raise KeyError(f"Key '{final_key}' not in dictionary '{key_path}'.")
-  obj[final_key] = value
-  return True
+def get_item_from_dict(dictionary: dict, key_path: (str, tuple), *, create_mode: bool = False):
+    """Return the item in a dictionary, typically a nested layer dict.
+    Optionally create keys that don't exist, or require the full path to exist already.
+    This function supports an infinite number of layers."""
+    if isinstance(key_path, str) and len(key_path) > 0:
+        if key_path[0] == "/":
+            key_path = key_path[1:]
+        if key_path[-1] == "/":
+            key_path = key_path[:-1]
+        key_path = key_path.split("/")
+    scope = dictionary
+    for l in range(len(key_path)):
+        if key_path[l] == "":
+            continue
+        layer = key_path[l]
+        if layer not in scope:
+            if not create_mode:
+                raise KeyError(
+                    f"Key '{layer}' not in "
+                    + (
+                        ("nested dictionary " + "/".join(key_path[:l]))
+                        if l > 0
+                        else "root dictionary"
+                    )
+                    + "."
+                )
+            scope[layer] = {}
+        scope = scope[layer]
+    return scope
 
-def delete_item_from_dict(dictionary: dict, key_path: (str, tuple), *, delete_empty_layers: bool = True) -> bool:
-  """Delete an item in a dictionary.
-  Optionally delete layers that are empty.
-  This function supports an infinite number of layers."""
-  if isinstance(key_path, str) and len(key_path)>0:
-    if key_path[0] == "/": key_path = key_path[1:]
-    if key_path[-1] == "/": key_path = key_path[:-1]
-    key_path = key_path.split("/")
-  if not key_path or key_path[-1] == "": raise ValueError("No dictionary key path was specified.")
-  final_key = key_path.pop(-1)
-  obj = get_item_from_dict(dictionary, key_path)
-  if not isinstance(obj, dict): raise TypeError(f"Expected type 'dict', instead got '{type(obj)}'.")
-  if final_key not in obj: return False
-  del obj[final_key]
-  if not delete_empty_layers: return True
-  # Walk from deepest to shallowest, removing empty dicts
-  for i in range(len(key_path), 0, -1):
-    try:
-      obj = get_item_from_dict(dictionary, key_path[:i])
-      if isinstance(obj, dict) and not obj:  # Empty dict
-        if i == 1:
-          del dictionary[key_path[0]]
-        else:
-          parent = get_item_from_dict(dictionary, key_path[:i-1])
-          del parent[key_path[i-1]]
-    except KeyError:
-      break
-  return True
+
+def set_item_in_dict(
+    dictionary: dict, key_path: (str, tuple), value, *, create_mode: bool = False
+) -> bool:
+    """Modify the value of an item in a dictionary.
+    Optionally create keys that don't exist, or require the full path to exist already.
+    This function supports an infinite number of layers."""
+    if isinstance(key_path, str) and len(key_path) > 0:
+        if key_path[0] == "/":
+            key_path = key_path[1:]
+        if key_path[-1] == "/":
+            key_path = key_path[:-1]
+        key_path = key_path.split("/")
+    if not key_path or key_path[-1] == "":
+        raise ValueError("No dictionary key path was specified.")
+    final_key = key_path.pop(-1)
+    obj = get_item_from_dict(dictionary, key_path, create_mode=create_mode)
+    if not isinstance(obj, dict):
+        raise TypeError(f"Expected type 'dict', instead got '{type(obj)}'.")
+    if not create_mode and final_key not in obj:
+        raise KeyError(f"Key '{final_key}' not in dictionary '{key_path}'.")
+    obj[final_key] = value
+    return True
+
+
+def delete_item_from_dict(
+    dictionary: dict, key_path: (str, tuple), *, delete_empty_layers: bool = True
+) -> bool:
+    """Delete an item in a dictionary.
+    Optionally delete layers that are empty.
+    This function supports an infinite number of layers."""
+    if isinstance(key_path, str) and len(key_path) > 0:
+        if key_path[0] == "/":
+            key_path = key_path[1:]
+        if key_path[-1] == "/":
+            key_path = key_path[:-1]
+        key_path = key_path.split("/")
+    if not key_path or key_path[-1] == "":
+        raise ValueError("No dictionary key path was specified.")
+    final_key = key_path.pop(-1)
+    obj = get_item_from_dict(dictionary, key_path)
+    if not isinstance(obj, dict):
+        raise TypeError(f"Expected type 'dict', instead got '{type(obj)}'.")
+    if final_key not in obj:
+        return False
+    del obj[final_key]
+    if not delete_empty_layers:
+        return True
+    # Walk from deepest to shallowest, removing empty dicts
+    for i in range(len(key_path), 0, -1):
+        try:
+            obj = get_item_from_dict(dictionary, key_path[:i])
+            if isinstance(obj, dict) and not obj:  # Empty dict
+                if i == 1:
+                    del dictionary[key_path[0]]
+                else:
+                    parent = get_item_from_dict(dictionary, key_path[: i - 1])
+                    del parent[key_path[i - 1]]
+        except KeyError:
+            break
+    return True
 
 
 class ConfigManager:
@@ -159,7 +189,8 @@ class ConfigManager:
                     # Config keys only; not secrets.
                     "start_with_password": "never",  # nosec B105
                     "default_password_text": "",  # nosec B105
-                    "creation_notifications": {}},  # Will be populated dynamically
+                    "creation_notifications": {},
+                },  # Will be populated dynamically
             },
             "server_options": {},  # server_id -> options_overrides dict
         }
@@ -221,9 +252,7 @@ class ConfigManager:
         if not isinstance(social, dict):
             return False
         changed = False
-        changed |= self._fix_language_subs_in_profile(
-            social, "default profile", prefix="default"
-        )
+        changed |= self._fix_language_subs_in_profile(social, "default profile", prefix="default")
         return changed
 
     def _fix_server_language_subscriptions(self, profiles: Dict[str, Any]) -> bool:
@@ -238,22 +267,20 @@ class ConfigManager:
                 changed = True
         return changed
 
-    def _fix_language_subs_in_profile(self, social: Dict[str, Any], label: str, prefix: str | None = None) -> bool:
+    def _fix_language_subs_in_profile(
+        self, social: Dict[str, Any], label: str, prefix: str | None = None
+    ) -> bool:
         changed = False
         lang_subs = social.get("language_subscriptions")
         if isinstance(lang_subs, dict) and "Check" in lang_subs:
             lang_subs["Czech"] = lang_subs.pop("Check")
             changed = True
-            print(
-                f"Migrated language subscription: 'Check' -> 'Czech' in {label}"
-            )
+            print(f"Migrated language subscription: 'Check' -> 'Czech' in {label}")
         chat_lang = social.get("chat_input_language")
         if chat_lang == "Check":
             social["chat_input_language"] = "Czech"
             changed = True
-            print(
-                f"Migrated chat_input_language: 'Check' -> 'Czech' in {label}"
-            )
+            print(f"Migrated chat_input_language: 'Check' -> 'Czech' in {label}")
         return changed
 
     def _migrate_default_table_creations(self, profiles: Dict[str, Any]) -> bool:
@@ -265,7 +292,9 @@ class ConfigManager:
             defaults.get("local_table", {}),
             table_creations_value,
         )
-        print("Migrated 'table_creations' -> 'local_table/creation_notifications' in default profile")
+        print(
+            "Migrated 'table_creations' -> 'local_table/creation_notifications' in default profile"
+        )
         return True
 
     def _migrate_server_table_creations(self, profiles: Dict[str, Any]) -> bool:
@@ -285,7 +314,9 @@ class ConfigManager:
         return changed
 
     @staticmethod
-    def _build_local_table_migration(local_table: Dict[str, Any], table_creations_value: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_local_table_migration(
+        local_table: Dict[str, Any], table_creations_value: Dict[str, Any]
+    ) -> Dict[str, Any]:
         new_local_table = {
             "start_as_visible": local_table.get("start_as_visible", "always"),
             "start_with_password": local_table.get("start_with_password", "never"),
@@ -549,9 +580,7 @@ class ConfigManager:
             return server.get("accounts", {})
         return {}
 
-    def get_account_by_id(
-        self, server_id: str, account_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_account_by_id(self, server_id: str, account_id: str) -> Optional[Dict[str, Any]]:
         """Get account info by ID.
 
         Args:
@@ -695,7 +724,12 @@ class ConfigManager:
         return options
 
     def set_client_option(
-        self, key_path: str, value: Any, server_id: Optional[str] = None, *, create_mode: bool = False
+        self,
+        key_path: str,
+        value: Any,
+        server_id: Optional[str] = None,
+        *,
+        create_mode: bool = False,
     ):
         """Set a client option (either default or server-specific override).
 
@@ -714,10 +748,13 @@ class ConfigManager:
                 self.profiles["server_options"] = {}
             target = self.profiles["server_options"].setdefault(server_id, {})
 
-        success = set_item_in_dict(target, key_path, value, create_mode= create_mode)
-        if success: self.save_profiles()
+        success = set_item_in_dict(target, key_path, value, create_mode=create_mode)
+        if success:
+            self.save_profiles()
 
-    def clear_server_override(self, server_id: str, key_path: str, *, delete_empty_layers: bool= True):
+    def clear_server_override(
+        self, server_id: str, key_path: str, *, delete_empty_layers: bool = True
+    ):
         """Clear a server-specific override (revert to default).
 
         Args:
@@ -730,8 +767,11 @@ class ConfigManager:
 
         overrides = self.profiles["server_options"][server_id]
 
-        success = delete_item_from_dict(overrides, key_path, delete_empty_layers= delete_empty_layers)
-        if success: self.save_profiles()
+        success = delete_item_from_dict(
+            overrides, key_path, delete_empty_layers=delete_empty_layers
+        )
+        if success:
+            self.save_profiles()
 
     def _deep_copy(self, obj: Any) -> Any:
         """Deep copy a nested dict/list structure."""

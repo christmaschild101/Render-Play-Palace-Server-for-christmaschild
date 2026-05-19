@@ -35,6 +35,8 @@ whose-turn = Wer ist am Zug
 whos-at-table = Wer ist am Tisch
 check-scores = Punktzahlen prüfen
 check-scores-detailed = Detaillierte Punktzahlen
+check-game-options = Spieloptionen prüfen
+no-game-options = Keine Spieloptionen verfügbar.
 
 # Zugnachrichten
 game-player-skipped = { $player } wird übersprungen.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] Punkt
    *[other] Punkte
 }
-status-box-closed = Geschlossen.
 play = Spielen
 
 # Bestenlisten
@@ -260,6 +261,30 @@ account-banned = Ihr Konto ist gesperrt und kann nicht verwendet werden.
 incorrect-username = Der von Ihnen eingegebene Benutzername existiert nicht.
 incorrect-password = Das von Ihnen eingegebene Passwort ist falsch.
 already-logged-in = Dieses Konto ist bereits angemeldet.
+
+# Validierung der Anmeldedaten
+credential-username-length = Der Benutzername muss zwischen { $min } und { $max } Zeichen lang sein.
+credential-password-length = Das Passwort muss zwischen { $min } und { $max } Zeichen lang sein.
+
+# Anfragebegrenzung
+rate-limit-login-ip = Zu viele Anmeldeversuche von dieser Adresse. Bitte warten Sie und versuchen Sie es erneut.
+rate-limit-login-user = Zu viele fehlgeschlagene Anmeldeversuche für diesen Benutzernamen. Bitte warten Sie und versuchen Sie es erneut.
+rate-limit-registration = Zu viele Registrierungsversuche von dieser Adresse. Bitte warten Sie und versuchen Sie es erneut.
+rate-limit-refresh = Zu viele Aktualisierungsversuche von dieser Adresse. Bitte warten Sie und versuchen Sie es erneut.
+
+# Sitzungs- und Authentifizierungsfehler
+account-not-found = Konto nicht gefunden.
+session-expired = Sitzung abgelaufen. Bitte melden Sie sich erneut an.
+session-token-mismatch = Sitzungstoken stimmt nicht mit dem Benutzernamen überein.
+refresh-token-expired = Aktualisierungstoken abgelaufen. Bitte melden Sie sich erneut an.
+refresh-token-mismatch = Aktualisierungstoken stimmt nicht mit dem Benutzernamen überein.
+
+# Registrierung
+registration-success = Registrierung erfolgreich! Ihr Konto wartet auf Genehmigung.
+registration-username-taken = Benutzername bereits vergeben. Bitte wählen Sie einen anderen Benutzernamen.
+
+# Einstellungs-Fallback
+pref-invalid-value = Ungültige Auswahl, Standardwert wird verwendet.
 
 # Ablehnungsgrund
 decline-reason-prompt = Geben Sie einen Grund für die Ablehnung ein (oder drücken Sie Escape zum Abbrechen):

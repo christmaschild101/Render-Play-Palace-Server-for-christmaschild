@@ -102,9 +102,7 @@ class ActionExecutionMixin:
 
         return self._action_context.get(player.id, ActionContext())
 
-    def _get_menu_options_for_action(
-        self, action: Action, player: "Player"
-    ) -> list[str] | None:
+    def _get_menu_options_for_action(self, action: Action, player: "Player") -> list[str] | None:
         """Get menu options for an action, checking method first then MenuOption metadata."""
         req = action.input_request
         if not isinstance(req, MenuInput):
@@ -181,17 +179,13 @@ class ActionExecutionMixin:
             items = []
             for opt in options:
                 if menu_option_meta:
-                    display_text = menu_option_meta.get_localized_choice(
-                        opt, user.locale
-                    )
+                    display_text = menu_option_meta.get_localized_choice(opt, user.locale)
                 else:
                     display_text = opt
                 items.append(MenuItem(text=display_text, id=opt))
 
             if req.include_cancel:
-                items.append(
-                    MenuItem(text=Localization.get(user.locale, "cancel"), id="_cancel")
-                )
+                items.append(MenuItem(text=Localization.get(user.locale, "cancel"), id="_cancel"))
             user.show_menu(
                 "action_input_menu",
                 items,

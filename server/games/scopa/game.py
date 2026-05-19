@@ -31,6 +31,7 @@ from ...game_utils.options import (
 from ...game_utils.teams import TeamManager
 from ...game_utils.round_timer import RoundTransitionTimer
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 # Modular components
@@ -221,9 +222,7 @@ class ScopaGame(Game):
     def get_max_players(cls) -> int:
         return 16
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> ScopaPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> ScopaPlayer:
         """Create a new player with Scopa-specific state."""
         return ScopaPlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -303,10 +302,7 @@ class ScopaGame(Game):
             include_spectators=True,
         )
         self.define_keybind(
-            "d",
-            "View captured cards",
-            ["view_captured"],
-            state=KeybindState.ACTIVE
+            "d", "View captured cards", ["view_captured"], state=KeybindState.ACTIVE
         )
 
         # Number keys to view specific table cards (1-10 in order)
@@ -387,9 +383,7 @@ class ScopaGame(Game):
         locale = user.locale if user else "en"
         name = card_name(card, locale)
         if self.options.show_capture_hints:
-            hint = get_capture_hint(
-                self.table_cards, card, self.options.escoba, locale
-            )
+            hint = get_capture_hint(self.table_cards, card, self.options.escoba, locale)
             name += hint
         return name
 
@@ -447,22 +441,24 @@ class ScopaGame(Game):
         cards_needed = self.options.cards_per_deal * num_players
 
         if cards_needed > total_cards:
-            errors.append((
-                "scopa-error-not-enough-cards",
-                {
-                    "decks": self.options.number_of_decks,
-                    "players": num_players,
-                    "cards_per_deal": self.options.cards_per_deal,
-                    "total_cards": total_cards,
-                    "cards_needed": cards_needed,
-                }
-            ))
+            errors.append(
+                (
+                    "scopa-error-not-enough-cards",
+                    {
+                        "decks": self.options.number_of_decks,
+                        "players": num_players,
+                        "cards_per_deal": self.options.cards_per_deal,
+                        "total_cards": total_cards,
+                        "cards_needed": cards_needed,
+                    },
+                )
+            )
 
         return errors
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.current_round = 0
 
@@ -539,9 +535,7 @@ class ScopaGame(Game):
 
         # Rotate dealer (rightmost/last player, moves left/decreases)
         active_players = self.get_active_players()
-        self.dealer_index = (
-            (self.dealer_index - 1) % len(active_players) if active_players else 0
-        )
+        self.dealer_index = (self.dealer_index - 1) % len(active_players) if active_players else 0
         dealer = active_players[self.dealer_index] if active_players else None
 
         # Announce dealer
@@ -558,9 +552,7 @@ class ScopaGame(Game):
         )
         initial_table = total_cards % cards_for_players if cards_for_players > 0 else 0
         cards_after_table = total_cards - initial_table
-        self._total_deals = (
-            cards_after_table // cards_for_players if cards_for_players > 0 else 0
-        )
+        self._total_deals = cards_after_table // cards_for_players if cards_for_players > 0 else 0
         self._current_deal = 0
 
         # For standard scopa, avoid too many 10s on table (re-shuffle if needed)
@@ -605,9 +597,7 @@ class ScopaGame(Game):
             self.play_sound("game_cards/small_shuffle.ogg")
 
         # Announce deal counter
-        self.broadcast_l(
-            "game-deal-counter", current=self._current_deal, total=self._total_deals
-        )
+        self.broadcast_l("game-deal-counter", current=self._current_deal, total=self._total_deals)
 
         cards_to_deal = self.options.cards_per_deal
 

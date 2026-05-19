@@ -1,11 +1,6 @@
 """Bot user implementation for AI players."""
 
-from typing import TYPE_CHECKING
-
 from .base import User, MenuItem, EscapeBehavior, generate_uuid
-
-if TYPE_CHECKING:
-    pass
 
 
 class Bot(User):
@@ -51,15 +46,11 @@ class Bot(User):
         """Set the bot's client type."""
         self._client_type = client_type
 
-    # All UI methods are no-ops for bots
-
     def speak(self, text: str, buffer: str = "misc") -> None:
         """No-op: bots do not receive speech."""
         pass
 
-    def play_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
         """No-op: bots do not play sounds."""
         pass
 
@@ -117,6 +108,7 @@ class Bot(User):
         *,
         multiline: bool = False,
         read_only: bool = False,
+        content_format: str = "text",
     ) -> None:
         """No-op: bots do not show edit boxes."""
         pass

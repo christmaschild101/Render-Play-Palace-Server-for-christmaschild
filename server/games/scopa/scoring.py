@@ -79,9 +79,7 @@ def _award_most_cards(game: "ScopaGame", team_data: list[tuple[Team, list[Card]]
 
 
 def _award_most_diamonds(game: "ScopaGame", team_data: list[tuple[Team, list[Card]]]) -> None:
-    diamond_counts = [
-        (team, sum(1 for c in cards if c.suit == 1)) for team, cards in team_data
-    ]
+    diamond_counts = [(team, sum(1 for c in cards if c.suit == 1)) for team, cards in team_data]
     max_diamonds = max(count for _, count in diamond_counts)
     if max_diamonds <= 0:
         return
@@ -94,15 +92,12 @@ def _award_most_diamonds(game: "ScopaGame", team_data: list[tuple[Team, list[Car
 
 def _award_seven_of_diamonds(game: "ScopaGame", team_data: list[tuple[Team, list[Card]]]) -> None:
     seven_diamond_counts = [
-        (team, sum(1 for c in cards if c.rank == 7 and c.suit == 1))
-        for team, cards in team_data
+        (team, sum(1 for c in cards if c.rank == 7 and c.suit == 1)) for team, cards in team_data
     ]
     max_seven_diamonds = max(count for _, count in seven_diamond_counts)
     if max_seven_diamonds <= 0:
         return
-    winners = [
-        team for team, count in seven_diamond_counts if count == max_seven_diamonds
-    ]
+    winners = [team for team, count in seven_diamond_counts if count == max_seven_diamonds]
     if len(winners) == 1:
         _award_round_point(
             game,
@@ -116,9 +111,7 @@ def _award_seven_of_diamonds(game: "ScopaGame", team_data: list[tuple[Team, list
 
 
 def _award_most_sevens(game: "ScopaGame", team_data: list[tuple[Team, list[Card]]]) -> None:
-    seven_counts = [
-        (team, sum(1 for c in cards if c.rank == 7)) for team, cards in team_data
-    ]
+    seven_counts = [(team, sum(1 for c in cards if c.rank == 7)) for team, cards in team_data]
     max_sevens = max(count for _, count in seven_counts)
     if max_sevens <= 0:
         return

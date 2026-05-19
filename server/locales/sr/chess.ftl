@@ -1,120 +1,140 @@
 # Chess
 
-game-name-chess = Chess
+game-name-chess = Šah
 
 # Options
-chess-set-turn-timer = Turn timer: { $mode }
-chess-select-turn-timer = Select turn timer
-chess-option-changed-turn-timer = Turn timer set to { $mode }.
+chess-set-turn-timer = Vreme za potez: { $mode }
+chess-select-turn-timer = Izaberite vreme za potez
+chess-option-changed-turn-timer = Vreme za potez podešeno na { $mode }.
 
-chess-toggle-auto-draw = Auto-draw on repetition/50 moves: { $enabled }
-chess-option-changed-auto-draw = Auto-draw { $enabled }.
+chess-toggle-auto-draw = Automatski remi nakon ponavljanja ili 50 poteza: { $enabled }
+chess-option-changed-auto-draw = Automatski remi { $enabled }.
 
-chess-toggle-show-coordinates = Show coordinates in moves: { $enabled }
-chess-option-changed-show-coordinates = Show coordinates { $enabled }.
+chess-toggle-show-coordinates = Prikaži koordinate u potezima: { $enabled }
+chess-option-changed-show-coordinates = Prikazivanje koordinata { $enabled }.
 
 # Game start
-chess-game-started = { $white } is white, { $black } is black. White moves first.
+chess-game-started = { $white } je beli, { $black } je crni. Beli igra prvi.
 
 # Turn / move messages
-chess-you-select = Selected { $piece } at { $square }. Click destination.
-chess-no-piece = No piece to select there.
-chess-move-cancelled = Move cancelled.
-chess-illegal-move = Illegal move.
+chess-you-select = Izabrano { $piece } na { $square }. Kliknite na odredište.
+chess-no-piece = Nema figure koja se ovde može izabrati.
+chess-move-cancelled = Potez otkazan.
+chess-illegal-move = Neispravan potez.
 
-chess-you-move = You move { $piece } from { $from } to { $to }.
-chess-player-moves = { $player } moves { $piece } from { $from } to { $to }.
-chess-you-capture = You capture { $captured } on { $to } with { $piece } from { $from }.
-chess-player-captures = { $player } captures { $captured } on { $to } with { $piece } from { $from }.
+chess-you-move = Pomerate figuru { $piece } sa { $from } na { $to }.
+chess-player-moves = { $player } pomera figuru { $piece } sa { $from } na { $to }.
+chess-you-capture = Uzimate figuru { $captured } na { $to } figurom { $piece } sa { $from }.
+chess-player-captures = { $player } uzima figuru { $captured } na { $to } figurom { $piece } sa { $from }.
 
-chess-you-en-passant = You capture en passant on { $to } with pawn from { $from }.
-chess-player-en-passant = { $player } captures en passant on { $to } with pawn from { $from }.
+chess-you-en-passant = Uzimate en passant na { $to } pešakom sa { $from }.
+chess-player-en-passant = { $player } uzima en passant na { $to } pešakom sa { $from }.
 
-chess-you-castle-kingside = You castle kingside.
-chess-player-castles-kingside = { $player } castles kingside.
-chess-you-castle-queenside = You castle queenside.
-chess-player-castles-queenside = { $player } castles queenside.
+chess-you-castle-kingside = Pravite malu rokadu.
+chess-player-castles-kingside = { $player } pravi malu rokadu.
+chess-you-castle-queenside = Pravite veliku rokadu.
+chess-player-castles-queenside = { $player } pravi veliku rokadu.
 
-chess-you-promote = You promote pawn to { $piece } on { $square }.
-chess-player-promotes = { $player } promotes pawn to { $piece } on { $square }.
+chess-you-promote = Promovišete pešaka u figuru { $piece } na { $square }.
+chess-player-promotes = { $player } promoviše pešaka u figuru { $piece } na { $square }.
 
 # Check / checkmate / draw
-chess-check = Check!
-chess-checkmate = Checkmate! { $winner } wins.
-chess-you-win-checkmate = Checkmate! You win.
-chess-stalemate = Stalemate. The game is a draw.
-chess-draw-fifty = Draw by fifty-move rule.
-chess-draw-repetition = Draw by threefold repetition.
-chess-draw-material = Draw by insufficient material.
-chess-draw-agreement = Draw by agreement.
+chess-check = Šah!
+chess-checkmate = Mat! { $winner } pobeđuje.
+chess-you-win-checkmate = Mat! Pobeđujete.
+chess-stalemate = Pat. Igra je nerešena.
+chess-draw-fifty = Remi nakon pedeset poteza.
+chess-draw-repetition = Remi nakon tri ponavljanja.
+chess-draw-material = Remi nakon nedovoljno mogućnosti za pobedu.
+chess-draw-agreement = Remi nakon zajedničkog slaganja.
 
 # Resign
-chess-you-resign = You resign. { $opponent } wins.
-chess-player-resigns = { $player } resigns. { $opponent } wins.
+# Resign
+chess-resign = Predaj
+chess-resign-confirm = Da li ste sigurni da želite da se predate?
+chess-resign-yes = Da, predaj
+chess-resign-no = Ne, nastavi igru
+chess-you-resign = Predajete. { $opponent } pobeđuje.
+chess-player-resigns = { $player } predaje. { $opponent } pobeđuje.
 
 # Draw offer
-chess-offer-draw = Offer draw
-chess-you-offer-draw = You offer a draw.
-chess-player-offers-draw = { $player } offers a draw.
-chess-you-accept-draw = You accept the draw.
-chess-player-accepts-draw = { $player } accepts the draw.
-chess-you-decline-draw = You decline the draw.
-chess-player-declines-draw = { $player } declines the draw.
-chess-no-draw-offer = There is no draw offer to respond to.
-chess-already-offered = You have already offered a draw.
+chess-offer-draw = Predloži remi
+chess-you-offer-draw = Predlažete remi.
+chess-player-offers-draw = { $player } predlaže remi.
+chess-you-accept-draw = Prihvatate remi.
+chess-player-accepts-draw = { $player } prihvata remi.
+chess-you-decline-draw = Odbijate remi.
+chess-player-declines-draw = { $player } odbija remi.
+chess-no-draw-offer = Nema predloga za remi na koji možete da odgovorite.
+chess-already-offered = Već ste predložili remi.
 
 # Undo
-chess-undo-request = Undo last move
-chess-you-request-undo = You request to undo the last move.
-chess-player-requests-undo = { $player } requests to undo the last move.
-chess-you-accept-undo = You accept the undo.
-chess-player-accepts-undo = { $player } accepts the undo. Move undone.
-chess-you-decline-undo = You decline the undo.
-chess-player-declines-undo = { $player } declines the undo request.
-chess-no-undo-request = There is no undo request to respond to.
-chess-no-moves-to-undo = There are no moves to undo.
-chess-already-requested-undo = You have already requested an undo.
-chess-undo-applied = Last move undone. It is now { $player }'s turn.
+chess-undo-request = Poništi poslednji potez
+chess-you-request-undo = Zahtevate poništavanje poslednjeg poteza.
+chess-player-requests-undo = { $player } zahteva poništavanje poslednjeg poteza.
+chess-you-accept-undo = Prihvatate poništavanje.
+chess-player-accepts-undo = { $player } prihvata poništavanje. Potez poništen.
+chess-you-decline-undo = Odbijate poništavanje.
+chess-player-declines-undo = { $player } odbija zahtev za poništavanje.
+chess-no-undo-request = Nema zahteva za poništavanje na koji možete da odgovorite.
+chess-no-moves-to-undo = Nema poteza koji mogu da se ponište.
+chess-already-requested-undo = Već ste zahtevali poništavanje.
+chess-undo-applied = Poslednji potez poništen.  { $player } je na potezu.
 
 # Promotion
-chess-select-promotion = Select promotion piece
+chess-select-promotion = Izaberite figuru za promociju
 
 # View board
-chess-view-board = View board
-chess-flip-board = Flip board
-chess-viewer-own = your
-chess-viewer-opponent = opponent's
-chess-board-flipped = Flipped board to view { $viewer } perspective ({ $color }).
-chess-board-rank = Rank { $rank }: { $pieces }
-chess-empty = empty
-chess-board-header = Board state:
+chess-view-board = Prikaži tablu
+chess-flip-board = Okreni tablu
+chess-viewer-own = vašoj
+chess-viewer-opponent = protivničkoj
+chess-board-flipped = Tabla okrenuta u { $viewer }  perspektivi ({ $color }).
+
+chess-board-rank = Rang { $rank }: { $pieces }
+chess-empty = Prazno
+chess-board-header = Stanje table:
 
 # Status / scores
-chess-status-white = White: { $player }
-chess-status-black = Black: { $player }
-chess-status-turn = Turn: { $color }
-chess-status-move-count = Moves: { $count }
-chess-check-status = Check game status
+chess-status-white = Beli: { $player }
+chess-status-black = Crni: { $player }
+chess-status-turn = Potez: { $color }
+chess-status-move-count = Potezi: { $count }
+chess-check-status = Proveri status igre
+
+# Type move
+chess-type-move = Upiši potez
+chess-enter-move = Upišite potez (na primer e2-e4, o-o, o-o-o)
+chess-move-parse-error = Nemoguće obraditi ovaj potez. Pokušajte e2-e4, pe2-e4, o-o, ili o-o-o.
 
 # FEN
-chess-import-fen = Import FEN
-chess-enter-fen = Paste FEN string
-chess-fen-loaded = FEN loaded successfully.
-chess-fen-error = Error loading FEN.
+chess-import-fen = Uvezi FEN
+chess-enter-fen = Nalepite FEN niz
+chess-fen-loaded = FEN uspešno učitan.
+chess-fen-error = Greška pri učitavanju FEN-a.
 
 # Piece names
-chess-piece-pawn = pawn
-chess-piece-knight = knight
-chess-piece-bishop = bishop
-chess-piece-rook = rook
-chess-piece-queen = queen
-chess-piece-king = king
+chess-piece-pawn = Pešak
+chess-piece-knight = Konj
+chess-piece-bishop = Lovac
+chess-piece-rook = Top
+chess-piece-queen = Kraljica
+chess-piece-king = Kralj
+
+# Piece grammatical gender (m = masculine, f = feminine)
+# Translators: change these to match the grammatical gender in your language.
+chess-piece-pawn-gender = m
+chess-piece-knight-gender = m
+chess-piece-bishop-gender = m
+chess-piece-rook-gender = m
+chess-piece-queen-gender = f
+chess-piece-king-gender = m
 
 # Timer
-chess-check-turn-timer = Turn timer
-chess-turn-timeout = Time's up!
+chess-check-turn-timer = Vreme za potez
+chess-turn-timeout = Vreme je isteklo!
 
 # Timer choice labels (game-specific durations)
-chess-timer-120 = 2 minutes
-chess-timer-180 = 3 minutes
-chess-timer-300 = 5 minutes
+chess-timer-120 = 2 minuta
+chess-timer-180 = 3 minuta
+chess-timer-300 = 5 minuta

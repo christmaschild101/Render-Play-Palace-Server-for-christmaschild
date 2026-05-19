@@ -137,9 +137,7 @@ class NetworkManager:
             asyncio.set_event_loop(self.loop)
 
             # Run the connection coroutine
-            self.loop.run_until_complete(
-                self._connect_and_listen(server_url, username, password)
-            )
+            self.loop.run_until_complete(self._connect_and_listen(server_url, username, password))
         except Exception:
             import traceback
 
@@ -300,9 +298,7 @@ class NetworkManager:
             raise TLSUserDeclinedError("Unable to store trusted certificate.")
         return await self._connect_with_trusted_certificate(server_url, trust_entry)
 
-    async def _connect_with_trusted_certificate(
-        self, server_url: str, trust_entry: dict
-    ):
+    async def _connect_with_trusted_certificate(self, server_url: str, trust_entry: dict):
         """Connect using a stored certificate fingerprint (TOFU)."""
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.check_hostname = False
@@ -441,9 +437,7 @@ class NetworkManager:
         cert_dict = self._merge_cert_metadata(cert_dict, pem)
         common_name = self._extract_common_name(cert_dict)
         issuer_text = self._format_issuer(cert_dict)
-        sans = [
-            value for kind, value in cert_dict.get("subjectAltName", []) if kind == "DNS"
-        ]
+        sans = [value for kind, value in cert_dict.get("subjectAltName", []) if kind == "DNS"]
         matches = self._certificate_matches_host(common_name, sans, host)
         display_fp = self._format_fingerprint(fingerprint_hex)
         return CertificateInfo(
@@ -498,9 +492,7 @@ class NetworkManager:
 
     @staticmethod
     def _format_fingerprint(fingerprint_hex: str) -> str:
-        return ":".join(
-            fingerprint_hex[i : i + 2] for i in range(0, len(fingerprint_hex), 2)
-        )
+        return ":".join(fingerprint_hex[i : i + 2] for i in range(0, len(fingerprint_hex), 2))
 
     def _get_server_host(self, server_url: str) -> str:
         try:

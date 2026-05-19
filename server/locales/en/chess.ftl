@@ -49,6 +49,10 @@ chess-draw-material = Draw by insufficient material.
 chess-draw-agreement = Draw by agreement.
 
 # Resign
+chess-resign = Resign
+chess-resign-confirm = Are you sure you want to resign?
+chess-resign-yes = Yes, resign
+chess-resign-no = No, keep playing
 chess-you-resign = You resign. { $opponent } wins.
 chess-player-resigns = { $player } resigns. { $opponent } wins.
 
@@ -96,6 +100,11 @@ chess-status-turn = Turn: { $color }
 chess-status-move-count = Moves: { $count }
 chess-check-status = Check game status
 
+# Type move
+chess-type-move = Type a move
+chess-enter-move = Enter move (e.g. e2-e4, o-o, o-o-o)
+chess-move-parse-error = Could not understand that move. Try e2-e4, pe2-e4, o-o, or o-o-o.
+
 # FEN
 chess-import-fen = Import FEN
 chess-enter-fen = Paste FEN string
@@ -109,6 +118,15 @@ chess-piece-bishop = bishop
 chess-piece-rook = rook
 chess-piece-queen = queen
 chess-piece-king = king
+
+# Piece grammatical gender (m = masculine, f = feminine)
+# Translators: change these to match the grammatical gender in your language.
+chess-piece-pawn-gender = m
+chess-piece-knight-gender = m
+chess-piece-bishop-gender = m
+chess-piece-rook-gender = m
+chess-piece-queen-gender = f
+chess-piece-king-gender = m
 
 # Timer
 chess-check-turn-timer = Turn timer

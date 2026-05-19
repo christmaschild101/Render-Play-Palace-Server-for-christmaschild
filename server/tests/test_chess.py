@@ -1,11 +1,16 @@
 """Tests for the Chess game."""
 
+import random
+
 import pytest
 import json
 
 from server.games.chess.game import (
-    ChessGame, ChessPlayer, ChessOptions,
-    index_to_notation, notation_to_index,
+    ChessGame,
+    ChessPlayer,
+    ChessOptions,
+    index_to_notation,
+    notation_to_index,
 )
 from server.core.users.test_user import MockUser
 from server.core.users.bot import Bot
@@ -384,26 +389,31 @@ class TestBotPlay:
 
     def test_serialization_during_play(self):
         """Test that the game can be serialized and restored mid-game."""
-        game = ChessGame()
-        game.host = "Alice"
-        p1 = game.add_player("Alice", Bot("Alice"))
-        p2 = game.add_player("Bob", Bot("Bob"))
-        game.on_start()
+        rng_state = random.getstate()
+        random.seed(42)
+        try:
+            game = ChessGame()
+            game.host = "Alice"
+            p1 = game.add_player("Alice", Bot("Alice"))
+            p2 = game.add_player("Bob", Bot("Bob"))
+            game.on_start()
 
-        for i in range(5000):
-            game.on_tick()
-            if not game.game_active:
-                break
-            if i == 200:
-                # Serialize mid-game
-                data = game.to_dict()
-                game2 = ChessGame.from_dict(data)
-                game2.__post_init__()
-                for p in game2.players:
-                    game2.attach_user(p.id, Bot(p.name, uuid=p.id))
-                game = game2
+            for i in range(15000):
+                game.on_tick()
+                if not game.game_active:
+                    break
+                if i == 200:
+                    # Serialize mid-game
+                    data = game.to_dict()
+                    game2 = ChessGame.from_dict(data)
+                    game2.__post_init__()
+                    for p in game2.players:
+                        game2.attach_user(p.id, Bot(p.name, uuid=p.id))
+                    game = game2
 
-        assert not game.game_active
+            assert not game.game_active
+        finally:
+            random.setstate(rng_state)
 
 
 class TestPromotion:

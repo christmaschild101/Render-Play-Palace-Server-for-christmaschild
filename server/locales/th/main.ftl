@@ -35,6 +35,8 @@ whose-turn = ตาของใคร
 whos-at-table = ใครอยู่ที่โต๊ะ
 check-scores = ตรวจสอบคะแนน
 check-scores-detailed = คะแนนโดยละเอียด
+check-game-options = ตรวจสอบตัวเลือกเกม
+no-game-options = ไม่มีตัวเลือกเกม
 
 # Turn messages
 game-player-skipped = { $player } ถูกข้าม
@@ -153,7 +155,6 @@ game-leave = ออก
 game-over = จบเกม
 game-final-scores = คะแนนสุดท้าย
 game-points = { $count } คะแนน
-status-box-closed = ปิดแล้ว
 play = เล่น
 
 # Leaderboards
@@ -251,6 +252,30 @@ account-banned = บัญชีของคุณถูกแบนและไ
 incorrect-username = ชื่อผู้ใช้ที่คุณป้อนไม่มีอยู่
 incorrect-password = รหัสผ่านที่คุณป้อนไม่ถูกต้อง
 already-logged-in = บัญชีนี้เข้าสู่ระบบอยู่แล้ว
+
+# Credential validation
+credential-username-length = ชื่อผู้ใช้ต้องมีความยาวระหว่าง { $min } ถึง { $max } ตัวอักษร
+credential-password-length = รหัสผ่านต้องมีความยาวระหว่าง { $min } ถึง { $max } ตัวอักษร
+
+# Rate limiting
+rate-limit-login-ip = มีการพยายามเข้าสู่ระบบจากที่อยู่นี้มากเกินไป โปรดรอแล้วลองอีกครั้ง
+rate-limit-login-user = มีการพยายามเข้าสู่ระบบล้มเหลวสำหรับชื่อผู้ใช้นี้มากเกินไป โปรดรอแล้วลองอีกครั้ง
+rate-limit-registration = มีการพยายามลงทะเบียนจากที่อยู่นี้มากเกินไป โปรดรอแล้วลองอีกครั้ง
+rate-limit-refresh = มีการพยายามรีเฟรชจากที่อยู่นี้มากเกินไป โปรดรอแล้วลองอีกครั้ง
+
+# Session/auth errors
+account-not-found = ไม่พบบัญชี
+session-expired = เซสชันหมดอายุแล้ว โปรดเข้าสู่ระบบอีกครั้ง
+session-token-mismatch = โทเค็นเซสชันไม่ตรงกับชื่อผู้ใช้
+refresh-token-expired = โทเค็นรีเฟรชหมดอายุแล้ว โปรดเข้าสู่ระบบอีกครั้ง
+refresh-token-mismatch = โทเค็นรีเฟรชไม่ตรงกับชื่อผู้ใช้
+
+# Registration
+registration-success = ลงทะเบียนสำเร็จ! บัญชีของคุณกำลังรอการอนุมัติ
+registration-username-taken = ชื่อผู้ใช้นี้ถูกใช้งานแล้ว โปรดเลือกชื่อผู้ใช้อื่น
+
+# Preference fallback
+pref-invalid-value = การเลือกไม่ถูกต้อง ใช้ค่าเริ่มต้นแทน
 
 # Decline reason
 decline-reason-prompt = ป้อนเหตุผลในการปฏิเสธ (หรือกด Escape เพื่อยกเลิก):

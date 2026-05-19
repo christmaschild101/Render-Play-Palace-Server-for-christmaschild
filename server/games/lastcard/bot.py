@@ -75,8 +75,9 @@ def choose_best_color(game: "LastCardGame", player: "LastCardPlayer") -> int:
                 color_values[card.suit] += 1
 
     # Prefer the color with most cards, break ties by value
-    best = max(color_counts.keys(),
-               key=lambda c: (color_counts[c], color_values[c], random.random()))
+    best = max(
+        color_counts.keys(), key=lambda c: (color_counts[c], color_values[c], random.random())
+    )
     return best
 
 
@@ -161,8 +162,12 @@ def bot_think(game: "LastCardGame", player: "LastCardPlayer") -> str | None:
     # Awaiting color choice after wild
     if game.awaiting_color_choice and game.current_player == player:
         color = choose_best_color(game, player)
-        color_map = {COLOR_RED: "color_red", COLOR_BLUE: "color_blue",
-                     COLOR_GREEN: "color_green", COLOR_YELLOW: "color_yellow"}
+        color_map = {
+            COLOR_RED: "color_red",
+            COLOR_BLUE: "color_blue",
+            COLOR_GREEN: "color_green",
+            COLOR_YELLOW: "color_yellow",
+        }
         return color_map.get(color, "color_red")
 
     # Awaiting swap target (Seven rule)
@@ -186,8 +191,12 @@ def bot_think(game: "LastCardGame", player: "LastCardPlayer") -> str | None:
             return _bot_think_multi(game, player)
 
         # Pre-buzz if about to play down to 1 card
-        if (len(player.hand) == 2 and game.options.last_card_callout
-                and game.options.buzzer_enabled and not player.called_last_card):
+        if (
+            len(player.hand) == 2
+            and game.options.last_card_callout
+            and game.options.buzzer_enabled
+            and not player.called_last_card
+        ):
             player.called_last_card = True
             # Don't return buzzer action — just set flag and play card
             # (Bots can multi-act in the same think call)
@@ -234,8 +243,12 @@ def _bot_think_multi(game: "LastCardGame", player: "LastCardPlayer") -> str | No
     remaining_after = len(player.hand) - len(same_rank)
 
     # Pre-buzz if playing down to 1 card
-    if (remaining_after == 1 and game.options.last_card_callout
-            and game.options.buzzer_enabled and not player.called_last_card):
+    if (
+        remaining_after == 1
+        and game.options.last_card_callout
+        and game.options.buzzer_enabled
+        and not player.called_last_card
+    ):
         player.called_last_card = True
 
     # Select all same-rank cards at once, then the next bot_think tick will confirm

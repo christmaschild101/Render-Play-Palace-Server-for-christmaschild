@@ -35,6 +35,8 @@ whose-turn = Ko je na potezu
 whos-at-table = Ko je za stolom
 check-scores = Proveri rezultat
 check-scores-detailed = Detaljni rezultati
+check-game-options = Proveri opcije igre
+no-game-options = Nema opcija igre.
 
 # Poruke o redu igranja
 game-player-skipped = { $player } se preskače.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] poen
     *[other] poena
 }
-status-box-closed = Zatvoreno.
 play = Igraj
 
 # Rang liste
@@ -263,6 +264,30 @@ account-banned = Vašem nalogu je zabranjen pristup.
 incorrect-username = Korisničko ime koje ste upisali ne postoji.
 incorrect-password = Lozinka koju ste upisali je netačna.
 already-logged-in = Ovaj nalog je već prijavljen.
+
+# Credential validation
+credential-username-length = Korisničko ime mora imati između { $min } i { $max } znakova.
+credential-password-length = Lozinka mora imati između { $min } i { $max } znakova.
+
+# Rate limiting
+rate-limit-login-ip = Previše pokušaja prijave sa ove adrese. Sačekajte i pokušajte ponovo.
+rate-limit-login-user = Previše neuspešnih pokušaja prijave za ovo korisničko ime. Sačekajte i pokušajte ponovo.
+rate-limit-registration = Previše pokušaja registracije sa ove adrese. Sačekajte i pokušajte ponovo.
+rate-limit-refresh = Previše pokušaja osvežavanja sa ove adrese. Sačekajte i pokušajte ponovo.
+
+# Session/auth errors
+account-not-found = Nalog nije pronađen.
+session-expired = Sesija je istekla. Molimo prijavite se ponovo.
+session-token-mismatch = Token sesije se ne poklapa sa korisničkim imenom.
+refresh-token-expired = Token za osvežavanje je istekao. Molimo prijavite se ponovo.
+refresh-token-mismatch = Token za osvežavanje se ne poklapa sa korisničkim imenom.
+
+# Registration
+registration-success = Registracija je uspešna! Vaš nalog čeka na odobravanje.
+registration-username-taken = Korisničko ime je već zauzeto. Molimo izaberite drugo ime.
+
+# Preference fallback
+pref-invalid-value = Nevažeći izbor, koristim podrazumevanu vrednost.
 
 # Decline reason
 decline-reason-prompt = Upišite razlog odbijanja (ili pritisnite Escape da otkažete):

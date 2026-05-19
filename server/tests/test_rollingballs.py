@@ -143,9 +143,7 @@ class TestRollingBallsUnit:
     def test_pipe_balls_from_different_pack(self):
         """Test that pipe balls come from a different pack when selected."""
         random.seed(42)
-        game = RollingBallsGame(
-            options=RollingBallsOptions(ball_packs=["Pizza"])
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(ball_packs=["Pizza"]))
         user1 = MockUser("Alice")
         user2 = MockUser("Bob")
         game.add_player("Alice", user1)
@@ -312,7 +310,7 @@ class TestRollingBallsActions:
 
         assert self.player1.view_pipe_uses == 1
         # Check that the user received a status box with pipe information
-        assert "status_box" in self.user1.menus
+        assert "transient_display" in self.user1.menus
 
     def test_view_pipe_visible_when_uses_remain(self):
         """Test view pipe is visible when uses remain."""
@@ -407,9 +405,7 @@ class TestRollingBallsActions:
 
     def test_min_take_hides_lower_actions(self):
         """Test that take actions below min_take are not created."""
-        game = RollingBallsGame(
-            options=RollingBallsOptions(min_take=2, max_take=4)
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(min_take=2, max_take=4))
         user1 = MockUser("Alice")
         user2 = MockUser("Bob")
         game.add_player("Alice", user1)
@@ -428,9 +424,7 @@ class TestRollingBallsActions:
 
     def test_max_take_limits_actions(self):
         """Test that take actions above max_take are not created."""
-        game = RollingBallsGame(
-            options=RollingBallsOptions(min_take=1, max_take=5)
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(min_take=1, max_take=5))
         user1 = MockUser("Alice")
         user2 = MockUser("Bob")
         game.add_player("Alice", user1)
@@ -449,9 +443,7 @@ class TestRollingBallsActions:
 
     def test_single_take_option(self):
         """Test that min_take == max_take creates only one take action."""
-        game = RollingBallsGame(
-            options=RollingBallsOptions(min_take=2, max_take=2)
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(min_take=2, max_take=2))
         user1 = MockUser("Alice")
         user2 = MockUser("Bob")
         game.add_player("Alice", user1)
@@ -533,9 +525,7 @@ class TestRollingBallsPlayTest:
         """Test game with reshuffle limit set to 0."""
         random.seed(789)
 
-        game = RollingBallsGame(
-            options=RollingBallsOptions(reshuffle_limit=0)
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(reshuffle_limit=0))
         bot1 = Bot("Bot1")
         bot2 = Bot("Bot2")
         game.add_player("Bot1", bot1)
@@ -554,9 +544,7 @@ class TestRollingBallsPlayTest:
         """Test game with view pipe limit set to 0."""
         random.seed(101)
 
-        game = RollingBallsGame(
-            options=RollingBallsOptions(view_pipe_limit=0)
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(view_pipe_limit=0))
         bot1 = Bot("Bot1")
         bot2 = Bot("Bot2")
         game.add_player("Bot1", bot1)
@@ -575,9 +563,7 @@ class TestRollingBallsPlayTest:
         """Test game with maximum reshuffle penalty."""
         random.seed(202)
 
-        game = RollingBallsGame(
-            options=RollingBallsOptions(reshuffle_penalty=5)
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(reshuffle_penalty=5))
         bot1 = Bot("Bot1")
         bot2 = Bot("Bot2")
         game.add_player("Bot1", bot1)
@@ -617,9 +603,7 @@ class TestRollingBallsPlayTest:
         """Test game with min_take=2 and max_take=5."""
         random.seed(404)
 
-        game = RollingBallsGame(
-            options=RollingBallsOptions(min_take=2, max_take=5)
-        )
+        game = RollingBallsGame(options=RollingBallsOptions(min_take=2, max_take=5))
         bot1 = Bot("Bot1")
         bot2 = Bot("Bot2")
         game.add_player("Bot1", bot1)

@@ -15,6 +15,7 @@ from ...game_utils.options import IntOption, BoolOption, MenuOption, option_fiel
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 from server.core.users.bot import Bot
 from server.core.users.base import User, MenuItem, EscapeBehavior
@@ -169,9 +170,7 @@ class BackgammonGame(Game):
     def get_max_players(cls) -> int:
         return 2
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> BackgammonPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> BackgammonPlayer:
         return BackgammonPlayer(id=player_id, name=name, is_bot=is_bot)
 
     def add_player(self, name: str, user: User) -> BackgammonPlayer:
@@ -206,101 +205,121 @@ class BackgammonGame(Game):
         # Top row (L→R): points 13-24 (indices 12-23)
         # Bottom row (L→R): points 12-1 (indices 11-0)
         for idx in self._grid_indices():
-            action_set.add(Action(
-                id=f"point_{idx}",
-                label="",
-                handler="_action_point_click",
-                is_enabled="_is_point_enabled",
-                is_hidden="_is_point_hidden",
-                get_label="_get_point_label",
-                get_sound="_get_point_sound",
-                show_in_actions_menu=False,
-                show_disabled_label=False,
-            ))
+            action_set.add(
+                Action(
+                    id=f"point_{idx}",
+                    label="",
+                    handler="_action_point_click",
+                    is_enabled="_is_point_enabled",
+                    is_hidden="_is_point_hidden",
+                    get_label="_get_point_label",
+                    get_sound="_get_point_sound",
+                    show_in_actions_menu=False,
+                    show_disabled_label=False,
+                )
+            )
 
         # Offer double (keybind-triggered, hidden from menu)
-        action_set.add(Action(
-            id="offer_double",
-            label=Localization.get(locale, "backgammon-label-double"),
-            handler="_action_offer_double",
-            is_enabled="_is_offer_double_enabled",
-            is_hidden="_is_always_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="offer_double",
+                label=Localization.get(locale, "backgammon-label-double"),
+                handler="_action_offer_double",
+                is_enabled="_is_offer_double_enabled",
+                is_hidden="_is_always_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Doubling response (shown as modal menu items when in doubling phase)
-        action_set.add(Action(
-            id="accept_double",
-            label=Localization.get(locale, "backgammon-accept"),
-            handler="_action_accept_double",
-            is_enabled="_is_accept_double_enabled",
-            is_hidden="_is_accept_double_hidden",
-            show_in_actions_menu=False,
-        ))
-        action_set.add(Action(
-            id="drop_double",
-            label=Localization.get(locale, "backgammon-drop"),
-            handler="_action_drop_double",
-            is_enabled="_is_drop_double_enabled",
-            is_hidden="_is_drop_double_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="accept_double",
+                label=Localization.get(locale, "backgammon-accept"),
+                handler="_action_accept_double",
+                is_enabled="_is_accept_double_enabled",
+                is_hidden="_is_accept_double_hidden",
+                show_in_actions_menu=False,
+            )
+        )
+        action_set.add(
+            Action(
+                id="drop_double",
+                label=Localization.get(locale, "backgammon-drop"),
+                handler="_action_drop_double",
+                is_enabled="_is_drop_double_enabled",
+                is_hidden="_is_drop_double_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Undo (keybind-triggered, hidden from menu)
-        action_set.add(Action(
-            id="undo_move",
-            label=Localization.get(locale, "backgammon-label-undo"),
-            handler="_action_undo_move",
-            is_enabled="_is_undo_enabled",
-            is_hidden="_is_always_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="undo_move",
+                label=Localization.get(locale, "backgammon-label-undo"),
+                handler="_action_undo_move",
+                is_enabled="_is_undo_enabled",
+                is_hidden="_is_always_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Hint (keybind-triggered, hidden from menu)
-        action_set.add(Action(
-            id="get_hint",
-            label=Localization.get(locale, "backgammon-label-hint"),
-            handler="_action_get_hint",
-            is_enabled="_is_hint_enabled",
-            is_hidden="_is_always_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="get_hint",
+                label=Localization.get(locale, "backgammon-label-hint"),
+                handler="_action_get_hint",
+                is_enabled="_is_hint_enabled",
+                is_hidden="_is_always_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Cube hint (keybind-triggered, hidden from menu)
-        action_set.add(Action(
-            id="get_cube_hint",
-            label=Localization.get(locale, "backgammon-label-cube-hint"),
-            handler="_action_get_cube_hint",
-            is_enabled="_is_cube_hint_enabled",
-            is_hidden="_is_always_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="get_cube_hint",
+                label=Localization.get(locale, "backgammon-label-cube-hint"),
+                handler="_action_get_cube_hint",
+                is_enabled="_is_cube_hint_enabled",
+                is_hidden="_is_always_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Navigation (ctrl+up/down, hidden from menu)
-        action_set.add(Action(
-            id="navigate_next",
-            label="Next",
-            handler="_action_navigate_next",
-            is_enabled="_is_navigate_enabled",
-            is_hidden="_is_always_hidden",
-            show_in_actions_menu=False,
-        ))
-        action_set.add(Action(
-            id="navigate_prev",
-            label="Previous",
-            handler="_action_navigate_prev",
-            is_enabled="_is_navigate_enabled",
-            is_hidden="_is_always_hidden",
-            show_in_actions_menu=False,
-        ))
-        action_set.add(Action(
-            id="deselect",
-            label="Deselect",
-            handler="_action_deselect",
-            is_enabled="_is_deselect_enabled",
-            is_hidden="_is_always_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="navigate_next",
+                label="Next",
+                handler="_action_navigate_next",
+                is_enabled="_is_navigate_enabled",
+                is_hidden="_is_always_hidden",
+                show_in_actions_menu=False,
+            )
+        )
+        action_set.add(
+            Action(
+                id="navigate_prev",
+                label="Previous",
+                handler="_action_navigate_prev",
+                is_enabled="_is_navigate_enabled",
+                is_hidden="_is_always_hidden",
+                show_in_actions_menu=False,
+            )
+        )
+        action_set.add(
+            Action(
+                id="deselect",
+                label="Deselect",
+                handler="_action_deselect",
+                is_enabled="_is_deselect_enabled",
+                is_hidden="_is_always_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         return action_set
 
@@ -371,18 +390,36 @@ class BackgammonGame(Game):
         self.define_keybind("shift+d", "Double", ["offer_double"], state=KeybindState.ACTIVE)
         self.define_keybind("y", "Accept double", ["accept_double"], state=KeybindState.ACTIVE)
         self.define_keybind("n", "Drop double", ["drop_double"], state=KeybindState.ACTIVE)
-        self.define_keybind("e", "Status", ["check_status"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("d", "Cube", ["check_cube"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("p", "Pip count", ["check_pip"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind(
+            "e", "Status", ["check_status"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "d", "Cube", ["check_cube"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "p", "Pip count", ["check_pip"], state=KeybindState.ACTIVE, include_spectators=True
+        )
         self.define_keybind("u", "Undo", ["undo_move"], state=KeybindState.ACTIVE)
-        self.define_keybind("s", "Score", ["check_score"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("c", "Dice", ["check_dice"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind(
+            "s", "Score", ["check_score"], state=KeybindState.ACTIVE, include_spectators=True
+        )
+        self.define_keybind(
+            "c", "Dice", ["check_dice"], state=KeybindState.ACTIVE, include_spectators=True
+        )
         self.define_keybind("h", "Hint", ["get_hint"], state=KeybindState.ACTIVE)
         self.define_keybind("shift+h", "Cube hint", ["get_cube_hint"], state=KeybindState.ACTIVE)
-        self.define_keybind("ctrl+down", "Next destination", ["navigate_next"], state=KeybindState.ACTIVE)
-        self.define_keybind("ctrl+right", "Next destination", ["navigate_next"], state=KeybindState.ACTIVE)
-        self.define_keybind("ctrl+up", "Previous destination", ["navigate_prev"], state=KeybindState.ACTIVE)
-        self.define_keybind("ctrl+left", "Previous destination", ["navigate_prev"], state=KeybindState.ACTIVE)
+        self.define_keybind(
+            "ctrl+down", "Next destination", ["navigate_next"], state=KeybindState.ACTIVE
+        )
+        self.define_keybind(
+            "ctrl+right", "Next destination", ["navigate_next"], state=KeybindState.ACTIVE
+        )
+        self.define_keybind(
+            "ctrl+up", "Previous destination", ["navigate_prev"], state=KeybindState.ACTIVE
+        )
+        self.define_keybind(
+            "ctrl+left", "Previous destination", ["navigate_prev"], state=KeybindState.ACTIVE
+        )
         self.define_keybind("ctrl+backspace", "Deselect", ["deselect"], state=KeybindState.ACTIVE)
 
     # ==========================================================================
@@ -401,8 +438,8 @@ class BackgammonGame(Game):
         For White, rebuild_player_menu swaps the two halves so both
         players see their own home at bottom-right.
         """
-        top = list(range(12, 24))        # indices 12,13,...,23 (pts 13→24)
-        bottom = list(range(11, -1, -1)) # indices 11,10,...,0  (pts 12→1)
+        top = list(range(12, 24))  # indices 12,13,...,23 (pts 13→24)
+        bottom = list(range(11, -1, -1))  # indices 11,10,...,0  (pts 12→1)
         return top + bottom
 
     # ==========================================================================
@@ -464,7 +501,8 @@ class BackgammonGame(Game):
         self._nav_cursor = targets[idx]
         self._nav_skip_rebuild = True
         self.update_player_menu(
-            player, selection_id=f"point_{targets[idx]}",
+            player,
+            selection_id=f"point_{targets[idx]}",
             play_selection_sound=True,
         )
 
@@ -514,12 +552,14 @@ class BackgammonGame(Game):
     # ==========================================================================
 
     def update_player_menu(
-        self, player: "Player", selection_id: str | None = None,
+        self,
+        player: "Player",
+        selection_id: str | None = None,
         play_selection_sound: bool = False,
     ) -> None:
         if self._destroyed or self.status == "finished":
             return
-        if player.id in self._status_box_open:
+        if self._is_transient_display_open(player):
             return
         user = self.get_user(player)
         if not user:
@@ -530,7 +570,8 @@ class BackgammonGame(Game):
             point_items = point_items[12:] + point_items[:12]
 
         user.update_menu(
-            "turn_menu", point_items + other_items,
+            "turn_menu",
+            point_items + other_items,
             selection_id=selection_id,
             play_selection_sound=play_selection_sound,
         )
@@ -552,12 +593,15 @@ class BackgammonGame(Game):
         return point_items, other_items
 
     def rebuild_player_menu(
-        self, player: "Player", *, position: int | None = None,
+        self,
+        player: "Player",
+        *,
+        position: int | None = None,
         play_selection_sound: bool = False,
     ) -> None:
         if self._destroyed or self.status == "finished":
             return
-        if player.id in self._status_box_open:
+        if self._is_transient_display_open(player):
             return
         user = self.get_user(player)
         if not user:
@@ -587,7 +631,7 @@ class BackgammonGame(Game):
     # ==========================================================================
 
     def on_start(self) -> None:
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 1
 
@@ -859,8 +903,9 @@ class BackgammonGame(Game):
         # Give a helpful error explaining why.
         pn = point_number_for_player(point_idx, color)
         usable_dice = [
-            d for d, u in zip(gs.dice, gs.dice_used) if not u
-            and (self._forced_dice is None or d in self._forced_dice)
+            d
+            for d, u in zip(gs.dice, gs.dice_used)
+            if not u and (self._forced_dice is None or d in self._forced_dice)
         ]
 
         if not usable_dice:
@@ -936,7 +981,13 @@ class BackgammonGame(Game):
         if matched_move is None or matched_die_idx is None:
             log.warning(
                 "Illegal move: game=%s color=%s src=%s dst=%s dice=%s used=%s forced=%s",
-                gs.game_number, color, source, dest, gs.dice, gs.dice_used, self._forced_dice,
+                gs.game_number,
+                color,
+                source,
+                dest,
+                gs.dice,
+                gs.dice_used,
+                self._forced_dice,
             )
             gs.selected_source = None
             self._bot_goals.clear()  # Discard stale goals
@@ -1246,6 +1297,7 @@ class BackgammonGame(Game):
     def _get_hint_proc(self) -> GnubgProcess | None:
         """Get or create the hint GNUBG process."""
         from .gnubg import GnubgProcess, is_gnubg_available
+
         if not is_gnubg_available():
             return None
         proc = getattr(self, "_hint_proc", None)
@@ -1287,6 +1339,7 @@ class BackgammonGame(Game):
             return None
 
         from .bot import _gnubg_pool
+
         self._hint_future = _gnubg_pool.submit(_query)
 
     def _show_local_hint(self, player: BackgammonPlayer, unused_dice: list[int]) -> None:
@@ -1357,14 +1410,23 @@ class BackgammonGame(Game):
                     # "no-double" / "double-take" → take (double was bad or position is viable)
                     # "too-good" / "double-pass" → drop (position is lost)
                     advice = "take" if decision in ("double-take", "no-double") else "drop"
-                    return {"message_key": "backgammon-cube-hint-response", "player": player_name, "advice": advice}
+                    return {
+                        "message_key": "backgammon-cube-hint-response",
+                        "player": player_name,
+                        "advice": advice,
+                    }
             else:
                 hint_text = proc.get_cube_hint_text(gs, color)
                 if hint_text:
-                    return {"message_key": "backgammon-cube-hint", "player": player_name, "hint": hint_text}
+                    return {
+                        "message_key": "backgammon-cube-hint",
+                        "player": player_name,
+                        "hint": hint_text,
+                    }
             return None
 
         from .bot import _gnubg_pool
+
         self._hint_future = _gnubg_pool.submit(_query)
 
     # ==========================================================================
@@ -1458,7 +1520,8 @@ class BackgammonGame(Game):
                     is_bot=p.is_bot,
                     is_virtual_bot=getattr(p, "is_virtual_bot", False),
                 )
-                for p in self.players if not p.is_spectator
+                for p in self.players
+                if not p.is_spectator
             ],
             custom_data={
                 "winner_name": winner.name if winner else None,
@@ -1474,14 +1537,17 @@ class BackgammonGame(Game):
         """Format the match result for the end screen."""
         d = result.custom_data
         lines = []
-        lines.append(Localization.get(
-            locale, "backgammon-end-score",
-            red=d.get("red_name", "Red"),
-            red_score=d.get("score_red", 0),
-            white=d.get("white_name", "White"),
-            white_score=d.get("score_white", 0),
-            match_length=d.get("match_length", 1),
-        ))
+        lines.append(
+            Localization.get(
+                locale,
+                "backgammon-end-score",
+                red=d.get("red_name", "Red"),
+                red_score=d.get("score_red", 0),
+                white=d.get("white_name", "White"),
+                white_score=d.get("score_white", 0),
+                match_length=d.get("match_length", 1),
+            )
+        )
         return lines
 
     # ==========================================================================
@@ -1759,9 +1825,8 @@ class BackgammonGame(Game):
             return None
 
         # Determine if this point belongs to the viewing player
-        is_own = (
-            (isinstance(player, BackgammonPlayer) and player.color == "red" and val > 0)
-            or (isinstance(player, BackgammonPlayer) and player.color == "white" and val < 0)
+        is_own = (isinstance(player, BackgammonPlayer) and player.color == "red" and val > 0) or (
+            isinstance(player, BackgammonPlayer) and player.color == "white" and val < 0
         )
         count = abs(val)
 
@@ -1837,7 +1902,6 @@ class BackgammonGame(Game):
 
     def _is_drop_double_hidden(self, player: Player, action_id: str = "") -> Visibility:
         return self._is_accept_double_hidden(player)
-
 
     def _is_navigate_enabled(self, player: Player) -> str | None:
         if self.status != "playing":

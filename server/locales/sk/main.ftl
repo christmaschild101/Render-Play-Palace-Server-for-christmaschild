@@ -35,6 +35,8 @@ whose-turn = Čí je ťah
 whos-at-table = Kto je pri stole
 check-scores = Skontrolovať skóre
 check-scores-detailed = Podrobné skóre
+check-game-options = Skontrolovať nastavenia hry
+no-game-options = Žiadne nastavenia hry.
 
 # Turn messages
 game-player-skipped = { $player } je preskočený.
@@ -158,7 +160,6 @@ game-points = { $count } { $count ->
     [many] bodov
    *[other] bodov
 }
-status-box-closed = Zatvorené.
 play = Hraj
 
 # Leaderboards
@@ -266,6 +267,30 @@ account-banned = Váš účet je zakázaný a nie je možné k nemu pristupovať
 incorrect-username = Zadané používateľské meno neexistuje.
 incorrect-password = Zadané heslo je nesprávne.
 already-logged-in = Tento účet je už prihlásený.
+
+# Overenie prihlasovacích údajov
+credential-username-length = Používateľské meno musí mať od { $min } do { $max } znakov.
+credential-password-length = Heslo musí mať od { $min } do { $max } znakov.
+
+# Obmedzenie počtu pokusov
+rate-limit-login-ip = Príliš veľa pokusov o prihlásenie z tejto adresy. Počkajte prosím a skúste znova.
+rate-limit-login-user = Príliš veľa neúspešných pokusov o prihlásenie pre toto používateľské meno. Počkajte prosím a skúste znova.
+rate-limit-registration = Príliš veľa pokusov o registráciu z tejto adresy. Počkajte prosím a skúste znova.
+rate-limit-refresh = Príliš veľa pokusov o obnovenie z tejto adresy. Počkajte prosím a skúste znova.
+
+# Chyby relácie a autentifikácie
+account-not-found = Účet nebol nájdený.
+session-expired = Relácia vypršala. Prihláste sa prosím znova.
+session-token-mismatch = Token relácie nezodpovedá používateľskému menu.
+refresh-token-expired = Token obnovy vypršal. Prihláste sa prosím znova.
+refresh-token-mismatch = Token obnovy nezodpovedá používateľskému menu.
+
+# Registrácia
+registration-success = Registrácia bola úspešná! Váš účet čaká na schválenie.
+registration-username-taken = Toto používateľské meno je už obsadené. Zvoľte si prosím iné používateľské meno.
+
+# Predvolené nastavenie
+pref-invalid-value = Neplatný výber, používa sa predvolená hodnota.
 
 # Decline reason
 decline-reason-prompt = Zadajte dôvod odmietnutia (alebo stlačte Escape pre zrušenie):

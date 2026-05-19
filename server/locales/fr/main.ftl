@@ -35,6 +35,8 @@ whose-turn = Tour de qui
 whos-at-table = Qui est à la table
 check-scores = Vérifier les scores
 check-scores-detailed = Scores détaillés
+check-game-options = Vérifier les options de jeu
+no-game-options = Aucune option de jeu.
 
 # Messages de tour
 game-player-skipped = { $player } est passé.
@@ -157,7 +159,6 @@ game-points = { $count } { $count ->
     [1] point
    *[other] points
 }
-status-box-closed = Fermé.
 play = Jouer
 
 # Classements
@@ -263,6 +264,30 @@ account-banned = Votre compte est banni et ne peut pas être accédé.
 incorrect-username = Le nom d'utilisateur que vous avez entré n'existe pas.
 incorrect-password = Le mot de passe que vous avez entré est incorrect.
 already-logged-in = Ce compte est déjà connecté.
+
+# Validation des identifiants
+credential-username-length = Le nom d'utilisateur doit comporter entre { $min } et { $max } caractères.
+credential-password-length = Le mot de passe doit comporter entre { $min } et { $max } caractères.
+
+# Limitation de débit
+rate-limit-login-ip = Trop de tentatives de connexion depuis cette adresse. Veuillez patienter et réessayer.
+rate-limit-login-user = Trop de tentatives de connexion échouées pour ce nom d'utilisateur. Veuillez patienter et réessayer.
+rate-limit-registration = Trop de tentatives d'inscription depuis cette adresse. Veuillez patienter et réessayer.
+rate-limit-refresh = Trop de tentatives de rafraîchissement depuis cette adresse. Veuillez patienter et réessayer.
+
+# Erreurs de session et d'authentification
+account-not-found = Compte introuvable.
+session-expired = Session expirée. Veuillez vous reconnecter.
+session-token-mismatch = Le jeton de session ne correspond pas au nom d'utilisateur.
+refresh-token-expired = Jeton de rafraîchissement expiré. Veuillez vous reconnecter.
+refresh-token-mismatch = Le jeton de rafraîchissement ne correspond pas au nom d'utilisateur.
+
+# Inscription
+registration-success = Inscription réussie ! Votre compte est en attente d'approbation.
+registration-username-taken = Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre.
+
+# Préférence par défaut
+pref-invalid-value = Sélection invalide, utilisation de la valeur par défaut.
 
 # Raison du refus
 decline-reason-prompt = Entrez une raison pour le refus (ou appuyez sur Échap pour annuler) :

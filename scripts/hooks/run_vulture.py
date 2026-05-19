@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run Vulture dead-code scanning via uv."""
+
 from __future__ import annotations
 
 import shutil

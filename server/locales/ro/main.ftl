@@ -35,6 +35,8 @@ whose-turn = Al cui e rândul
 whos-at-table = Cine e la masă
 check-scores = Verifică scorurile
 check-scores-detailed = Scoruri detaliate
+check-game-options = Verifică opțiunile jocului
+no-game-options = Nicio opțiune de joc disponibilă.
 
 # Turn messages
 game-player-skipped = { $player } este sărit.
@@ -157,7 +159,6 @@ game-points = { $count } { $count ->
     [few] puncte
    *[other] de puncte
 }
-status-box-closed = Închis.
 play = Joacă
 
 # Leaderboards
@@ -263,6 +264,30 @@ account-banned = Contul tău este banat și nu poate fi accesat.
 incorrect-username = Numele de utilizator introdus nu există.
 incorrect-password = Parola introdusă este incorectă.
 already-logged-in = Acest cont este deja conectat.
+
+# Validarea credențialelor
+credential-username-length = Numele de utilizator trebuie să aibă între { $min } și { $max } caractere.
+credential-password-length = Parola trebuie să aibă între { $min } și { $max } caractere.
+
+# Limitare tentative
+rate-limit-login-ip = Prea multe încercări de conectare de la această adresă. Te rugăm să aștepți și să încerci din nou.
+rate-limit-login-user = Prea multe încercări eșuate de conectare pentru acest nume de utilizator. Te rugăm să aștepți și să încerci din nou.
+rate-limit-registration = Prea multe încercări de înregistrare de la această adresă. Te rugăm să aștepți și să încerci din nou.
+rate-limit-refresh = Prea multe încercări de reîmprospătare de la această adresă. Te rugăm să aștepți și să încerci din nou.
+
+# Erori de sesiune și autentificare
+account-not-found = Contul nu a fost găsit.
+session-expired = Sesiunea a expirat. Te rugăm să te conectezi din nou.
+session-token-mismatch = Tokenul de sesiune nu corespunde numelui de utilizator.
+refresh-token-expired = Tokenul de reîmprospătare a expirat. Te rugăm să te conectezi din nou.
+refresh-token-mismatch = Tokenul de reîmprospătare nu corespunde numelui de utilizator.
+
+# Înregistrare
+registration-success = Înregistrare reușită! Contul tău așteaptă aprobarea.
+registration-username-taken = Numele de utilizator este deja folosit. Te rugăm să alegi un alt nume de utilizator.
+
+# Preferință implicită
+pref-invalid-value = Selecție invalidă, se folosește valoarea implicită.
 
 # Decline reason
 decline-reason-prompt = Introdu un motiv pentru refuz (sau apasă Escape pentru anulare):

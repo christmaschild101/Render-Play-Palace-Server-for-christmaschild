@@ -64,9 +64,7 @@ def bot_think(game: BackgammonGame, player: BackgammonPlayer) -> str | None:
             return None
         # Resolve next action from GNUBG goals if available
         if game._bot_goals:
-            action = resolve_next_action(
-                game._bot_goals, gs, color, forced_dice=game._forced_dice
-            )
+            action = resolve_next_action(game._bot_goals, gs, color, forced_dice=game._forced_dice)
             if action:
                 return action
             # Goals exhausted or stuck — fall through to pick a new move

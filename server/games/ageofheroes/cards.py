@@ -190,9 +190,7 @@ class Deck(DataClassJSONMixin):
         # Event cards (18 total)
         # Population Growth - 2 copies
         for _ in range(2):
-            self.cards.append(
-                self._create_card(CardType.EVENT, EventType.POPULATION_GROWTH)
-            )
+            self.cards.append(self._create_card(CardType.EVENT, EventType.POPULATION_GROWTH))
 
         # Earthquake - 2 copies
         for _ in range(2):

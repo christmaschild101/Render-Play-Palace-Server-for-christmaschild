@@ -117,8 +117,8 @@ class AudioPlaylist:
                 with open(track_path, "rb") as f:
                     import ctypes
 
-                    self.sound_manager.sound_cacher.cache[track] = (
-                        ctypes.create_string_buffer(f.read())
+                    self.sound_manager.sound_cacher.cache[track] = ctypes.create_string_buffer(
+                        f.read()
                     )
 
             # Create stream without playing
@@ -197,8 +197,8 @@ class AudioPlaylist:
             # Check cache first
             if track_path not in self.sound_manager.sound_cacher.cache:
                 with open(track_path, "rb") as f:
-                    self.sound_manager.sound_cacher.cache[track_path] = (
-                        ctypes.create_string_buffer(f.read())
+                    self.sound_manager.sound_cacher.cache[track_path] = ctypes.create_string_buffer(
+                        f.read()
                     )
 
             # Create temporary stream to get duration
@@ -309,9 +309,7 @@ class AudioPlaylist:
                         if hasattr(self.current_stream, "position")
                         else 0
                     )
-                    remaining_in_current = max(
-                        0, current_track_duration - current_position
-                    )
+                    remaining_in_current = max(0, current_track_duration - current_position)
                     remaining_seconds += remaining_in_current
                 except (AttributeError, OSError, RuntimeError) as exc:
                     LOG.debug("Failed to compute remaining duration: %s", exc)
@@ -374,9 +372,7 @@ class SoundManager:
         sound_path = os.path.join(self.sounds_folder, sound_name)
 
         try:
-            return self.sound_cacher.play(
-                sound_path, pan=pan, volume=volume, pitch=pitch
-            )
+            return self.sound_cacher.play(sound_path, pan=pan, volume=volume, pitch=pitch)
         except Exception:
             return None
 
@@ -403,9 +399,7 @@ class SoundManager:
         # Start new music
         music_path = os.path.join(self.sounds_folder, music_name)
         try:
-            self.current_music = self.sound_cacher.play(
-                music_path, volume=self.music_volume
-            )
+            self.current_music = self.sound_cacher.play(music_path, volume=self.music_volume)
             if self.current_music:
                 self.current_music.looping = looping
             self.current_music_name = music_name
@@ -548,17 +542,14 @@ class SoundManager:
             try:
                 # Check if audio is available (BASS initialized)
                 from sound_cacher import o
+
                 if o is None:
                     # Silent mode - skip ambience
                     return
 
-                intro_path = (
-                    os.path.join(self.sounds_folder, intro_name) if intro_name else None
-                )
+                intro_path = os.path.join(self.sounds_folder, intro_name) if intro_name else None
                 loop_path = os.path.join(self.sounds_folder, loop_name)
-                outro_path = (
-                    os.path.join(self.sounds_folder, outro_name) if outro_name else None
-                )
+                outro_path = os.path.join(self.sounds_folder, outro_name) if outro_name else None
 
                 # Play intro if provided
                 if intro_path:
@@ -567,10 +558,7 @@ class SoundManager:
                     )
                     if self.ambience_intro:
                         # Wait for intro to finish
-                        while (
-                            self.ambience_intro.is_playing
-                            and not self.ambience_stop_flag
-                        ):
+                        while self.ambience_intro.is_playing and not self.ambience_stop_flag:
                             time.sleep(0.1)
                         if self.ambience_stop_flag:
                             return
@@ -583,9 +571,7 @@ class SoundManager:
                 # Load loop sound
                 if loop_path not in self.sound_cacher.cache:
                     with open(loop_path, "rb") as f:
-                        self.sound_cacher.cache[loop_path] = (
-                            ctypes.create_string_buffer(f.read())
-                        )
+                        self.sound_cacher.cache[loop_path] = ctypes.create_string_buffer(f.read())
 
                 # Create stream and set looping before playing
                 self.ambience_loop = sound_stream.FileStream(
@@ -628,9 +614,7 @@ class SoundManager:
 
         # Start in background thread
         self.ambience_stop_flag = False
-        self.ambience_thread = threading.Thread(
-            target=play_ambience_sequence, daemon=True
-        )
+        self.ambience_thread = threading.Thread(target=play_ambience_sequence, daemon=True)
         self.ambience_thread.start()
 
     def stop_ambience(self, force=False):

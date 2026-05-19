@@ -33,6 +33,8 @@ whose-turn = 轮到谁
 whos-at-table = 桌上都有谁
 check-scores = 查看分数
 check-scores-detailed = 详细分数
+check-game-options = 查看游戏选项
+no-game-options = 没有游戏选项。
 
 # 桌台消息
 table-created = { $host } 创建了一个新的 { $game } 桌台。
@@ -208,6 +210,30 @@ account-banned = 您的账户已被封禁，无法访问。
 incorrect-username = 您输入的用户名不存在。
 incorrect-password = 您输入的密码不正确。
 already-logged-in = 此账户已登录。
+
+# 凭据验证
+credential-username-length = 用户名长度必须在 { $min } 到 { $max } 个字符之间。
+credential-password-length = 密码长度必须在 { $min } 到 { $max } 个字符之间。
+
+# 速率限制
+rate-limit-login-ip = 此地址的登录尝试次数过多，请稍后再试。
+rate-limit-login-user = 此用户名的登录失败次数过多，请稍后再试。
+rate-limit-registration = 此地址的注册尝试次数过多，请稍后再试。
+rate-limit-refresh = 此地址的刷新尝试次数过多，请稍后再试。
+
+# 会话/认证错误
+account-not-found = 未找到该账户。
+session-expired = 会话已过期，请重新登录。
+session-token-mismatch = 会话令牌与用户名不匹配。
+refresh-token-expired = 刷新令牌已过期，请重新登录。
+refresh-token-mismatch = 刷新令牌与用户名不匹配。
+
+# 注册
+registration-success = 注册成功！您的账户正在等待审批。
+registration-username-taken = 该用户名已被占用，请选择其他用户名。
+
+# 偏好设置回退
+pref-invalid-value = 选择无效，已使用默认值。
 
 # 拒绝原因
 decline-reason-prompt = 请输入拒绝原因（或按Escape键取消）：

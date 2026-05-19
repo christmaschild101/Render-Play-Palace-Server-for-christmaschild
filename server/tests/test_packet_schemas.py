@@ -110,7 +110,12 @@ SERVER_TO_CLIENT_SAMPLES = [
     {"type": "add_playlist", "playlist_id": "main", "tracks": ["intro.ogg"]},
     {"type": "start_playlist", "playlist_id": "main"},
     {"type": "remove_playlist", "playlist_id": "main"},
-    {"type": "get_playlist_duration", "playlist_id": "main", "duration_type": "total", "request_id": "abc"},
+    {
+        "type": "get_playlist_duration",
+        "playlist_id": "main",
+        "duration_type": "total",
+        "request_id": "abc",
+    },
     {"type": "open_client_options", "options": {}},
     {"type": "open_server_options", "options": {}},
 ]
@@ -177,7 +182,9 @@ def test_all_literal_types_are_in_schema() -> None:
         "typed-dict-field",
     }
     found -= noise
-    schema_types = _packet_type_names(ClientToServerPacket) | _packet_type_names(ServerToClientPacket)
+    schema_types = _packet_type_names(ClientToServerPacket) | _packet_type_names(
+        ServerToClientPacket
+    )
     assert found <= schema_types, f"Missing schema entries for: {sorted(found - schema_types)}"
 
 
@@ -186,6 +193,7 @@ def test_packet_schema_files_are_up_to_date(tmp_path: Path) -> None:
     server_dir = repo_root / "server"
     server_out = tmp_path / "server_schema.json"
     client_out = tmp_path / "client_schema.json"
+    web_out = tmp_path / "web_schema.json"
     subprocess.run(
         [
             sys.executable,
@@ -194,9 +202,18 @@ def test_packet_schema_files_are_up_to_date(tmp_path: Path) -> None:
             str(server_out),
             "--client-out",
             str(client_out),
+            "--web-out",
+            str(web_out),
         ],
         cwd=server_dir,
         check=True,
     )
-    assert server_out.read_text(encoding="utf-8") == (server_dir / "packet_schema.json").read_text(encoding="utf-8")
-    assert client_out.read_text(encoding="utf-8") == (repo_root / "clients" / "desktop" / "packet_schema.json").read_text(encoding="utf-8")
+    assert server_out.read_text(encoding="utf-8") == (server_dir / "packet_schema.json").read_text(
+        encoding="utf-8"
+    )
+    assert client_out.read_text(encoding="utf-8") == (
+        repo_root / "clients" / "desktop" / "packet_schema.json"
+    ).read_text(encoding="utf-8")
+    assert web_out.read_text(encoding="utf-8") == (
+        repo_root / "clients" / "web" / "packet_schema.json"
+    ).read_text(encoding="utf-8")

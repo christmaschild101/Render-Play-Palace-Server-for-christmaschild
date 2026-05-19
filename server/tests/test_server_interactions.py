@@ -67,7 +67,13 @@ async def test_handle_chat_local_only_approved_receive(server):
     alice = DummyUser("alice", approved=True)
     bob = DummyUser("bob", approved=True)
     carol = DummyUser("carol", approved=False)
-    table = SimpleNamespace(members=[SimpleNamespace(username="alice"), SimpleNamespace(username="bob"), SimpleNamespace(username="carol")])
+    table = SimpleNamespace(
+        members=[
+            SimpleNamespace(username="alice"),
+            SimpleNamespace(username="bob"),
+            SimpleNamespace(username="carol"),
+        ]
+    )
     server._users = {"alice": alice, "bob": bob, "carol": carol}
     server._tables = FakeTables({"alice": table})
     client = SimpleNamespace(username="alice")

@@ -29,7 +29,9 @@ def order_winners_by_button(
     if len(winners) <= 1:
         return winners
     order = order_after_button(active_ids, button_id)
-    return sorted(winners, key=lambda p: order.index(get_id(p)) if get_id(p) in order else len(order))
+    return sorted(
+        winners, key=lambda p: order.index(get_id(p)) if get_id(p) in order else len(order)
+    )
 
 
 def sort_players_for_showdown(
@@ -50,7 +52,9 @@ def sort_players_for_showdown(
         Ordered list of players for showdown reveal.
     """
     order = order_after_button(active_ids, button_id)
-    return sorted(list(players), key=lambda p: order.index(get_id(p)) if get_id(p) in order else len(order))
+    return sorted(
+        list(players), key=lambda p: order.index(get_id(p)) if get_id(p) in order else len(order)
+    )
 
 
 def format_showdown_lines(

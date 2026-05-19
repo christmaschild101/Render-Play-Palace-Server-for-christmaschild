@@ -128,9 +128,7 @@ class GameSoundMixin:
     # Event Scheduling
     # ==========================================================================
 
-    def schedule_event(
-        self, event_type: str, data: dict, delay_ticks: int = 0
-    ) -> None:
+    def schedule_event(self, event_type: str, data: dict, delay_ticks: int = 0) -> None:
         """Schedule a game event to fire after a delay.
 
         Args:
@@ -176,18 +174,14 @@ class GameSoundMixin:
     # Sound Playback
     # ==========================================================================
 
-    def broadcast_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
+    def broadcast_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
         """Play a sound for all players."""
         for player in self.players:
             user = self.get_user(player)
             if user:
                 user.play_sound(name, volume, pan, pitch)
 
-    def play_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
         """Alias for broadcast_sound."""
         self.broadcast_sound(name, volume, pan, pitch)
 

@@ -11,9 +11,7 @@ if TYPE_CHECKING:
     from .game import AgeOfHeroesGame, AgeOfHeroesPlayer
 
 
-def can_offer_card(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card_index: int
-) -> str | None:
+def can_offer_card(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card_index: int) -> str | None:
     """Check if a card can be offered for trade. Returns error message or None."""
     if card_index < 0 or card_index >= len(player.hand):
         return "Invalid card index"
@@ -78,9 +76,7 @@ def create_offer(
     return offer
 
 
-def cancel_offer(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card_index: int
-) -> bool:
+def cancel_offer(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card_index: int) -> bool:
     """Cancel a trade offer."""
     active_players = game.get_active_players()
     player_index = active_players.index(player)
@@ -145,10 +141,7 @@ def can_accept_offer(
 
     if offer.wanted_type is not None and acceptor_card.card_type != offer.wanted_type:
         return "Card type doesn't match"
-    if (
-        offer.wanted_subtype is not None
-        and acceptor_card.subtype != offer.wanted_subtype
-    ):
+    if offer.wanted_subtype is not None and acceptor_card.subtype != offer.wanted_subtype:
         return "Card subtype doesn't match"
 
     # Check special resource restrictions
@@ -229,9 +222,7 @@ def stop_trading(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> None:
     active_players = game.get_active_players()
     player_index = active_players.index(player)
 
-    game.trade_offers = [
-        offer for offer in game.trade_offers if offer.player_index != player_index
-    ]
+    game.trade_offers = [offer for offer in game.trade_offers if offer.player_index != player_index]
 
 
 def is_trading_complete(game: AgeOfHeroesGame) -> bool:
@@ -242,9 +233,7 @@ def is_trading_complete(game: AgeOfHeroesGame) -> bool:
     return True
 
 
-def get_player_offers(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer
-) -> list[TradeOffer]:
+def get_player_offers(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -> list[TradeOffer]:
     """Get all offers made by a specific player."""
     active_players = game.get_active_players()
     player_index = active_players.index(player)
@@ -252,9 +241,7 @@ def get_player_offers(
     return [offer for offer in game.trade_offers if offer.player_index == player_index]
 
 
-def format_offer(
-    game: AgeOfHeroesGame, offer: TradeOffer, locale: str
-) -> str:
+def format_offer(game: AgeOfHeroesGame, offer: TradeOffer, locale: str) -> str:
     """Format a trade offer for display."""
     active_players = game.get_active_players()
 
@@ -386,9 +373,8 @@ def _get_offer_selection(
 
 
 def _offers_match(offer: TradeOffer, card: Card) -> bool:
-    return (
-        (offer.wanted_type is None or offer.wanted_type == card.card_type)
-        and (offer.wanted_subtype is None or offer.wanted_subtype == card.subtype)
+    return (offer.wanted_type is None or offer.wanted_type == card.card_type) and (
+        offer.wanted_subtype is None or offer.wanted_subtype == card.subtype
     )
 
 
@@ -398,7 +384,9 @@ def _trade_is_valid(
     player2: AgeOfHeroesPlayer,
     card2: Card,
 ) -> bool:
-    return _special_resource_allows_transfer(player1, card2) and _special_resource_allows_transfer(player2, card1)
+    return _special_resource_allows_transfer(player1, card2) and _special_resource_allows_transfer(
+        player2, card1
+    )
 
 
 def _special_resource_allows_transfer(player: AgeOfHeroesPlayer, card: Card) -> bool:

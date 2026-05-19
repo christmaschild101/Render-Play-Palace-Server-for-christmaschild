@@ -12,6 +12,7 @@ class PokerTurnTimer(DataClassJSONMixin):
     Attributes:
         ticks_remaining: Remaining ticks in the countdown.
     """
+
     ticks_remaining: int = 0
 
     def start(self, seconds: int) -> None:

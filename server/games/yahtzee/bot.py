@@ -35,7 +35,9 @@ def bot_think(
 
     if player.rolls_left > 0:
         target = _pick_target_category(
-            player.dice.values, open_categories, player.rolls_left,
+            player.dice.values,
+            open_categories,
+            player.rolls_left,
             yahtzee_bonus_eligible=yahtzee_bonus_eligible,
         )
 
@@ -59,7 +61,10 @@ def bot_think(
             return "roll"
 
     return _pick_best_category_action(
-        player, calculate_score=calculate_score, all_categories=all_categories, upper_categories=upper_categories
+        player,
+        calculate_score=calculate_score,
+        all_categories=all_categories,
+        upper_categories=upper_categories,
     )
 
 
@@ -74,8 +79,9 @@ def _pick_target_category(
     best_cat = open_categories[0]
     best_value = -1.0
     for cat in open_categories:
-        value = _category_potential(values, cat, rolls_left,
-                                    yahtzee_bonus_eligible=yahtzee_bonus_eligible)
+        value = _category_potential(
+            values, cat, rolls_left, yahtzee_bonus_eligible=yahtzee_bonus_eligible
+        )
         if value > best_value:
             best_value = value
             best_cat = cat

@@ -9,13 +9,21 @@ from server.games.nine.game import (
     SUIT_DIAMONDS,
     SUIT_HEARTS,
     SUIT_SPADES,
-    RANK_SIX, RANK_SEVEN, RANK_EIGHT, RANK_TEN, RANK_JACK, RANK_QUEEN, RANK_KING, RANK_ACE
+    RANK_SIX,
+    RANK_SEVEN,
+    RANK_EIGHT,
+    RANK_TEN,
+    RANK_JACK,
+    RANK_QUEEN,
+    RANK_KING,
+    RANK_ACE,
 )
 from server.games.nine.state import NineState, SequenceState
 from server.game_utils.cards import Card, Deck
 from server.core.users.test_user import MockUser
 from server.core.users.bot import Bot
-from server.messages.localization import Localization # For checking reasons
+from server.messages.localization import Localization  # For checking reasons
+
 
 class TestNineGameUnit:
     """Unit tests for Nine game functions."""
@@ -48,7 +56,6 @@ class TestNineGameUnit:
         # assert game.options.winning_score == 1 # Winning when 1 card left (i.e. emptied hand)
         pass
 
-
     def test_build_nine_deck(self):
         """Test the custom nine deck building."""
         game = NineGame()
@@ -66,7 +73,17 @@ class TestNineGameUnit:
         # Check no invalid ranks
         invalid_rank_found = False
         for card in deck.cards:
-            if card.rank not in [RANK_SIX, RANK_SEVEN, RANK_EIGHT, RANK_NINE, RANK_TEN, RANK_JACK, RANK_QUEEN, RANK_KING, RANK_ACE]:
+            if card.rank not in [
+                RANK_SIX,
+                RANK_SEVEN,
+                RANK_EIGHT,
+                RANK_NINE,
+                RANK_TEN,
+                RANK_JACK,
+                RANK_QUEEN,
+                RANK_KING,
+                RANK_ACE,
+            ]:
                 invalid_rank_found = True
                 break
         assert not invalid_rank_found, "Invalid rank found in deck."
@@ -108,7 +125,9 @@ class TestNineGameUnit:
         game_5.add_player("C", user_c)
         game_5.add_player("D", user_d)
         game_5.add_player("E", user_e)
-        assert game_5.prestart_validate() == [Localization.get("en", "nine-error-invalid-player-count")]
+        assert game_5.prestart_validate() == [
+            Localization.get("en", "nine-error-invalid-player-count")
+        ]
 
         # Valid: 6 players
         game_6 = NineGame()
@@ -147,16 +166,15 @@ class TestNineGameSerialization:
                     break
             if nine_of_clubs_player:
                 break
-        
+
         assert nine_of_clubs_player is not None
 
         # Ensure it's the nine_of_clubs_player's turn
         game.current_player = nine_of_clubs_player
-        game._action_play_card(nine_of_clubs_player, f"play_card_slot_{nine_of_clubs_slot+1}")
+        game._action_play_card(nine_of_clubs_player, f"play_card_slot_{nine_of_clubs_slot + 1}")
 
         # The game's _end_turn logic (triggered by _action_play_card) should have advanced the current_player.
         # So, loaded_game.current_player should automatically be the next player.
-
 
         # Serialize
         json_str = game.to_json()
@@ -167,7 +185,7 @@ class TestNineGameSerialization:
         assert data["nine_state"]["nine_of_clubs_played"] is True
         assert len(data["players"]) == 2
         assert data["nine_state"]["sequences"][str(SUIT_CLUBS)]["low_card"]["rank"] == RANK_NINE
-        
+
         # Deserialize
         loaded_game = NineGame.from_json(json_str)
 
@@ -184,6 +202,7 @@ class TestNineGameSerialization:
         assert loaded_game.current_player is not None
         assert loaded_game._has_valid_move(loaded_game.current_player)
 
+
 # Placeholder for Play Tests (integration tests with bots)
 # Will add these after unit tests are passing and basic functionality is stable.
 class TestNineGamePlayTest:
@@ -191,7 +210,7 @@ class TestNineGamePlayTest:
 
     def test_two_player_game_completes(self):
         """Test that a 2-player bot game completes."""
-        random.seed(42) # For reproducible bot behavior
+        random.seed(42)  # For reproducible bot behavior
         game = NineGame()
 
         bot1 = Bot("Bot1")
@@ -202,7 +221,7 @@ class TestNineGamePlayTest:
         game.on_start()
 
         # Run game for many ticks
-        max_ticks = 10000 # Max ticks to prevent infinite loops in case of logic error
+        max_ticks = 10000  # Max ticks to prevent infinite loops in case of logic error
         for _ in range(max_ticks):
             if game.status == "finished":
                 break
@@ -221,5 +240,5 @@ class TestNineGamePlayTest:
         final_scores = game_result.custom_data["final_scores"]
         sorted_player_names = list(final_scores.keys())
         # The winner should have 0 cards, so the first element should be the lowest
-        assert final_scores[sorted_player_names[0]] == 0 
+        assert final_scores[sorted_player_names[0]] == 0
         assert final_scores[sorted_player_names[0]] <= final_scores[sorted_player_names[1]]

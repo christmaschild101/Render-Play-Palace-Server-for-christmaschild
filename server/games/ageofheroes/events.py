@@ -114,9 +114,7 @@ def _apply_population_growth(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) -
     game.play_sound("game_ageofheroes/build.ogg")
 
 
-def _announce_event_discard(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card: Card
-) -> None:
+def _announce_event_discard(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card: Card) -> None:
     """Announce discarding an event card."""
     user = game.get_user(player)
     if user:
@@ -170,6 +168,7 @@ def apply_hunger_effect(game: AgeOfHeroesGame, source_player: AgeOfHeroesPlayer)
 
     for player in game.get_active_players():
         from .game import AgeOfHeroesPlayer
+
         if not isinstance(player, AgeOfHeroesPlayer):
             continue
         if not player.tribe_state:
@@ -236,9 +235,7 @@ def apply_barbarians_effect(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer) ->
             break
 
 
-def check_drawn_card_event(
-    game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card: Card
-) -> None:
+def check_drawn_card_event(game: AgeOfHeroesGame, player: AgeOfHeroesPlayer, card: Card) -> None:
     """Check if a drawn card triggers an immediate event.
 
     Pascal behavior: Hunger and Barbarians trigger immediately when drawn
@@ -266,7 +263,9 @@ def check_drawn_card_event(
             game.discard_pile.append(card)
 
 
-def apply_earthquake_effect(game: AgeOfHeroesGame, source_player: AgeOfHeroesPlayer, target_player: AgeOfHeroesPlayer) -> None:
+def apply_earthquake_effect(
+    game: AgeOfHeroesGame, source_player: AgeOfHeroesPlayer, target_player: AgeOfHeroesPlayer
+) -> None:
     """Apply Earthquake effect: Target player's armies are disabled for one turn.
 
     Armies become 'earthquaked' and cannot be used until next turn.
@@ -298,7 +297,9 @@ def apply_earthquake_effect(game: AgeOfHeroesGame, source_player: AgeOfHeroesPla
             user.speak_l("ageofheroes-armies-disabled", count=available_armies)
 
 
-def apply_eruption_effect(game: AgeOfHeroesGame, source_player: AgeOfHeroesPlayer, target_player: AgeOfHeroesPlayer) -> None:
+def apply_eruption_effect(
+    game: AgeOfHeroesGame, source_player: AgeOfHeroesPlayer, target_player: AgeOfHeroesPlayer
+) -> None:
     """Apply Eruption effect: Target player loses one city.
 
     Can be blocked by Fortune or Olympics card.

@@ -35,6 +35,8 @@ whose-turn = Di chi è il turno
 whos-at-table = Chi c'è al tavolo
 check-scores = Controlla punteggi
 check-scores-detailed = Punteggi dettagliati
+check-game-options = Controlla opzioni di gioco
+no-game-options = Nessuna opzione di gioco.
 
 # Turn messages
 game-player-skipped = { $player } viene saltato.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] punto
    *[other] punti
 }
-status-box-closed = Chiuso.
 play = Gioca
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = Il tuo account è stato bannato e non è accessibile.
 incorrect-username = Il nome utente inserito non esiste.
 incorrect-password = La password inserita non è corretta.
 already-logged-in = Questo account è già connesso.
+
+# Validazione credenziali
+credential-username-length = Il nome utente deve essere compreso tra { $min } e { $max } caratteri.
+credential-password-length = La password deve essere compresa tra { $min } e { $max } caratteri.
+
+# Limitazione tentativi
+rate-limit-login-ip = Troppi tentativi di accesso da questo indirizzo. Attendi e riprova.
+rate-limit-login-user = Troppi tentativi di accesso falliti per questo nome utente. Attendi e riprova.
+rate-limit-registration = Troppi tentativi di registrazione da questo indirizzo. Attendi e riprova.
+rate-limit-refresh = Troppi tentativi di aggiornamento da questo indirizzo. Attendi e riprova.
+
+# Errori di sessione/autenticazione
+account-not-found = Account non trovato.
+session-expired = Sessione scaduta. Accedi di nuovo.
+session-token-mismatch = Il token di sessione non corrisponde al nome utente.
+refresh-token-expired = Token di aggiornamento scaduto. Accedi di nuovo.
+refresh-token-mismatch = Il token di aggiornamento non corrisponde al nome utente.
+
+# Registrazione
+registration-success = Registrazione effettuata! Il tuo account è in attesa di approvazione.
+registration-username-taken = Nome utente già in uso. Scegli un nome utente diverso.
+
+# Preferenza predefinita
+pref-invalid-value = Selezione non valida, verrà utilizzato il valore predefinito.
 
 # Decline reason
 decline-reason-prompt = Inserisci il motivo del rifiuto (o premi Escape per annullare):

@@ -39,7 +39,6 @@ option-on = ligado
 option-off = desligado
 
 # Caixa de status
-status-box-closed = Informações de status fechadas.
 
 # Fim de jogo
 game-leave = Sair do jogo
@@ -64,6 +63,47 @@ game-player-deals = { $player } distribui as cartas.
 # Nomes de cartas
 card-name = { $rank } de { $suit }
 no-cards = Sem cartas
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = preto
+color-black-m = preto
+color-black-f = preta
+color-blue = azul
+color-blue-m = azul
+color-blue-f = azul
+color-brown = castanho
+color-brown-m = castanho
+color-brown-f = castanha
+color-gray = cinzento
+color-gray-m = cinzento
+color-gray-f = cinzenta
+color-green = verde
+color-green-m = verde
+color-green-f = verde
+color-indigo = índigo
+color-indigo-m = índigo
+color-indigo-f = índigo
+color-orange = laranja
+color-orange-m = laranja
+color-orange-f = laranja
+color-pink = rosa
+color-pink-m = rosa
+color-pink-f = rosa
+color-purple = roxo
+color-purple-m = roxo
+color-purple-f = roxa
+color-red = vermelho
+color-red-m = vermelho
+color-red-f = vermelha
+color-violet = violeta
+color-violet-m = violeta
+color-violet-f = violeta
+color-white = branco
+color-white-m = branco
+color-white-f = branca
+color-yellow = amarelo
+color-yellow-m = amarelo
+color-yellow-f = amarela
 
 # Nomes dos naipes
 suit-diamonds = ouros

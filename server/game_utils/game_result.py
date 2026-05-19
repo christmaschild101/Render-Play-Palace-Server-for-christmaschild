@@ -76,7 +76,7 @@ class GameResult(DataClassJSONMixin):
         )
 
     def get_duration_seconds(self) -> float:
-        """Get game duration in seconds (20 ticks = 1 second)."""
+        """Get game duration in seconds assuming default tick rate."""
         return self.duration_ticks / 20.0
 
     def get_duration_formatted(self) -> str:
@@ -92,10 +92,7 @@ class GameResult(DataClassJSONMixin):
 
     def get_human_player_ids(self) -> list[str]:
         """Get list of human and virtual bot player IDs (excludes table bots)."""
-        return [
-            p.player_id for p in self.player_results
-            if not p.is_bot or p.is_virtual_bot
-        ]
+        return [p.player_id for p in self.player_results if not p.is_bot or p.is_virtual_bot]
 
     def has_human_players(self) -> bool:
         """Check if any human or virtual bot players participated."""

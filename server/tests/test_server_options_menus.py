@@ -37,8 +37,10 @@ class DummyUser:
         self.menu_id: str | None = None
         self.music_played: list[str] = []
         self.sounds_played: list[str] = []
+
         async def _send(payload):
             return None
+
         self.connection = SimpleNamespace(send=_send)
 
     def speak_l(self, message_id: str, buffer: str = "misc", **kwargs) -> None:
@@ -53,9 +55,7 @@ class DummyUser:
     def play_music(self, name: str, looping: bool = True) -> None:
         self.music_played.append(name)
 
-    def play_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
         self.sounds_played.append(name)
 
     def set_locale(self, locale: str) -> None:
@@ -87,7 +87,9 @@ async def test_handle_pref_category_toggle_turn_sound(server, monkeypatch):
     user = DummyUser("alice")
     user.preferences.play_turn_sound = True
     shown = {}
-    monkeypatch.setattr(server, "_show_pref_category_menu", lambda u, c, **kw: shown.setdefault("called", True))
+    monkeypatch.setattr(
+        server, "_show_pref_category_menu", lambda u, c, **kw: shown.setdefault("called", True)
+    )
     server._user_states["alice"] = {"menu": "pref_category_menu", "pref_category": "sounds"}
 
     await server._handle_pref_category_selection(user, "pref_play_turn_sound")

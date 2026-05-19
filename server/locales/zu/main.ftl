@@ -35,6 +35,8 @@ whose-turn = Ngubani oshintshayo
 whos-at-table = Ngubani osethafeni
 check-scores = Bheka amaphuzu
 check-scores-detailed = Amaphuzu anemininingwane
+check-game-options = Bheka izinketho zomdlalo
+no-game-options = Azikho izinketho zomdlalo.
 
 # Turn messages
 game-player-skipped = U-{ $player } uyeqiwa.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] iphuzu
    *[other] amaphuzu
 }
-status-box-closed = Kuvalwe.
 play = Dlala
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = I-akhawunti yakho ivalelwe futhi ayikwazi ukufinyelelwa.
 incorrect-username = Igama lomsebenzisi ofake lona alikhona.
 incorrect-password = Iphasiwedi oyifakile ayilungile.
 already-logged-in = Le akhawunti isivele ingene.
+
+# Ukuqinisekisa imininingwane yokungena
+credential-username-length = Igama lomsebenzisi kufanele libe nezinhlamvu eziphakathi kuka-{ $min } no-{ $max }.
+credential-password-length = Iphasiwedi kufanele ibe nezinhlamvu eziphakathi kuka-{ $min } no-{ $max }.
+
+# Ukukhawuleza kwezivumelwano
+rate-limit-login-ip = Kuningi kakhulu ukuzama ukungena kule kheli. Sicela ulinde bese uzama futhi.
+rate-limit-login-user = Kuningi kakhulu ukuzama ukungena okwehlulekile kule gama lomsebenzisi. Sicela ulinde bese uzama futhi.
+rate-limit-registration = Kuningi kakhulu ukuzama ukubhalisa kule kheli. Sicela ulinde bese uzama futhi.
+rate-limit-refresh = Kuningi kakhulu ukuzama ukuvuselela kule kheli. Sicela ulinde bese uzama futhi.
+
+# Amaphutha eseshini/ukuqinisekisa
+account-not-found = I-akhawunti ayitholakali.
+session-expired = Iseshini iphelile. Sicela ungene kabusha.
+session-token-mismatch = Ithokeni leseshini ayifani negama lomsebenzisi.
+refresh-token-expired = Ithokeni lokuvuselela liphelile. Sicela ungene kabusha.
+refresh-token-mismatch = Ithokeni lokuvuselela ayifani negama lomsebenzisi.
+
+# Ukubhalisa
+registration-success = Ukubhalisa kuphumelele! I-akhawunti yakho ilinde ukuvunywa.
+registration-username-taken = Leli gama lomsebenzisi selithathe. Sicela ukhethe elinye.
+
+# Isimo esizenzakalelayo sokukhetha
+pref-invalid-value = Ukukhetha akukho kahle, kusetshenziswa okuzenzakalelayo.
 
 # Decline reason
 decline-reason-prompt = Faka isizathu sokunqaba (noma cindezela i-Escape ukuze ukhansele):

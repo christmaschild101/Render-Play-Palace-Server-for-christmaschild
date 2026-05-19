@@ -125,9 +125,7 @@ def main() -> int:
         action="store_true",
         help="Copy missing files from English to incomplete locales",
     )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Show detailed output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed output")
     parser.add_argument(
         "--reference",
         default="en",

@@ -3,8 +3,13 @@
 import pytest
 from ..games.pusoydos.game import PusoyDosGame, PusoyDosPlayer, PusoyDosOptions
 from ..games.pusoydos.evaluator import (
-    get_rank_value, get_suit_value, card_value, evaluate_combo,
-    detect_instant_win, sort_cards, Combo,
+    get_rank_value,
+    get_suit_value,
+    card_value,
+    evaluate_combo,
+    detect_instant_win,
+    sort_cards,
+    Combo,
 )
 from ..games.pusoydos.bot import get_all_valid_combos, bot_think, bot_choose_give_cards
 from server.core.users.test_user import MockUser
@@ -16,18 +21,19 @@ from ..game_utils.cards import Card
 # Evaluator tests
 # =============================================================================
 
+
 class TestRankSuitValues:
     def test_rank_values(self):
-        assert get_rank_value(3) == 3   # lowest
+        assert get_rank_value(3) == 3  # lowest
         assert get_rank_value(10) == 10
         assert get_rank_value(1) == 14  # Ace
         assert get_rank_value(2) == 15  # highest
 
     def test_suit_values(self):
-        assert get_suit_value(2) == 1   # Clubs (lowest)
-        assert get_suit_value(4) == 2   # Spades
-        assert get_suit_value(3) == 3   # Hearts
-        assert get_suit_value(1) == 4   # Diamonds (highest)
+        assert get_suit_value(2) == 1  # Clubs (lowest)
+        assert get_suit_value(4) == 2  # Spades
+        assert get_suit_value(3) == 3  # Hearts
+        assert get_suit_value(1) == 4  # Diamonds (highest)
 
     def test_card_value_ordering(self):
         three_clubs = Card(0, 3, 2)
@@ -140,7 +146,7 @@ class TestComboEvaluation:
 
 class TestComboBeats:
     def test_higher_single_beats_lower(self):
-        low = evaluate_combo([Card(0, 3, 2)])   # 3 of Clubs
+        low = evaluate_combo([Card(0, 3, 2)])  # 3 of Clubs
         high = evaluate_combo([Card(1, 3, 4)])  # 3 of Spades
         assert high.beats(low)
         assert not low.beats(high)
@@ -152,18 +158,28 @@ class TestComboBeats:
 
     def test_straight_flush_beats_four_of_a_kind(self):
         sf = evaluate_combo([Card(i, r, 1) for i, r in enumerate([3, 4, 5, 6, 7])])
-        foak = evaluate_combo([Card(0, 9, 1), Card(1, 9, 2), Card(2, 9, 3), Card(3, 9, 4), Card(4, 3, 2)])
+        foak = evaluate_combo(
+            [Card(0, 9, 1), Card(1, 9, 2), Card(2, 9, 3), Card(3, 9, 4), Card(4, 3, 2)]
+        )
         assert sf.beats(foak)
         assert not foak.beats(sf)
 
     def test_four_of_a_kind_beats_full_house(self):
-        foak = evaluate_combo([Card(0, 9, 1), Card(1, 9, 2), Card(2, 9, 3), Card(3, 9, 4), Card(4, 3, 2)])
-        fh = evaluate_combo([Card(0, 13, 1), Card(1, 13, 2), Card(2, 13, 3), Card(3, 1, 1), Card(4, 1, 4)])
+        foak = evaluate_combo(
+            [Card(0, 9, 1), Card(1, 9, 2), Card(2, 9, 3), Card(3, 9, 4), Card(4, 3, 2)]
+        )
+        fh = evaluate_combo(
+            [Card(0, 13, 1), Card(1, 13, 2), Card(2, 13, 3), Card(3, 1, 1), Card(4, 1, 4)]
+        )
         assert foak.beats(fh)
 
     def test_flush_beats_straight(self):
-        flush = evaluate_combo([Card(0, 3, 1), Card(1, 5, 1), Card(2, 7, 1), Card(3, 9, 1), Card(4, 11, 1)])
-        straight = evaluate_combo([Card(0, 3, 1), Card(1, 4, 2), Card(2, 5, 3), Card(3, 6, 4), Card(4, 7, 1)])
+        flush = evaluate_combo(
+            [Card(0, 3, 1), Card(1, 5, 1), Card(2, 7, 1), Card(3, 9, 1), Card(4, 11, 1)]
+        )
+        straight = evaluate_combo(
+            [Card(0, 3, 1), Card(1, 4, 2), Card(2, 5, 3), Card(3, 6, 4), Card(4, 7, 1)]
+        )
         assert flush.beats(straight)
 
     def test_different_sizes_never_beat(self):
@@ -218,6 +234,7 @@ class TestInstantWins:
 # Game tests
 # =============================================================================
 
+
 def _make_game(n_players=4, **opts):
     """Helper: create a game with N mock users, optionally set options."""
     game = PusoyDosGame()
@@ -226,8 +243,8 @@ def _make_game(n_players=4, **opts):
 
     players = []
     for i in range(n_players):
-        user = MockUser(f"p{i+1}")
-        p = game.add_player(f"p{i+1}", user)
+        user = MockUser(f"p{i + 1}")
+        p = game.add_player(f"p{i + 1}", user)
         players.append(p)
 
     return game, players
@@ -235,13 +252,13 @@ def _make_game(n_players=4, **opts):
 
 class TestGameInit:
     def test_start_4_players(self):
-        game, players = _make_game(4)
+        game, players = _make_game(4, instant_wins=False)
         game.on_start()
         assert game.status == "playing"
         assert game.round == 1
 
     def test_start_resets_state(self):
-        game, players = _make_game(4)
+        game, players = _make_game(4, instant_wins=False)
         game.on_start()
         for p in players:
             assert p.round_wins == 0
@@ -256,21 +273,21 @@ class TestGameInit:
 
 class TestDealing:
     def test_4_players_13_cards_each(self):
-        game, players = _make_game(4)
+        game, players = _make_game(4, instant_wins=False)
         game.on_start()
 
         for p in game._playing_players():
             assert len(p.hand) == 13
 
     def test_2_players_26_cards_each(self):
-        game, players = _make_game(2)
+        game, players = _make_game(2, instant_wins=False)
         game.on_start()
 
         for p in game._playing_players():
             assert len(p.hand) == 26
 
     def test_3_players_17_cards_each(self):
-        game, players = _make_game(3)
+        game, players = _make_game(3, instant_wins=False)
         game.on_start()
 
         for p in game._playing_players():
@@ -278,7 +295,7 @@ class TestDealing:
 
     def test_3_players_removes_3_of_spades(self):
         """With 3 players, 3 of Spades is removed so deck is 51 cards."""
-        game, players = _make_game(3)
+        game, players = _make_game(3, instant_wins=False)
         game.on_start()
 
         all_cards = []
@@ -291,18 +308,16 @@ class TestDealing:
 
 class TestFirstTurn:
     def test_3_of_clubs_goes_first(self):
-        game, players = _make_game(4)
+        game, players = _make_game(4, instant_wins=False)
         game.on_start()
-
 
         current = game.current_player
         assert current is not None
         assert any(c.rank == 3 and c.suit == 2 for c in current.hand)
 
     def test_must_include_3_of_clubs(self):
-        game, players = _make_game(4)
+        game, players = _make_game(4, instant_wins=False)
         game.on_start()
-
 
         current = game.current_player
         # Give current player known cards
@@ -362,6 +377,113 @@ class TestPlayValidation:
         game.execute_action(current, "pass")
         user = game.get_user(current)
         assert "cannot pass" in user.get_last_spoken().lower()
+
+
+class TestConfirmToPass:
+    def _setup_mid_game(self):
+        game, players = _make_game(4, instant_wins=False)
+        game.on_start()
+        game.is_first_turn = False
+        return game, players
+
+    def test_first_pass_asks_for_confirmation(self):
+        game, players = self._setup_mid_game()
+        current = game.current_player
+        game.current_combo = Combo("single", [Card(99, 5, 1)], 5, 4)
+        game.trick_cards = game.current_combo.cards
+
+        old_turn = current.id
+        game.execute_action(current, "pass")
+
+        # Should NOT have advanced turn
+        assert game.current_player.id == old_turn
+        assert not current.passed_this_trick
+
+        user = game.get_user(current)
+        assert "again to confirm" in user.get_last_spoken().lower()
+        assert current.pass_confirm_ticks == 200
+
+    def test_second_pass_confirms(self):
+        game, players = self._setup_mid_game()
+        current = game.current_player
+        game.current_combo = Combo("single", [Card(99, 5, 1)], 5, 4)
+        game.trick_cards = game.current_combo.cards
+
+        # First press — sets confirmation
+        game.execute_action(current, "pass")
+        assert current.pass_confirm_ticks == 200
+
+        # Second press — confirms and passes
+        game.execute_action(current, "pass")
+        assert current.passed_this_trick
+        assert current.pass_confirm_ticks == 0
+
+    def test_confirm_expires_after_200_ticks(self):
+        game, players = self._setup_mid_game()
+        current = game.current_player
+        game.current_combo = Combo("single", [Card(99, 5, 1)], 5, 4)
+        game.trick_cards = game.current_combo.cards
+
+        game.execute_action(current, "pass")
+        assert current.pass_confirm_ticks == 200
+
+        # Tick down 200 times
+        for _ in range(200):
+            game.on_tick()
+
+        assert current.pass_confirm_ticks == 0
+
+        # Now pressing pass again should ask for confirmation anew
+        user = game.get_user(current)
+        user.clear_messages()
+        game.execute_action(current, "pass")
+        assert "again to confirm" in user.get_last_spoken().lower()
+
+    def test_confirm_disabled_by_preference(self):
+        game, players = self._setup_mid_game()
+        current = game.current_player
+        game.current_combo = Combo("single", [Card(99, 5, 1)], 5, 4)
+        game.trick_cards = game.current_combo.cards
+
+        user = game.get_user(current)
+        user._preferences.confirm_destructive_actions = False
+
+        # Single press should pass immediately
+        game.execute_action(current, "pass")
+        assert current.passed_this_trick
+
+    def test_bot_skips_confirmation(self):
+        game, players = _make_game(4, instant_wins=False)
+        game.on_start()
+        game.is_first_turn = False
+
+        # Find a bot player and make it current
+        current = game.current_player
+        game.current_combo = Combo("single", [Card(99, 2, 1)], 15, 4)  # 2 of Diamonds
+        current.hand = [Card(0, 3, 2)]  # Only a 3 of Clubs — cannot beat
+
+        # Bot think returns pass
+        ids = bot_think(game, current)
+        assert ids == []
+
+        # Execute pass directly — should work without confirmation
+        current.is_bot = True
+        game.execute_action(current, "pass")
+        assert current.passed_this_trick
+
+    def test_new_turn_resets_confirm(self):
+        game, players = self._setup_mid_game()
+        current = game.current_player
+        game.current_combo = Combo("single", [Card(99, 5, 1)], 5, 4)
+        game.trick_cards = game.current_combo.cards
+
+        game.execute_action(current, "pass")
+        assert current.pass_confirm_ticks == 200
+
+        # Simulate a new turn starting (e.g., another player plays)
+        current.pass_confirm_ticks = 200
+        game._start_turn()
+        assert current.pass_confirm_ticks == 0
 
 
 class TestEliminationMode:
@@ -468,7 +590,6 @@ class TestCardPassing:
         game, players = _make_game(4, card_passing="simple")
         game.on_start()
 
-
         p1, p4 = game._playing_players()[0], game._playing_players()[3]
         p1_hand_before = len(p1.hand)
         p4_hand_before = len(p4.hand)
@@ -491,6 +612,7 @@ class TestCardPassing:
 # Bot tests
 # =============================================================================
 
+
 class TestBot:
     def test_all_valid_combos(self):
         hand = [Card(0, 3, 1), Card(1, 3, 2), Card(2, 5, 1)]
@@ -500,9 +622,8 @@ class TestBot:
         assert "pair" in types
 
     def test_bot_plays_first_turn(self):
-        game, _ = _make_game(4)
+        game, _ = _make_game(4, instant_wins=False)
         game.on_start()
-
 
         current = game.current_player
         ids = bot_think(game, current)
@@ -512,7 +633,7 @@ class TestBot:
         assert any(c.rank == 3 and c.suit == 2 for c in selected)
 
     def test_bot_passes_when_cannot_beat(self):
-        game, _ = _make_game(4)
+        game, _ = _make_game(4, instant_wins=False)
         game.on_start()
 
         game.is_first_turn = False
@@ -537,11 +658,11 @@ class TestBot:
 # Serialization test
 # =============================================================================
 
+
 class TestSerialization:
     def test_round_trip(self):
-        game, players = _make_game(4)
+        game, players = _make_game(4, instant_wins=False)
         game.on_start()
-
 
         # Serialize
         data = game.to_dict()
@@ -567,6 +688,7 @@ class TestSerialization:
 # Play-to-completion (bot simulation)
 # =============================================================================
 
+
 class TestBotSimulation:
     def test_elimination_game_completes(self):
         """A full game with 4 bots should complete in elimination mode."""
@@ -575,7 +697,7 @@ class TestBotSimulation:
         game.options.rounds_to_win = 1
 
         for i in range(4):
-            game.add_player(f"bot{i+1}", Bot(f"bot{i+1}"))
+            game.add_player(f"bot{i + 1}", Bot(f"bot{i + 1}"))
 
         game.on_start()
 
@@ -594,7 +716,7 @@ class TestBotSimulation:
         game.options.penalty_tier = "aggressive"  # Higher penalties = faster scoring
 
         for i in range(4):
-            game.add_player(f"bot{i+1}", Bot(f"bot{i+1}"))
+            game.add_player(f"bot{i + 1}", Bot(f"bot{i + 1}"))
 
         game.on_start()
 
@@ -612,7 +734,7 @@ class TestBotSimulation:
         game.options.rounds_to_win = 1
 
         for i in range(2):
-            game.add_player(f"bot{i+1}", Bot(f"bot{i+1}"))
+            game.add_player(f"bot{i + 1}", Bot(f"bot{i + 1}"))
 
         game.on_start()
 
@@ -630,7 +752,7 @@ class TestBotSimulation:
         game.options.rounds_to_win = 1
 
         for i in range(3):
-            game.add_player(f"bot{i+1}", Bot(f"bot{i+1}"))
+            game.add_player(f"bot{i + 1}", Bot(f"bot{i + 1}"))
 
         game.on_start()
 

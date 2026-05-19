@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Ensure the generated packet schemas stay byte-identical across server/client."""
+
 from __future__ import annotations
 
 import hashlib

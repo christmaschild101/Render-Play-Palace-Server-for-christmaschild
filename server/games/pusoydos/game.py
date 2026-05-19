@@ -23,6 +23,7 @@ from ...game_utils.cards import Card, Deck, DeckFactory, card_name, read_cards
 from ...game_utils.turn_timer_mixin import TurnTimerMixin
 from ...game_utils.poker_timer import PokerTurnTimer
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 from .evaluator import Combo, evaluate_combo, detect_instant_win, sort_cards, card_value
@@ -34,10 +35,14 @@ from .bot import bot_think, bot_choose_give_cards
 
 TURN_TIMER_CHOICES = ["10", "15", "20", "30", "45", "60", "90", "0"]
 TURN_TIMER_LABELS = {
-    "10": "pusoydos-timer-10", "15": "pusoydos-timer-15",
-    "20": "pusoydos-timer-20", "30": "pusoydos-timer-30",
-    "45": "pusoydos-timer-45", "60": "pusoydos-timer-60",
-    "90": "pusoydos-timer-90", "0": "pusoydos-timer-unlimited",
+    "10": "pusoydos-timer-10",
+    "15": "pusoydos-timer-15",
+    "20": "pusoydos-timer-20",
+    "30": "pusoydos-timer-30",
+    "45": "pusoydos-timer-45",
+    "60": "pusoydos-timer-60",
+    "90": "pusoydos-timer-90",
+    "0": "pusoydos-timer-unlimited",
 }
 
 GAME_MODE_CHOICES = ["elimination", "losses", "points", "points_elimination"]
@@ -64,10 +69,24 @@ PENALTY_TIER_LABELS = {
 
 # Sounds
 SOUND_MUSIC = "game_ninetynine/mus.ogg"
-SOUND_PLAY_SINGLE = ["game_cards/discard1.ogg", "game_cards/discard2.ogg", "game_cards/discard3.ogg"]
-SOUND_PLAY_MULTI = ["game_cards/play1.ogg", "game_cards/play2.ogg", "game_cards/play3.ogg", "game_cards/play4.ogg"]
+SOUND_PLAY_SINGLE = [
+    "game_cards/discard1.ogg",
+    "game_cards/discard2.ogg",
+    "game_cards/discard3.ogg",
+]
+SOUND_PLAY_MULTI = [
+    "game_cards/play1.ogg",
+    "game_cards/play2.ogg",
+    "game_cards/play3.ogg",
+    "game_cards/play4.ogg",
+]
 SOUND_SHUFFLE = ["game_cards/shuffle1.ogg", "game_cards/shuffle2.ogg", "game_cards/shuffle3.ogg"]
-SOUND_DEAL = ["game_cards/draw1.ogg", "game_cards/draw2.ogg", "game_cards/draw3.ogg", "game_cards/draw4.ogg"]
+SOUND_DEAL = [
+    "game_cards/draw1.ogg",
+    "game_cards/draw2.ogg",
+    "game_cards/draw3.ogg",
+    "game_cards/draw4.ogg",
+]
 SOUND_WIN_ROUND = "game_uno/winround.ogg"
 SOUND_LOSE_ROUND = "game_uno/loseround.ogg"
 SOUND_WIN_GAME = "game_uno/wingame.ogg"
@@ -80,21 +99,29 @@ SOUND_ELIMINATED = "game_uno/winround.ogg"
 # Options
 # =============================================================================
 
+
 @dataclass
 class PusoyDosOptions(GameOptions):
     game_mode: str = option_field(
         MenuOption(
-            choices=GAME_MODE_CHOICES, choice_labels=GAME_MODE_LABELS,
-            default="elimination", value_key="choice",
-            label="pusoydos-set-game-mode", prompt="pusoydos-select-game-mode",
+            choices=GAME_MODE_CHOICES,
+            choice_labels=GAME_MODE_LABELS,
+            default="elimination",
+            value_key="choice",
+            label="pusoydos-set-game-mode",
+            prompt="pusoydos-select-game-mode",
             change_msg="pusoydos-option-changed-game-mode",
             description="pusoydos-desc-game-mode",
         )
     )
     rounds_to_win: int = option_field(
         IntOption(
-            default=2, min_val=1, max_val=10, value_key="count",
-            label="pusoydos-set-rounds-to-win", prompt="pusoydos-enter-rounds-to-win",
+            default=2,
+            min_val=1,
+            max_val=10,
+            value_key="count",
+            label="pusoydos-set-rounds-to-win",
+            prompt="pusoydos-enter-rounds-to-win",
             change_msg="pusoydos-option-changed-rounds-to-win",
             description="pusoydos-desc-rounds-to-win",
         ),
@@ -102,8 +129,12 @@ class PusoyDosOptions(GameOptions):
     )
     losses_to_lose: int = option_field(
         IntOption(
-            default=3, min_val=1, max_val=10, value_key="count",
-            label="pusoydos-set-losses-to-lose", prompt="pusoydos-enter-losses-to-lose",
+            default=3,
+            min_val=1,
+            max_val=10,
+            value_key="count",
+            label="pusoydos-set-losses-to-lose",
+            prompt="pusoydos-enter-losses-to-lose",
             change_msg="pusoydos-option-changed-losses-to-lose",
             description="pusoydos-desc-losses-to-lose",
         ),
@@ -111,8 +142,12 @@ class PusoyDosOptions(GameOptions):
     )
     target_score: int = option_field(
         IntOption(
-            default=100, min_val=10, max_val=10000, value_key="score",
-            label="pusoydos-set-target-score", prompt="pusoydos-enter-target-score",
+            default=100,
+            min_val=10,
+            max_val=10000,
+            value_key="score",
+            label="pusoydos-set-target-score",
+            prompt="pusoydos-enter-target-score",
             change_msg="pusoydos-option-changed-target-score",
             description="pusoydos-desc-target-score",
         ),
@@ -120,16 +155,20 @@ class PusoyDosOptions(GameOptions):
     )
     turn_timer: str = option_field(
         MenuOption(
-            choices=TURN_TIMER_CHOICES, choice_labels=TURN_TIMER_LABELS,
-            default="0", value_key="choice",
-            label="pusoydos-set-turn-timer", prompt="pusoydos-select-turn-timer",
+            choices=TURN_TIMER_CHOICES,
+            choice_labels=TURN_TIMER_LABELS,
+            default="0",
+            value_key="choice",
+            label="pusoydos-set-turn-timer",
+            prompt="pusoydos-select-turn-timer",
             change_msg="pusoydos-option-changed-turn-timer",
             description="pusoydos-desc-turn-timer",
         )
     )
     allow_2_in_straights: bool = option_field(
         BoolOption(
-            default=False, value_key="enabled",
+            default=False,
+            value_key="enabled",
             label="pusoydos-set-allow-2-in-straights",
             change_msg="pusoydos-option-changed-allow-2-in-straights",
             description="pusoydos-desc-allow-2-in-straights",
@@ -137,7 +176,8 @@ class PusoyDosOptions(GameOptions):
     )
     instant_wins: bool = option_field(
         BoolOption(
-            default=True, value_key="enabled",
+            default=True,
+            value_key="enabled",
             label="pusoydos-set-instant-wins",
             change_msg="pusoydos-option-changed-instant-wins",
             description="pusoydos-desc-instant-wins",
@@ -145,18 +185,24 @@ class PusoyDosOptions(GameOptions):
     )
     card_passing: str = option_field(
         MenuOption(
-            choices=CARD_PASSING_CHOICES, choice_labels=CARD_PASSING_LABELS,
-            default="off", value_key="choice",
-            label="pusoydos-set-card-passing", prompt="pusoydos-select-card-passing",
+            choices=CARD_PASSING_CHOICES,
+            choice_labels=CARD_PASSING_LABELS,
+            default="off",
+            value_key="choice",
+            label="pusoydos-set-card-passing",
+            prompt="pusoydos-select-card-passing",
             change_msg="pusoydos-option-changed-card-passing",
             description="pusoydos-desc-card-passing",
         )
     )
     penalty_tier: str = option_field(
         MenuOption(
-            choices=PENALTY_TIER_CHOICES, choice_labels=PENALTY_TIER_LABELS,
-            default="standard", value_key="choice",
-            label="pusoydos-set-penalty-tier", prompt="pusoydos-select-penalty-tier",
+            choices=PENALTY_TIER_CHOICES,
+            choice_labels=PENALTY_TIER_LABELS,
+            default="standard",
+            value_key="choice",
+            label="pusoydos-set-penalty-tier",
+            prompt="pusoydos-select-penalty-tier",
             change_msg="pusoydos-option-changed-penalty-tier",
             description="pusoydos-desc-penalty-tier",
         ),
@@ -164,7 +210,8 @@ class PusoyDosOptions(GameOptions):
     )
     penalty_per_two: bool = option_field(
         BoolOption(
-            default=False, value_key="enabled",
+            default=False,
+            value_key="enabled",
             label="pusoydos-set-penalty-per-two",
             change_msg="pusoydos-option-changed-penalty-per-two",
             description="pusoydos-desc-penalty-per-two",
@@ -177,6 +224,7 @@ class PusoyDosOptions(GameOptions):
 # Player
 # =============================================================================
 
+
 @dataclass
 class PusoyDosPlayer(Player):
     hand: list[Card] = field(default_factory=list)
@@ -187,6 +235,8 @@ class PusoyDosPlayer(Player):
     round_losses: int = 0
     score: int = 0
     eliminated: bool = False
+    # Confirm-to-pass timer (ticks remaining; 0 = not pending)
+    pass_confirm_ticks: int = 0
     # Card passing state
     cards_to_give: int = 0
     give_to_id: str = ""
@@ -197,9 +247,12 @@ class PusoyDosPlayer(Player):
 # Game
 # =============================================================================
 
+
 @dataclass
 @register_game
 class PusoyDosGame(Game, TurnTimerMixin):
+    relevant_preferences = ["confirm_destructive_actions"]
+
     players: list[PusoyDosPlayer] = field(default_factory=list)
     options: PusoyDosOptions = field(default_factory=PusoyDosOptions)
 
@@ -269,7 +322,7 @@ class PusoyDosGame(Game, TurnTimerMixin):
     # ==========================================================================
 
     def on_start(self) -> None:
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self._sync_table_status()
         self.game_active = True
         self.round = 0
@@ -288,15 +341,17 @@ class PusoyDosGame(Game, TurnTimerMixin):
         self.play_music(SOUND_MUSIC)
         self._start_new_hand()
 
-
     # ==========================================================================
     # Round management
     # ==========================================================================
 
     def _playing_players(self) -> list[PusoyDosPlayer]:
         """Players still in the game (not eliminated, not spectators)."""
-        return [p for p in self.players
-                if isinstance(p, PusoyDosPlayer) and not p.is_spectator and not p.eliminated]
+        return [
+            p
+            for p in self.players
+            if isinstance(p, PusoyDosPlayer) and not p.is_spectator and not p.eliminated
+        ]
 
     def _start_new_hand(self) -> None:
         self.round += 1
@@ -323,6 +378,7 @@ class PusoyDosGame(Game, TurnTimerMixin):
             p.hand = []
             p.selected_cards.clear()
             p.passed_this_trick = False
+            p.pass_confirm_ticks = 0
             p.cards_to_give = 0
             p.give_to_id = ""
             p.giving_cards = False
@@ -345,8 +401,12 @@ class PusoyDosGame(Game, TurnTimerMixin):
         for p in active:
             user = self.get_user(p)
             if user:
-                user.speak_l("pusoydos-dealt", buffer="table",
-                             count=len(p.hand), cards=read_cards(p.hand, user.locale))
+                user.speak_l(
+                    "pusoydos-dealt",
+                    buffer="table",
+                    count=len(p.hand),
+                    cards=read_cards(p.hand, user.locale),
+                )
 
         # Check instant wins (disabled if card passing is on)
         if self.options.instant_wins and self.options.card_passing == "off":
@@ -364,7 +424,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
     def _check_instant_wins(self, active: list[PusoyDosPlayer]) -> bool:
         """Check all players for instant win hands. Returns True if one was found."""
         for p in active:
-            win_type = detect_instant_win(p.hand, allow_2_in_straights=self.options.allow_2_in_straights)
+            win_type = detect_instant_win(
+                p.hand, allow_2_in_straights=self.options.allow_2_in_straights
+            )
             if win_type:
                 msg_key = {
                     "dragon": "pusoydos-instant-win-dragon",
@@ -431,8 +493,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
         winner_user = self.get_user(winner)
         if winner_user:
             cards_str = read_cards(loser_highest, winner_user.locale)
-            winner_user.speak_l("pusoydos-received-cards", buffer="table",
-                                cards=cards_str, sender=loser.name)
+            winner_user.speak_l(
+                "pusoydos-received-cards", buffer="table", cards=cards_str, sender=loser.name
+            )
 
         # Winner must give N cards back — set up the choice
         winner.cards_to_give = count
@@ -476,21 +539,31 @@ class PusoyDosGame(Game, TurnTimerMixin):
             recipient.hand.append(card)
 
         # Broadcast the return
-        self.broadcast_l("pusoydos-winner-gives-back",
-                         winner=giver.name, loser=recipient.name, count=len(given_cards))
+        self.broadcast_l(
+            "pusoydos-winner-gives-back",
+            winner=giver.name,
+            loser=recipient.name,
+            count=len(given_cards),
+        )
 
         # Tell each player what was exchanged
         giver_user = self.get_user(giver)
         recipient_user = self.get_user(recipient)
 
         if giver_user:
-            giver_user.speak_l("pusoydos-passed-cards", buffer="table",
-                               cards=read_cards(given_cards, giver_user.locale),
-                               recipient=recipient.name)
+            giver_user.speak_l(
+                "pusoydos-passed-cards",
+                buffer="table",
+                cards=read_cards(given_cards, giver_user.locale),
+                recipient=recipient.name,
+            )
         if recipient_user:
-            recipient_user.speak_l("pusoydos-received-cards", buffer="table",
-                                   cards=read_cards(given_cards, recipient_user.locale),
-                                   sender=giver.name)
+            recipient_user.speak_l(
+                "pusoydos-received-cards",
+                buffer="table",
+                cards=read_cards(given_cards, recipient_user.locale),
+                sender=giver.name,
+            )
 
         giver.cards_to_give = 0
         giver.give_to_id = ""
@@ -537,9 +610,17 @@ class PusoyDosGame(Game, TurnTimerMixin):
         if not player or not isinstance(player, PusoyDosPlayer):
             return
 
+        # Reset any pending pass confirmation for all players
+        for p in self._playing_players():
+            p.pass_confirm_ticks = 0
+
         # Edge case: trick winner left the game
         active_ids = [p.id for p in self._playing_players() if not p.eliminated]
-        if self.trick_winner_id and self.trick_winner_id not in active_ids and self.current_combo is not None:
+        if (
+            self.trick_winner_id
+            and self.trick_winner_id not in active_ids
+            and self.current_combo is not None
+        ):
             self.trick_winner_id = player.id
 
         if self.trick_winner_id == player.id:
@@ -593,6 +674,11 @@ class PusoyDosGame(Game, TurnTimerMixin):
                 self._start_new_hand()
             return
 
+        # Tick down pass-confirm timers
+        for p in self._playing_players():
+            if p.pass_confirm_ticks > 0:
+                p.pass_confirm_ticks -= 1
+
         self.on_tick_turn_timer()
         BotHelper.on_tick(self)
 
@@ -642,42 +728,53 @@ class PusoyDosGame(Game, TurnTimerMixin):
         action_set = ActionSet(name="turn")
 
         for card in player.hand:
-            action_set.add(Action(
-                id=f"toggle_select_{card.id}", label="",
-                handler="_action_toggle_select",
-                is_enabled="_is_card_toggle_enabled",
-                is_hidden="_is_card_toggle_hidden",
-                get_label="_get_card_label",
-                show_in_actions_menu=False,
-            ))
+            action_set.add(
+                Action(
+                    id=f"toggle_select_{card.id}",
+                    label="",
+                    handler="_action_toggle_select",
+                    is_enabled="_is_card_toggle_enabled",
+                    is_hidden="_is_card_toggle_hidden",
+                    get_label="_get_card_label",
+                    show_in_actions_menu=False,
+                )
+            )
 
-        action_set.add(Action(
-            id="play_selected", label="",
-            handler="_action_play_selected",
-            is_enabled="_is_play_selected_enabled",
-            is_hidden="_is_turn_action_hidden",
-            get_label="_get_play_selected_label",
-            show_in_actions_menu=False,
-        ))
-        action_set.add(Action(
-            id="pass",
-            label=Localization.get(locale, "pusoydos-pass"),
-            handler="_action_pass",
-            is_enabled="_is_pass_enabled",
-            is_hidden="_is_pass_hidden",
-            show_in_actions_menu=False,
-        ))
+        action_set.add(
+            Action(
+                id="play_selected",
+                label="",
+                handler="_action_play_selected",
+                is_enabled="_is_play_selected_enabled",
+                is_hidden="_is_turn_action_hidden",
+                get_label="_get_play_selected_label",
+                show_in_actions_menu=False,
+            )
+        )
+        action_set.add(
+            Action(
+                id="pass",
+                label=Localization.get(locale, "pusoydos-pass"),
+                handler="_action_pass",
+                is_enabled="_is_pass_enabled",
+                is_hidden="_is_pass_hidden",
+                show_in_actions_menu=False,
+            )
+        )
 
         # Card passing: give actions
         if player.giving_cards and player.cards_to_give > 0:
-            action_set.add(Action(
-                id="confirm_give", label="",
-                handler="_action_confirm_give",
-                is_enabled="_is_give_enabled",
-                is_hidden="_is_give_hidden",
-                get_label="_get_give_label",
-                show_in_actions_menu=False,
-            ))
+            action_set.add(
+                Action(
+                    id="confirm_give",
+                    label="",
+                    handler="_action_confirm_give",
+                    is_enabled="_is_give_enabled",
+                    is_hidden="_is_give_hidden",
+                    get_label="_get_give_label",
+                    show_in_actions_menu=False,
+                )
+            )
 
         return action_set
 
@@ -686,48 +783,62 @@ class PusoyDosGame(Game, TurnTimerMixin):
         user = self.get_user(player)
         locale = user.locale if user else "en"
 
-        action_set.add(Action(
-            id="check_trick",
-            label=Localization.get(locale, "pusoydos-check-trick"),
-            handler="_action_check_trick",
-            is_enabled="_is_check_enabled",
-            is_hidden="_is_check_hidden",
-            include_spectators=True,
-        ))
-        action_set.add(Action(
-            id="read_hand",
-            label=Localization.get(locale, "pusoydos-read-hand"),
-            handler="_action_read_hand",
-            is_enabled="_is_read_hand_enabled",
-            is_hidden="_is_read_hand_hidden",
-        ))
-        action_set.add(Action(
-            id="read_card_counts",
-            label=Localization.get(locale, "pusoydos-read-card-counts"),
-            handler="_action_read_card_counts",
-            is_enabled="_is_check_enabled",
-            is_hidden="_is_check_hidden",
-            include_spectators=True,
-        ))
-        action_set.add(Action(
-            id="check_turn_timer",
-            label=Localization.get(locale, "pusoydos-check-turn-timer"),
-            handler="_action_check_turn_timer",
-            is_enabled="_is_check_enabled",
-            is_hidden="_is_check_hidden",
-            include_spectators=True,
-        ))
+        action_set.add(
+            Action(
+                id="check_trick",
+                label=Localization.get(locale, "pusoydos-check-trick"),
+                handler="_action_check_trick",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_check_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="read_hand",
+                label=Localization.get(locale, "pusoydos-read-hand"),
+                handler="_action_read_hand",
+                is_enabled="_is_read_hand_enabled",
+                is_hidden="_is_read_hand_hidden",
+            )
+        )
+        action_set.add(
+            Action(
+                id="read_card_counts",
+                label=Localization.get(locale, "pusoydos-read-card-counts"),
+                handler="_action_read_card_counts",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_check_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
+                id="check_turn_timer",
+                label=Localization.get(locale, "pusoydos-check-turn-timer"),
+                handler="_action_check_turn_timer",
+                is_enabled="_is_check_enabled",
+                is_hidden="_is_check_hidden",
+                include_spectators=True,
+            )
+        )
 
         return action_set
 
     def setup_keybinds(self) -> None:
         super().setup_keybinds()
-        self.define_keybind("space", "pusoydos-key-play", ["play_selected"], state=KeybindState.ACTIVE)
+        self.define_keybind(
+            "space", "pusoydos-key-play", ["play_selected"], state=KeybindState.ACTIVE
+        )
         self.define_keybind("p", "pusoydos-key-pass", ["pass"], state=KeybindState.ACTIVE)
         self.define_keybind("c", "pusoydos-key-trick", ["check_trick"], include_spectators=True)
         self.define_keybind("h", "pusoydos-key-hand", ["read_hand"], include_spectators=False)
-        self.define_keybind("e", "pusoydos-key-counts", ["read_card_counts"], include_spectators=True)
-        self.define_keybind("shift+t", "pusoydos-key-timer", ["check_turn_timer"], include_spectators=True)
+        self.define_keybind(
+            "e", "pusoydos-key-counts", ["read_card_counts"], include_spectators=True
+        )
+        self.define_keybind(
+            "shift+t", "pusoydos-key-timer", ["check_turn_timer"], include_spectators=True
+        )
 
     def rebuild_player_menu(self, player: Player) -> None:
         self._sync_turn_actions(player)
@@ -763,22 +874,28 @@ class PusoyDosGame(Game, TurnTimerMixin):
         # Card passing phase: show give selection
         if self.phase == "card_passing" and player.giving_cards and player.cards_to_give > 0:
             for card in player.hand:
-                turn_set.add(Action(
-                    id=f"toggle_select_{card.id}", label="",
-                    handler="_action_toggle_select",
-                    is_enabled="_is_card_toggle_enabled",
-                    is_hidden="_is_card_toggle_hidden",
-                    get_label="_get_card_label",
+                turn_set.add(
+                    Action(
+                        id=f"toggle_select_{card.id}",
+                        label="",
+                        handler="_action_toggle_select",
+                        is_enabled="_is_card_toggle_enabled",
+                        is_hidden="_is_card_toggle_hidden",
+                        get_label="_get_card_label",
+                        show_in_actions_menu=False,
+                    )
+                )
+            turn_set.add(
+                Action(
+                    id="confirm_give",
+                    label="",
+                    handler="_action_confirm_give",
+                    is_enabled="_is_give_enabled",
+                    is_hidden="_is_give_hidden",
+                    get_label="_get_give_label",
                     show_in_actions_menu=False,
-                ))
-            turn_set.add(Action(
-                id="confirm_give", label="",
-                handler="_action_confirm_give",
-                is_enabled="_is_give_enabled",
-                is_hidden="_is_give_hidden",
-                get_label="_get_give_label",
-                show_in_actions_menu=False,
-            ))
+                )
+            )
             return
 
         if self.phase != "playing":
@@ -786,32 +903,40 @@ class PusoyDosGame(Game, TurnTimerMixin):
 
         # Cards always visible for the player
         for card in player.hand:
-            turn_set.add(Action(
-                id=f"toggle_select_{card.id}", label="",
-                handler="_action_toggle_select",
-                is_enabled="_is_card_toggle_enabled",
-                is_hidden="_is_card_toggle_hidden",
-                get_label="_get_card_label",
-                show_in_actions_menu=False,
-            ))
+            turn_set.add(
+                Action(
+                    id=f"toggle_select_{card.id}",
+                    label="",
+                    handler="_action_toggle_select",
+                    is_enabled="_is_card_toggle_enabled",
+                    is_hidden="_is_card_toggle_hidden",
+                    get_label="_get_card_label",
+                    show_in_actions_menu=False,
+                )
+            )
 
         if self.current_player == player:
-            turn_set.add(Action(
-                id="play_selected", label="",
-                handler="_action_play_selected",
-                is_enabled="_is_play_selected_enabled",
-                is_hidden="_is_turn_action_hidden",
-                get_label="_get_play_selected_label",
-                show_in_actions_menu=False,
-            ))
-            turn_set.add(Action(
-                id="pass",
-                label=Localization.get(self._player_locale(player), "pusoydos-pass"),
-                handler="_action_pass",
-                is_enabled="_is_pass_enabled",
-                is_hidden="_is_pass_hidden",
-                show_in_actions_menu=False,
-            ))
+            turn_set.add(
+                Action(
+                    id="play_selected",
+                    label="",
+                    handler="_action_play_selected",
+                    is_enabled="_is_play_selected_enabled",
+                    is_hidden="_is_turn_action_hidden",
+                    get_label="_get_play_selected_label",
+                    show_in_actions_menu=False,
+                )
+            )
+            turn_set.add(
+                Action(
+                    id="pass",
+                    label=Localization.get(self._player_locale(player), "pusoydos-pass"),
+                    handler="_action_pass",
+                    is_enabled="_is_pass_enabled",
+                    is_hidden="_is_pass_hidden",
+                    show_in_actions_menu=False,
+                )
+            )
 
     # ==========================================================================
     # Action handlers
@@ -860,7 +985,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
         # Check against current trick
         if self.current_combo:
             if len(combo.cards) != len(self.current_combo.cards):
-                self._send_error(p, "pusoydos-error-wrong-length", count=len(self.current_combo.cards))
+                self._send_error(
+                    p, "pusoydos-error-wrong-length", count=len(self.current_combo.cards)
+                )
                 return
             if not combo.beats(self.current_combo):
                 self._send_error(p, "pusoydos-error-lower-combo")
@@ -903,6 +1030,19 @@ class PusoyDosGame(Game, TurnTimerMixin):
             self._send_error(p, "pusoydos-error-must-play")
             return
 
+        # Confirm-to-pass: if the preference is enabled and not yet confirmed
+        if not p.is_bot and p.pass_confirm_ticks == 0:
+            user = self.get_user(p)
+            if user:
+                wants_confirm = user.preferences.get_effective(
+                    "confirm_destructive_actions", game_type=self.get_type()
+                )
+                if wants_confirm:
+                    p.pass_confirm_ticks = 200  # 10 seconds at 50ms/tick
+                    user.speak_l("pusoydos-confirm-pass", buffer="table")
+                    return
+
+        p.pass_confirm_ticks = 0
         p.passed_this_trick = True
         self._broadcast_pass(p)
         p.selected_cards.clear()
@@ -920,8 +1060,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
         if len(selected) != p.cards_to_give:
             recipient = self._get_pusoy_player(p.give_to_id)
             rname = recipient.name if recipient else "?"
-            self._send_error(p, "pusoydos-select-cards-to-give",
-                             count=p.cards_to_give, recipient=rname)
+            self._send_error(
+                p, "pusoydos-select-cards-to-give", count=p.cards_to_give, recipient=rname
+            )
             return
 
         self._complete_give(p, [c.id for c in selected])
@@ -938,19 +1079,27 @@ class PusoyDosGame(Game, TurnTimerMixin):
             return
 
         trick_winner = self.get_player_by_id(self.trick_winner_id)
-        winner_name = trick_winner.name if trick_winner else Localization.get(user.locale, "unknown-player")
+        winner_name = (
+            trick_winner.name if trick_winner else Localization.get(user.locale, "unknown-player")
+        )
         combo_name = Localization.get(user.locale, f"pusoydos-combo-{self.current_combo.type_name}")
         cards_str = read_cards(self.trick_cards, user.locale)
-        user.speak_l("pusoydos-trick-status", buffer="table",
-                     player=winner_name, combo=combo_name, cards=cards_str)
+        user.speak_l(
+            "pusoydos-trick-status",
+            buffer="table",
+            player=winner_name,
+            combo=combo_name,
+            cards=cards_str,
+        )
 
     def _action_read_hand(self, player: Player, action_id: str) -> None:
         if not isinstance(player, PusoyDosPlayer):
             return
         user = self.get_user(player)
         if user:
-            user.speak_l("pusoydos-your-hand", buffer="table",
-                         cards=read_cards(player.hand, user.locale))
+            user.speak_l(
+                "pusoydos-your-hand", buffer="table", cards=read_cards(player.hand, user.locale)
+            )
 
     def _action_read_card_counts(self, player: Player, action_id: str) -> None:
         user = self.get_user(player)
@@ -985,8 +1134,11 @@ class PusoyDosGame(Game, TurnTimerMixin):
         self._player_wins_round(player)
 
         # Rank remaining players: fewer cards = better, ties broken by lower highest card
-        remaining = [p for p in self._playing_players()
-                     if p.id not in self.finishing_order and p.id in self.turn_player_ids]
+        remaining = [
+            p
+            for p in self._playing_players()
+            if p.id not in self.finishing_order and p.id in self.turn_player_ids
+        ]
         remaining.sort(key=lambda p: (len(p.hand), max((card_value(c) for c in p.hand), default=0)))
         for p in remaining:
             self.finishing_order.append(p.id)
@@ -1034,9 +1186,13 @@ class PusoyDosGame(Game, TurnTimerMixin):
         if winner and entries:
             gained = sum(pts for _, pts in entries)
             breakdown = ", ".join(f"{pts} from {name}" for name, pts in entries)
-            self.broadcast_l("pusoydos-penalty-summary",
-                             player=winner.name, breakdown=breakdown,
-                             gained=gained, total=winner.score)
+            self.broadcast_l(
+                "pusoydos-penalty-summary",
+                player=winner.name,
+                breakdown=breakdown,
+                gained=gained,
+                total=winner.score,
+            )
 
         self._sync_team_scores()
 
@@ -1065,7 +1221,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
             self.broadcast_l("pusoydos-round-loser", player=loser.name, count=loser.round_losses)
 
             if loser.round_losses >= self.options.losses_to_lose:
-                self.broadcast_l("pusoydos-losses-game-over", player=loser.name, count=loser.round_losses)
+                self.broadcast_l(
+                    "pusoydos-losses-game-over", player=loser.name, count=loser.round_losses
+                )
                 self.finish_game()
                 return
 
@@ -1082,8 +1240,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
                 continue
             penalty = self._calculate_penalty(p)
             p.score += penalty
-            self.broadcast_l("pusoydos-points-elim-penalty",
-                             player=p.name, points=penalty, total=p.score)
+            self.broadcast_l(
+                "pusoydos-points-elim-penalty", player=p.name, points=penalty, total=p.score
+            )
 
         # Check for newly eliminated players
         newly_eliminated = []
@@ -1094,8 +1253,7 @@ class PusoyDosGame(Game, TurnTimerMixin):
 
         for p in newly_eliminated:
             self.play_sound(SOUND_ELIMINATED)
-            self.broadcast_l("pusoydos-points-elim-eliminated",
-                             player=p.name, score=p.score)
+            self.broadcast_l("pusoydos-points-elim-eliminated", player=p.name, score=p.score)
 
         remaining = self._playing_players()
         if newly_eliminated:
@@ -1259,8 +1417,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
         needed = player.cards_to_give
         recipient = self._get_pusoy_player(player.give_to_id)
         rname = recipient.name if recipient else "?"
-        return Localization.get(locale, "pusoydos-select-cards-to-give",
-                                count=needed, recipient=rname)
+        return Localization.get(
+            locale, "pusoydos-select-cards-to-give", count=needed, recipient=rname
+        )
 
     def _is_give_enabled(self, player: Player) -> str | None:
         if not isinstance(player, PusoyDosPlayer):
@@ -1299,7 +1458,9 @@ class PusoyDosGame(Game, TurnTimerMixin):
             return Visibility.HIDDEN
         return Visibility.VISIBLE
 
-    def _is_card_toggle_enabled(self, player: Player, *, action_id: str | None = None) -> str | None:
+    def _is_card_toggle_enabled(
+        self, player: Player, *, action_id: str | None = None
+    ) -> str | None:
         if self.status != "playing":
             return "action-not-playing"
         if player.is_spectator:
@@ -1382,11 +1543,20 @@ class PusoyDosGame(Game, TurnTimerMixin):
             cards_str = read_cards(combo.cards, user.locale)
 
             if combo.type_name == "single":
-                user.speak_l("pusoydos-player-plays-single", buffer="table",
-                             player=player.name, card=cards_str)
+                user.speak_l(
+                    "pusoydos-player-plays-single",
+                    buffer="table",
+                    player=player.name,
+                    card=cards_str,
+                )
             else:
-                user.speak_l("pusoydos-player-plays-combo", buffer="table",
-                             player=player.name, combo=combo_name, cards=cards_str)
+                user.speak_l(
+                    "pusoydos-player-plays-combo",
+                    buffer="table",
+                    player=player.name,
+                    combo=combo_name,
+                    cards=cards_str,
+                )
 
     def _broadcast_pass(self, player: PusoyDosPlayer) -> None:
         for p in self.players:
@@ -1411,20 +1581,48 @@ class PusoyDosGame(Game, TurnTimerMixin):
         user = self.get_user(player)
         if not user:
             return
+        parts = []
+        if self.options.game_mode == "elimination":
+            for p in self._playing_players():
+                parts.append(f"{p.name}: {p.round_wins} wins")
+            user.speak("; ".join(parts) if parts else "No scores yet.", buffer="table")
+        elif self.options.game_mode == "losses":
+            for p in self._playing_players():
+                parts.append(f"{p.name}: {p.round_losses} losses")
+            user.speak("; ".join(parts) if parts else "No scores yet.", buffer="table")
+        elif self.options.game_mode == "points_elimination":
+            players = sorted(self._playing_players(), key=lambda p: p.score)
+            for p in players:
+                parts.append(f"{p.name}: {p.score}")
+            user.speak(". ".join(parts) + "." if parts else "No scores yet.", buffer="table")
+        else:
+            players = sorted(self._playing_players(), key=lambda p: -p.score)
+            for p in players:
+                parts.append(f"{p.name}: {p.score}")
+            user.speak(". ".join(parts) + "." if parts else "No scores yet.", buffer="table")
+
+    def _action_check_scores_detailed(self, player: "Player", action_id: str) -> None:
+        user = self.get_user(player)
+        if not user:
+            return
         lines = []
         if self.options.game_mode == "elimination":
             for p in self._playing_players():
-                lines.append(f"{p.name}: {p.round_wins} wins")
+                wins = p.round_wins
+                label = "win" if wins == 1 else "wins"
+                lines.append(f"{p.name}: {wins} {label}")
         elif self.options.game_mode == "losses":
             for p in self._playing_players():
-                lines.append(f"{p.name}: {p.round_losses} losses")
-        else:
-            for p in self._playing_players():
+                losses = p.round_losses
+                label = "loss" if losses == 1 else "losses"
+                lines.append(f"{p.name}: {losses} {label}")
+        elif self.options.game_mode == "points_elimination":
+            for p in sorted(self._playing_players(), key=lambda p: p.score):
                 lines.append(f"{p.name}: {p.score} points")
-        user.speak("; ".join(lines) if lines else "No scores yet.", buffer="table")
-
-    def _action_check_scores_detailed(self, player: "Player", action_id: str) -> None:
-        self._action_check_scores(player, action_id)
+        else:
+            for p in sorted(self._playing_players(), key=lambda p: -p.score):
+                lines.append(f"{p.name}: {p.score} points")
+        self.status_box(player, lines if lines else ["No scores yet."])
 
     def _sync_team_scores(self) -> None:
         for team in self._team_manager.teams:
@@ -1494,24 +1692,36 @@ class PusoyDosGame(Game, TurnTimerMixin):
             final_wins = result.custom_data.get("final_wins", {})
             sorted_players = sorted(final_wins.items(), key=lambda item: item[1], reverse=True)
             for i, (name, wins) in enumerate(sorted_players, 1):
-                lines.append(Localization.get(locale, "pusoydos-line-format-wins",
-                                              rank=i, player=name, wins=wins))
+                lines.append(
+                    Localization.get(
+                        locale, "pusoydos-line-format-wins", rank=i, player=name, wins=wins
+                    )
+                )
         elif mode == "losses":
             final_losses = result.custom_data.get("final_losses", {})
             sorted_players = sorted(final_losses.items(), key=lambda item: item[1])
             for i, (name, losses) in enumerate(sorted_players, 1):
-                lines.append(Localization.get(locale, "pusoydos-line-format-losses",
-                                              rank=i, player=name, losses=losses))
+                lines.append(
+                    Localization.get(
+                        locale, "pusoydos-line-format-losses", rank=i, player=name, losses=losses
+                    )
+                )
         elif mode == "points_elimination":
             final_scores = result.custom_data.get("final_scores", {})
             sorted_scores = sorted(final_scores.items(), key=lambda item: item[1])
             for i, (name, score) in enumerate(sorted_scores, 1):
-                lines.append(Localization.get(locale, "pusoydos-line-format",
-                                              rank=i, player=name, score=score))
+                lines.append(
+                    Localization.get(
+                        locale, "pusoydos-line-format", rank=i, player=name, score=score
+                    )
+                )
         else:
             final_scores = result.custom_data.get("final_scores", {})
             sorted_scores = sorted(final_scores.items(), key=lambda item: item[1], reverse=True)
             for i, (name, score) in enumerate(sorted_scores, 1):
-                lines.append(Localization.get(locale, "pusoydos-line-format",
-                                              rank=i, player=name, score=score))
+                lines.append(
+                    Localization.get(
+                        locale, "pusoydos-line-format", rank=i, player=name, score=score
+                    )
+                )
         return lines

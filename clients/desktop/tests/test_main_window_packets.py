@@ -82,7 +82,9 @@ def make_window():
         stop_ambience=lambda force=False: window.sound_events.append(f"stop_ambience:{force}"),
     )
     window.sound_events = []
-    window.network = types.SimpleNamespace(send_packet=lambda packet: window.sent_packets.append(packet))
+    window.network = types.SimpleNamespace(
+        send_packet=lambda packet: window.sent_packets.append(packet)
+    )
     window.sent_packets = []
     window.buffer_system = types.SimpleNamespace()
     window.current_mode = "list"
@@ -91,7 +93,9 @@ def make_window():
     window.current_menu_item_ids = []
     window.switch_to_list_mode = lambda: setattr(window, "current_mode", "list")
     window.switch_to_edit_mode = lambda *args, **kwargs: None
-    window.set_multiletter_navigation = main_mod.MainWindow.set_multiletter_navigation.__get__(window)
+    window.set_multiletter_navigation = main_mod.MainWindow.set_multiletter_navigation.__get__(
+        window
+    )
     window.set_grid_mode = main_mod.MainWindow.set_grid_mode.__get__(window)
     window.on_server_clear_ui = main_mod.MainWindow.on_server_clear_ui.__get__(window)
     window.on_server_menu = main_mod.MainWindow.on_server_menu.__get__(window)

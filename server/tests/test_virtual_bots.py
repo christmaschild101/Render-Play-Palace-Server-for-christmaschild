@@ -593,6 +593,8 @@ def test_process_offline_bot_disabled_without_target(monkeypatch):
 
     assert bot.state == VirtualBotState.OFFLINE
     assert bot.cooldown_ticks == manager._config.min_offline_ticks
+
+
 def test_can_create_game_type_respects_limit():
     server = FakeServer()
     manager = VirtualBotManager(server)
@@ -929,7 +931,13 @@ def test_handle_guided_bot_leaves_wrong_table(monkeypatch):
     manager._server._tables.tables["tbl-alpha"] = SimpleNamespace(
         table_id="tbl-alpha",
         game_type="crazyeights",
-        game=SimpleNamespace(status="waiting", players=[], host="Host", get_min_players=lambda: 1, get_max_players=lambda: 4),
+        game=SimpleNamespace(
+            status="waiting",
+            players=[],
+            host="Host",
+            get_min_players=lambda: 1,
+            get_max_players=lambda: 4,
+        ),
     )
 
     monkeypatch.setattr("server.core.virtual_bots.random.randint", lambda a, b: a)
@@ -987,15 +995,11 @@ def test_should_bot_join_rule_respects_profile_limits():
     assert manager._should_bot_join_rule(bot, state, table) is False
 
     # Add another assigned bot already in the table to satisfy min requirement.
-    manager._bots["BotB"] = VirtualBot(
-        "BotB", state=VirtualBotState.IN_GAME, table_id="tbl-alpha"
-    )
+    manager._bots["BotB"] = VirtualBot("BotB", state=VirtualBotState.IN_GAME, table_id="tbl-alpha")
     assert manager._should_bot_join_rule(bot, state, table) is True
 
     # Add third bot already seated, exceeding max_bots_per_table.
-    manager._bots["BotC"] = VirtualBot(
-        "BotC", state=VirtualBotState.IN_GAME, table_id="tbl-alpha"
-    )
+    manager._bots["BotC"] = VirtualBot("BotC", state=VirtualBotState.IN_GAME, table_id="tbl-alpha")
     assert manager._should_bot_join_rule(bot, state, table) is False
 
 
@@ -1059,12 +1063,8 @@ def test_should_bot_join_rule_enforces_guided_max():
         game=game,
     )
 
-    manager._bots["BotB"] = VirtualBot(
-        "BotB", state=VirtualBotState.IN_GAME, table_id="tbl-alpha"
-    )
-    manager._bots["BotC"] = VirtualBot(
-        "BotC", state=VirtualBotState.IN_GAME, table_id="tbl-alpha"
-    )
+    manager._bots["BotB"] = VirtualBot("BotB", state=VirtualBotState.IN_GAME, table_id="tbl-alpha")
+    manager._bots["BotC"] = VirtualBot("BotC", state=VirtualBotState.IN_GAME, table_id="tbl-alpha")
 
     bot = manager._bots["BotA"]
     assert manager._should_bot_join_rule(bot, state, table) is False
@@ -1091,9 +1091,7 @@ def test_count_rule_bots_only_counts_assigned_present():
 
     manager._bots["BotA"].state = VirtualBotState.IN_GAME
     manager._bots["BotA"].table_id = "tbl-alpha"
-    manager._bots["BotB"] = VirtualBot(
-        "BotB", state=VirtualBotState.ONLINE_IDLE, table_id=None
-    )
+    manager._bots["BotB"] = VirtualBot("BotB", state=VirtualBotState.ONLINE_IDLE, table_id=None)
     # BotC assigned but missing from instantiated bots
 
     assert manager._count_rule_bots(state) == 1
@@ -2030,7 +2028,10 @@ def test_show_virtual_bots_clear_confirm_menu_outputs_prompt():
         "Yes",
         "No",
     ]
-    assert owner.messages[-1] == "Are you sure you want to clear all virtual bots? This will also destroy any tables they are in."
+    assert (
+        owner.messages[-1]
+        == "Are you sure you want to clear all virtual bots? This will also destroy any tables they are in."
+    )
 
 
 @pytest.mark.asyncio
@@ -2339,8 +2340,14 @@ def test_process_online_idle_prioritizes_guided(monkeypatch):
         return True
 
     monkeypatch.setattr(manager, "_handle_guided_bot", fake_handle)
-    monkeypatch.setattr(manager, "_try_join_game", lambda b: (_ for _ in ()).throw(AssertionError("join called")))
-    monkeypatch.setattr(manager, "_try_create_game", lambda b: (_ for _ in ()).throw(AssertionError("create called")))
+    monkeypatch.setattr(
+        manager, "_try_join_game", lambda b: (_ for _ in ()).throw(AssertionError("join called"))
+    )
+    monkeypatch.setattr(
+        manager,
+        "_try_create_game",
+        lambda b: (_ for _ in ()).throw(AssertionError("create called")),
+    )
 
     manager._process_online_idle_bot(bot)
 
@@ -2365,7 +2372,11 @@ def test_process_online_idle_attempts_join_first(monkeypatch):
         return True
 
     monkeypatch.setattr(manager, "_try_join_game", fake_join)
-    monkeypatch.setattr(manager, "_try_create_game", lambda b: (_ for _ in ()).throw(AssertionError("create should not run")))
+    monkeypatch.setattr(
+        manager,
+        "_try_create_game",
+        lambda b: (_ for _ in ()).throw(AssertionError("create should not run")),
+    )
     monkeypatch.setattr("server.core.virtual_bots.random.random", lambda: 0.0)
 
     manager._process_online_idle_bot(bot)
@@ -2602,18 +2613,10 @@ def test_count_bot_owned_tables():
             return self._all_tables
 
     # Create mock tables with games
-    table1 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotA")
-    )
-    table2 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotB")
-    )
-    table3 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "ninetynine", host="BotA")
-    )
-    table4 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="HumanPlayer")
-    )
+    table1 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotA"))
+    table2 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotB"))
+    table3 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "ninetynine", host="BotA"))
+    table4 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="HumanPlayer"))
 
     server = FakeServer()
     server._tables = FakeTablesWithAll([table1, table2, table3, table4])
@@ -2640,12 +2643,8 @@ def test_can_create_game_type_with_limits():
             return self._all_tables
 
     # Create 2 scopa tables owned by bots
-    table1 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotA")
-    )
-    table2 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotB")
-    )
+    table1 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotA"))
+    table2 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotB"))
 
     server = FakeServer()
     server._tables = FakeTablesWithAll([table1, table2])
@@ -2687,12 +2686,8 @@ def test_try_create_game_respects_limits_and_falls_back_to_join(monkeypatch):
             return SimpleNamespace(table_id="new-table", game=None)
 
     # Create 2 scopa tables owned by bots (at limit)
-    table1 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotA")
-    )
-    table2 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotB")
-    )
+    table1 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotA"))
+    table2 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotB"))
 
     server = FakeServer()
     server._tables = FakeTablesWithAll()
@@ -2762,12 +2757,8 @@ def test_try_create_game_picks_available_game_type(monkeypatch):
             return SimpleNamespace(table_id="new-table", game=None)
 
     # Create 2 scopa tables (at limit)
-    table1 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotA")
-    )
-    table2 = SimpleNamespace(
-        game=SimpleNamespace(get_type=lambda: "scopa", host="BotB")
-    )
+    table1 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotA"))
+    table2 = SimpleNamespace(game=SimpleNamespace(get_type=lambda: "scopa", host="BotB"))
 
     server = FakeServer()
     server._tables = FakeTablesWithAll()

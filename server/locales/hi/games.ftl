@@ -39,7 +39,6 @@ option-on = चालू
 option-off = बंद
 
 # Status box
-status-box-closed = स्थिति की जानकारी बंद।
 
 # Game end
 game-leave = खेल छोड़ें
@@ -64,6 +63,47 @@ game-player-deals = { $player } पत्ते बांटते हैं।
 # Card names
 card-name = { $suit } का { $rank }
 no-cards = कोई पत्ते नहीं
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = काला
+color-black-m = काला
+color-black-f = काली
+color-blue = नीला
+color-blue-m = नीला
+color-blue-f = नीली
+color-brown = भूरा
+color-brown-m = भूरा
+color-brown-f = भूरी
+color-gray = धूसर
+color-gray-m = धूसर
+color-gray-f = धूसर
+color-green = हरा
+color-green-m = हरा
+color-green-f = हरी
+color-indigo = नील
+color-indigo-m = नील
+color-indigo-f = नील
+color-orange = नारंगी
+color-orange-m = नारंगी
+color-orange-f = नारंगी
+color-pink = गुलाबी
+color-pink-m = गुलाबी
+color-pink-f = गुलाबी
+color-purple = बैंगनी
+color-purple-m = बैंगनी
+color-purple-f = बैंगनी
+color-red = लाल
+color-red-m = लाल
+color-red-f = लाल
+color-violet = बैंगनी
+color-violet-m = बैंगनी
+color-violet-f = बैंगनी
+color-white = सफ़ेद
+color-white-m = सफ़ेद
+color-white-f = सफ़ेद
+color-yellow = पीला
+color-yellow-m = पीला
+color-yellow-f = पीली
 
 # Suit names
 suit-diamonds = हीरा

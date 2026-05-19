@@ -79,9 +79,7 @@ class VirtualUser(User):
         """No-op: virtual bots do not receive speech."""
         pass
 
-    def play_sound(
-        self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100
-    ) -> None:
+    def play_sound(self, name: str, volume: int = 100, pan: int = 0, pitch: int = 100) -> None:
         """No-op: virtual bots do not play sounds."""
         pass
 
@@ -143,6 +141,7 @@ class VirtualUser(User):
         *,
         multiline: bool = False,
         read_only: bool = False,
+        content_format: str = "text",
     ) -> None:
         """No-op: virtual bots ignore editboxes."""
         pass

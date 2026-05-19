@@ -108,6 +108,8 @@ COMBO_SOUNDS = {
     COMBO_DOUBLE_TRIPLETS: "game_farkle/doubletriplets.ogg",
     COMBO_FULL_HOUSE: "game_farkle/fullhouse.ogg",
 }
+
+
 def has_combination(dice: list[int], combo_type: str, number: int = 0) -> bool:
     """Check if dice contain a specific combination."""
     counts = count_dice(dice)
@@ -339,9 +341,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
             },
         ]
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> FarklePlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> FarklePlayer:
         """Create a new player with Farkle-specific state."""
         return FarklePlayer(
             id=player_id,
@@ -411,44 +411,28 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
             "c", "Check turn score", ["check_turn_score"], state=KeybindState.ACTIVE
         )
 
-    def _get_combo_label(
-        self, locale: str, combo_type: str, number: int, points: int
-    ) -> str:
+    def _get_combo_label(self, locale: str, combo_type: str, number: int, points: int) -> str:
         """Get the localized label for a scoring combination."""
         if combo_type == COMBO_SINGLE_1:
             return Localization.get(locale, "farkle-take-single-one", points=points)
         elif combo_type == COMBO_SINGLE_5:
             return Localization.get(locale, "farkle-take-single-five", points=points)
         elif combo_type == COMBO_THREE_OF_KIND:
-            return Localization.get(
-                locale, "farkle-take-three-kind", number=number, points=points
-            )
+            return Localization.get(locale, "farkle-take-three-kind", number=number, points=points)
         elif combo_type == COMBO_FOUR_OF_KIND:
-            return Localization.get(
-                locale, "farkle-take-four-kind", number=number, points=points
-            )
+            return Localization.get(locale, "farkle-take-four-kind", number=number, points=points)
         elif combo_type == COMBO_FIVE_OF_KIND:
-            return Localization.get(
-                locale, "farkle-take-five-kind", number=number, points=points
-            )
+            return Localization.get(locale, "farkle-take-five-kind", number=number, points=points)
         elif combo_type == COMBO_SIX_OF_KIND:
-            return Localization.get(
-                locale, "farkle-take-six-kind", number=number, points=points
-            )
+            return Localization.get(locale, "farkle-take-six-kind", number=number, points=points)
         elif combo_type == COMBO_SMALL_STRAIGHT:
-            return Localization.get(
-                locale, "farkle-take-small-straight", points=points
-            )
+            return Localization.get(locale, "farkle-take-small-straight", points=points)
         elif combo_type == COMBO_LARGE_STRAIGHT:
-            return Localization.get(
-                locale, "farkle-take-large-straight", points=points
-            )
+            return Localization.get(locale, "farkle-take-large-straight", points=points)
         elif combo_type == COMBO_THREE_PAIRS:
             return Localization.get(locale, "farkle-take-three-pairs", points=points)
         elif combo_type == COMBO_DOUBLE_TRIPLETS:
-            return Localization.get(
-                locale, "farkle-take-double-triplets", points=points
-            )
+            return Localization.get(locale, "farkle-take-double-triplets", points=points)
         elif combo_type == COMBO_FULL_HOUSE:
             return Localization.get(locale, "farkle-take-full-house", points=points)
         return f"{combo_type} for {points} points"
@@ -493,9 +477,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
 
         # Remove old scoring actions from _actions dict
         old_actions = [
-            action_id
-            for action_id in turn_set._actions.keys()
-            if action_id.startswith("score_")
+            action_id for action_id in turn_set._actions.keys() if action_id.startswith("score_")
         ]
         for action_id in old_actions:
             del turn_set._actions[action_id]
@@ -563,8 +545,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
             return error
         farkle_player: FarklePlayer = player  # type: ignore
         can_bank = farkle_player.turn_score > 0 and (
-            len(farkle_player.current_roll) == 0
-            or not has_scoring_dice(farkle_player.current_roll)
+            len(farkle_player.current_roll) == 0 or not has_scoring_dice(farkle_player.current_roll)
         )
         if not can_bank:
             return "farkle-cannot-bank"
@@ -574,8 +555,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
         """Check if bank action is hidden."""
         farkle_player: FarklePlayer = player  # type: ignore
         can_bank = farkle_player.turn_score > 0 and (
-            len(farkle_player.current_roll) == 0
-            or not has_scoring_dice(farkle_player.current_roll)
+            len(farkle_player.current_roll) == 0 or not has_scoring_dice(farkle_player.current_roll)
         )
         return self.turn_action_visibility(player, extra_condition=can_bank)
 
@@ -626,9 +606,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
         else:
             num_dice = len(farkle_player.current_roll)
 
-        self.broadcast_personal_l(
-            player, "farkle-you-roll", "farkle-rolls", count=num_dice
-        )
+        self.broadcast_personal_l(player, "farkle-you-roll", "farkle-rolls", count=num_dice)
         self.play_sound("game_pig/roll.ogg")
 
         # Jolt bot to pause before next action
@@ -647,10 +625,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
         if not has_scoring_dice(farkle_player.current_roll):
             self.play_sound("game_farkle/farkle.ogg")
             self.broadcast_personal_l(
-                player,
-                "farkle-you-farkle",
-                "farkle-farkle",
-                points=farkle_player.turn_score
+                player, "farkle-you-farkle", "farkle-farkle", points=farkle_player.turn_score
             )
             # Track turn (farkle = 0 points banked)
             farkle_player.turns_taken += 1
@@ -748,8 +723,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
 
         # Announce what was taken
         self.broadcast_personal_l(
-            player, "farkle-you-take-combo", "farkle-takes-combo",
-            combo=combo_name, points=points
+            player, "farkle-you-take-combo", "farkle-takes-combo", combo=combo_name, points=points
         )
 
         # Check for hot dice
@@ -774,9 +748,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
         self.update_scoring_actions(farkle_player)
         self.rebuild_player_menu(farkle_player)
 
-    def _remove_combo_dice(
-        self, player: FarklePlayer, combo_type: str, number: int
-    ) -> None:
+    def _remove_combo_dice(self, player: FarklePlayer, combo_type: str, number: int) -> None:
         """Remove dice from current_roll for the given combination."""
         counts = count_dice(player.current_roll)
 
@@ -973,10 +945,7 @@ class FarkleGame(ActionGuardMixin, RoundBasedGameMixin, Game):
             self.play_sound("game_pig/win.ogg")
             winner_farkle: FarklePlayer = winners[0]  # type: ignore
             self.broadcast_personal_l(
-                winners[0],
-                "farkle-you-win",
-                "farkle-winner",
-                score=winner_farkle.score
+                winners[0], "farkle-you-win", "farkle-winner", score=winner_farkle.score
             )
             self.finish_game()
         elif len(winners) > 1:

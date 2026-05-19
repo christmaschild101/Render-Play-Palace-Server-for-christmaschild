@@ -115,9 +115,7 @@ def find_best_scoring(dice: list[int]) -> list[tuple[str, list[int], int]]:
     best_sets: list[tuple[str, list[int], int]] = []
 
     def search(
-        remaining: list[int],
-        current_sets: list[tuple[str, list[int], int]],
-        current_score: int
+        remaining: list[int], current_sets: list[tuple[str, list[int], int]], current_score: int
     ) -> None:
         nonlocal best_score, best_sets
 

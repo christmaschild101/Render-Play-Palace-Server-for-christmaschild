@@ -39,7 +39,6 @@ option-on = асаалттай
 option-off = унтраалттай
 
 # Статус хайрцаг
-status-box-closed = Статусын мэдээлэл хаагдсан.
 
 # Тоглоом дуусах
 game-leave = Тоглоом орхих
@@ -64,6 +63,47 @@ game-player-deals = { $player } хөзөр хуваарилна.
 # Хөзрийн нэрс
 card-name = { $suit }-н { $rank }
 no-cards = Хөзөр алга
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = хар
+color-black-m = хар
+color-black-f = хар
+color-blue = цэнхэр
+color-blue-m = цэнхэр
+color-blue-f = цэнхэр
+color-brown = бор
+color-brown-m = бор
+color-brown-f = бор
+color-gray = саарал
+color-gray-m = саарал
+color-gray-f = саарал
+color-green = ногоон
+color-green-m = ногоон
+color-green-f = ногоон
+color-indigo = хөх
+color-indigo-m = хөх
+color-indigo-f = хөх
+color-orange = улбар шар
+color-orange-m = улбар шар
+color-orange-f = улбар шар
+color-pink = ягаан
+color-pink-m = ягаан
+color-pink-f = ягаан
+color-purple = нил ягаан
+color-purple-m = нил ягаан
+color-purple-f = нил ягаан
+color-red = улаан
+color-red-m = улаан
+color-red-f = улаан
+color-violet = ягаан өнгө
+color-violet-m = ягаан өнгө
+color-violet-f = ягаан өнгө
+color-white = цагаан
+color-white-m = цагаан
+color-white-f = цагаан
+color-yellow = шар
+color-yellow-m = шар
+color-yellow-f = шар
 
 # Хэв маягийн нэрс
 suit-diamonds = ромб

@@ -18,6 +18,7 @@ from ...game_utils.dice import roll_dice
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...game_utils.options import IntOption, option_field
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.users.preferences import DiceKeepingStyle
 
 from .scoring import SET_DEFINITIONS, find_best_scoring
@@ -138,9 +139,7 @@ class TradeoffGame(Game):
             },
         ]
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> TradeoffPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> TradeoffPlayer:
         """Create a new player with Tradeoff-specific state."""
         return TradeoffPlayer(id=player_id, name=name, is_bot=is_bot)
 
@@ -191,7 +190,7 @@ class TradeoffGame(Game):
         is_trading = index in tp.trading_indices
         status = Localization.get(
             locale,
-            "tradeoff-trade-status-trading" if is_trading else "tradeoff-trade-status-keeping"
+            "tradeoff-trade-status-trading" if is_trading else "tradeoff-trade-status-keeping",
         )
         return Localization.get(locale, "tradeoff-toggle-trade", value=die_val, status=status)
 
@@ -446,6 +445,7 @@ class TradeoffGame(Game):
 
         # Number keys 1-6 for dice actions (respects user preference)
         from server.core.ui.keybinds import KeybindState
+
         for v in range(1, 7):
             self.define_keybind(
                 str(v),
@@ -727,7 +727,11 @@ class TradeoffGame(Game):
             score = self._get_player_score(p.name)
             # Tiebreaker: sum of current hand (lower goes first)
             dice_sum = sum(p.hand) if p.hand else sum(p.rolled_dice) if p.rolled_dice else 0
-            return (score, dice_sum, random.random())  # Final random for complete ties  # nosec B311
+            return (
+                score,
+                dice_sum,
+                random.random(),
+            )  # Final random for complete ties  # nosec B311
 
         sorted_players = sorted(active_players, key=sort_key)
         self.taking_order = [p.id for p in sorted_players if p.dice_traded_count > 0]
@@ -836,14 +840,16 @@ class TradeoffGame(Game):
             # Format what they traded (stored in traded_dice from this iteration)
             if tp.traded_dice:
                 traded_str = ", ".join(str(d) for d in sorted(tp.traded_dice))
-                user.speak_l("tradeoff-player-info", player=p.name, hand=hand_str, traded=traded_str)
+                user.speak_l(
+                    "tradeoff-player-info", player=p.name, hand=hand_str, traded=traded_str
+                )
             else:
                 user.speak_l("tradeoff-player-info-no-trade", player=p.name, hand=hand_str)
 
     # Game flow
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
         self.game_active = True
         self.round = 0
 
@@ -923,17 +929,25 @@ class TradeoffGame(Game):
         elif set_name == "group":
             return Localization.get(locale, "tradeoff-set-group", value=sorted_dice[0])
         elif set_name == "mini_straight":
-            return Localization.get(locale, "tradeoff-set-mini-straight", low=sorted_dice[0], high=sorted_dice[-1])
+            return Localization.get(
+                locale, "tradeoff-set-mini-straight", low=sorted_dice[0], high=sorted_dice[-1]
+            )
         elif set_name == "straight":
-            return Localization.get(locale, "tradeoff-set-straight", low=sorted_dice[0], high=sorted_dice[-1])
+            return Localization.get(
+                locale, "tradeoff-set-straight", low=sorted_dice[0], high=sorted_dice[-1]
+            )
         elif set_name == "double_triple":
             # Find the two values
             from collections import Counter
+
             counts = Counter(sorted_dice)
             values = sorted(counts.keys())
-            return Localization.get(locale, "tradeoff-set-double-triple", v1=values[0], v2=values[1])
+            return Localization.get(
+                locale, "tradeoff-set-double-triple", v1=values[0], v2=values[1]
+            )
         elif set_name == "double_group":
             from collections import Counter
+
             counts = Counter(sorted_dice)
             values = sorted(counts.keys())
             return Localization.get(locale, "tradeoff-set-double-group", v1=values[0], v2=values[1])
@@ -969,14 +983,10 @@ class TradeoffGame(Game):
                     # Format set descriptions in recipient's locale
                     set_descriptions = []
                     for set_name, dice_used, points in sets:
-                        desc = self._format_set_description(
-                            recipient_locale, set_name, dice_used
-                        )
+                        desc = self._format_set_description(recipient_locale, set_name, dice_used)
                         set_descriptions.append(desc)
 
-                    sets_str = Localization.format_list_and(
-                        recipient_locale, set_descriptions
-                    )
+                    sets_str = Localization.format_list_and(recipient_locale, set_descriptions)
                     msg = Localization.get(
                         recipient_locale,
                         "tradeoff-player-scored",
@@ -999,7 +1009,9 @@ class TradeoffGame(Game):
         for p in active_players:
             tp: TradeoffPlayer = p  # type: ignore
             total = self._get_player_score(p.name)
-            self.broadcast_l("tradeoff-score-line", player=p.name, round_points=tp.round_score, total=total)
+            self.broadcast_l(
+                "tradeoff-score-line", player=p.name, round_points=tp.round_score, total=total
+            )
 
         # Find leader
         best_score = 0
@@ -1042,7 +1054,9 @@ class TradeoffGame(Game):
                 user = self.get_user(p)
                 if user:
                     names_str = Localization.format_list_and(user.locale, winner_names)
-                    user.speak_l("tradeoff-winners-tie", players=names_str, score=high_score, buffer="table")
+                    user.speak_l(
+                        "tradeoff-winners-tie", players=names_str, score=high_score, buffer="table"
+                    )
 
         self.finish_game()
 
@@ -1180,24 +1194,31 @@ class TradeoffGame(Game):
 # Generate _is_toggle_trade_X_enabled, _is_toggle_trade_X_hidden,
 # _get_toggle_trade_X_label for each die index 0-4.
 
+
 def _make_toggle_trade_enabled(index: int):
     """Create an is_enabled method for a toggle_trade action."""
+
     def method(self, player, *, action_id=None):
         return self._is_toggle_trade_enabled(player, index)
+
     return method
 
 
 def _make_toggle_trade_hidden(index: int):
     """Create an is_hidden method for a toggle_trade action."""
+
     def method(self, player, *, action_id=None):
         return self._is_toggle_trade_hidden(player, index)
+
     return method
 
 
 def _make_toggle_trade_label(index: int):
     """Create a get_label method for a toggle_trade action."""
+
     def method(self, player, action_id):
         return self._get_toggle_trade_label(player, index)
+
     return method
 
 
@@ -1213,24 +1234,31 @@ for _i in range(5):
 # Generate _is_take_X_enabled, _is_take_X_hidden, _get_take_X_label
 # for each die value 1-6.
 
+
 def _make_take_enabled(value: int):
     """Create an is_enabled method for a take action."""
+
     def method(self, player, *, action_id=None):
         return self._is_take_enabled(player, value)
+
     return method
 
 
 def _make_take_hidden(value: int):
     """Create an is_hidden method for a take action."""
+
     def method(self, player, *, action_id=None):
         return self._is_take_hidden(player, value)
+
     return method
 
 
 def _make_take_label(value: int):
     """Create a get_label method for a take action."""
+
     def method(self, player, action_id):
         return self._get_take_label(player, value)
+
     return method
 
 

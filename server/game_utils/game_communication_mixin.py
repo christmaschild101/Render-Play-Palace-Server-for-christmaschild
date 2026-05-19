@@ -17,9 +17,7 @@ class GameCommunicationMixin:
         get_user(player) -> User | None.
     """
 
-    def broadcast(
-        self, text: str, buffer: str = "table", exclude: "Player | None" = None
-    ) -> None:
+    def broadcast(self, text: str, buffer: str = "table", exclude: "Player | None" = None) -> None:
         """Send a message to all players, optionally excluding one."""
         for player in self.players:
             if player is exclude:

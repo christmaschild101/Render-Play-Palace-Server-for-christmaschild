@@ -39,7 +39,6 @@ option-on = увімкнено
 option-off = вимкнено
 
 # Status box
-status-box-closed = Інформацію про статус закрито.
 
 # Game end
 game-leave = Покинути гру
@@ -64,6 +63,47 @@ game-player-deals = { $player } роздає карти.
 # Card names
 card-name = { $rank } { $suit }
 no-cards = Немає карт
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = чорний
+color-black-m = чорний
+color-black-f = чорна
+color-blue = синій
+color-blue-m = синій
+color-blue-f = синя
+color-brown = коричневий
+color-brown-m = коричневий
+color-brown-f = коричнева
+color-gray = сірий
+color-gray-m = сірий
+color-gray-f = сіра
+color-green = зелений
+color-green-m = зелений
+color-green-f = зелена
+color-indigo = індиго
+color-indigo-m = індиго
+color-indigo-f = індиго
+color-orange = помаранчевий
+color-orange-m = помаранчевий
+color-orange-f = помаранчева
+color-pink = рожевий
+color-pink-m = рожевий
+color-pink-f = рожева
+color-purple = пурпурний
+color-purple-m = пурпурний
+color-purple-f = пурпурна
+color-red = червоний
+color-red-m = червоний
+color-red-f = червона
+color-violet = фіолетовий
+color-violet-m = фіолетовий
+color-violet-f = фіолетова
+color-white = білий
+color-white-m = білий
+color-white-f = біла
+color-yellow = жовтий
+color-yellow-m = жовтий
+color-yellow-f = жовта
 
 # Suit names
 suit-diamonds = бубни

@@ -14,6 +14,7 @@ from ...game_utils.actions import Action, ActionSet, Visibility
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
 from ...messages.localization import Localization
+from ...game_utils.game_status import GameStatus
 from server.core.ui.keybinds import KeybindState
 
 
@@ -46,12 +47,8 @@ class SnakesAndLaddersGame(Game):
     NUM_LADDER_SOUNDS = 3
 
     # Standard Snakes and Ladders board layout
-    LADDERS = {
-        1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100
-    }
-    SNAKES = {
-        16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78
-    }
+    LADDERS = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100}
+    SNAKES = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78}
 
     @classmethod
     def get_name(cls) -> str:
@@ -73,14 +70,12 @@ class SnakesAndLaddersGame(Game):
     def get_max_players(cls) -> int:
         return 4
 
-    def create_player(
-        self, player_id: str, name: str, is_bot: bool = False
-    ) -> SnakesPlayer:
+    def create_player(self, player_id: str, name: str, is_bot: bool = False) -> SnakesPlayer:
         return SnakesPlayer(id=player_id, name=name, is_bot=is_bot)
 
     def on_start(self) -> None:
         """Called when the game starts."""
-        self.status = "playing"
+        self.status = GameStatus.PLAYING
 
         self.game_active = True
 
@@ -117,13 +112,9 @@ class SnakesAndLaddersGame(Game):
         user = self.get_user(player)
         # Note: We assume user object has preferences.play_turn_sound as used in base mixin
         if user and getattr(user.preferences, "play_turn_sound", True):
-             user.play_sound("game_pig/turn.ogg")
+            user.play_sound("game_pig/turn.ogg")
 
-        self.broadcast_l(
-            "snakes-turn",
-            player=player.name,
-            position=player.position
-        )
+        self.broadcast_l("snakes-turn", player=player.name, position=player.position)
 
         # Jolt bots
         if player.is_bot:
@@ -156,7 +147,7 @@ class SnakesAndLaddersGame(Game):
                 label=Localization.get(locale, "snakes-roll"),
                 handler="_action_roll",
                 is_enabled="_is_roll_enabled",
-                is_hidden="_is_roll_hidden"
+                is_hidden="_is_roll_hidden",
             )
         )
         return action_set
@@ -173,9 +164,9 @@ class SnakesAndLaddersGame(Game):
 
     def _is_roll_hidden(self, player: Player) -> Visibility:
         if self.status != "playing":
-             return Visibility.HIDDEN
+            return Visibility.HIDDEN
         if self.current_player != player:
-             return Visibility.HIDDEN
+            return Visibility.HIDDEN
         return Visibility.VISIBLE
 
     # WEB-SPECIFIC: Visibility Overrides
@@ -208,7 +199,7 @@ class SnakesAndLaddersGame(Game):
                 label=Localization.get(locale, "check-positions"),
                 handler="_action_check_positions",
                 is_enabled="_is_check_positions_enabled",
-                is_hidden="_is_check_positions_hidden"
+                is_hidden="_is_check_positions_hidden",
             )
         )
 
@@ -223,7 +214,7 @@ class SnakesAndLaddersGame(Game):
     def _is_check_positions_hidden(self, player: Player) -> Visibility:
         """Show check positions for everyone when playing."""
         if self.status != "playing":
-             return Visibility.HIDDEN
+            return Visibility.HIDDEN
         # Removed client_type check to allow Desktop clients (NVDA) to use this feature.
         return Visibility.VISIBLE
 
@@ -237,7 +228,13 @@ class SnakesAndLaddersGame(Game):
         super().setup_keybinds()
         self.define_keybind("r", "Roll dice", ["roll"], state=KeybindState.ACTIVE)
         self.define_keybind("space", "Roll dice", ["roll"], state=KeybindState.ACTIVE)
-        self.define_keybind("c", "Check positions", ["check_positions"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind(
+            "c",
+            "Check positions",
+            ["check_positions"],
+            state=KeybindState.ACTIVE,
+            include_spectators=True,
+        )
 
     def _action_check_positions(self, player: Player, action_id: str) -> None:
         """Announce current player positions."""
@@ -250,17 +247,16 @@ class SnakesAndLaddersGame(Game):
         speech_parts = []
 
         for p in self.get_active_players():
-            sp: SnakesPlayer = p # type: ignore
+            sp: SnakesPlayer = p  # type: ignore
             speech_parts.append(f"{p.name} {sp.position}")
 
         # Speak the positions
         header = Localization.get(user.locale, "snakes-positions-header")
         user.speak(f"{header} {', '.join(speech_parts)}")
 
-
     def _action_roll(self, player: Player, action_id: str) -> None:
         """Handle roll action with sequential events."""
-        snakes_player: SnakesPlayer = player # type: ignore
+        snakes_player: SnakesPlayer = player  # type: ignore
         self.is_animating = True
 
         # Roll dice (1-6)
@@ -271,8 +267,8 @@ class SnakesAndLaddersGame(Game):
         self.broadcast_l("snakes-roll-result", player=player.name, roll=roll)
 
         # Delays
-        step_delay_start = 8 # Wait after roll
-        step_interval = 4    # Fast steps
+        step_delay_start = 8  # Wait after roll
+        step_interval = 4  # Fast steps
 
         # --- PHASE 1: Movement Steps ---
         # Calculate logical new position
@@ -287,12 +283,10 @@ class SnakesAndLaddersGame(Game):
             variant_count=self.NUM_STEP_SOUNDS,
         )
         self.schedule_event(
-            "move",
-            {"player_id": player.id, "pos": intermediate_pos},
-            delay_ticks=next_delay
+            "move", {"player_id": player.id, "pos": intermediate_pos}, delay_ticks=next_delay
         )
 
-        next_delay += 2 # Tiny pause after move
+        next_delay += 2  # Tiny pause after move
 
         # --- PHASE 2: Bounce Back ---
         final_pre_interaction_pos = intermediate_pos
@@ -302,17 +296,14 @@ class SnakesAndLaddersGame(Game):
             final_pre_interaction_pos = self.WINNING_SQUARE - overshoot
 
             # Bounce sound + event
-            self.schedule_sound(
-                "game_snakes/bounce.ogg",
-                delay_ticks=next_delay
-            )
+            self.schedule_sound("game_snakes/bounce.ogg", delay_ticks=next_delay)
             self.schedule_event(
                 "bounce",
                 {"player_id": player.id, "pos": final_pre_interaction_pos},
-                delay_ticks=next_delay
+                delay_ticks=next_delay,
             )
 
-            next_delay += 8 # Pause after bounce
+            next_delay += 8  # Pause after bounce
 
         # --- PHASE 3: Interactions (Snake/Ladder) ---
         # Check interaction at the position where player landed (after potential bounce)
@@ -329,18 +320,15 @@ class SnakesAndLaddersGame(Game):
 
             # Sound + event
             ladder_variant = random.randint(1, self.NUM_LADDER_SOUNDS)
-            self.schedule_sound(
-                f"game_snakes/ladder{ladder_variant}.ogg",
-                delay_ticks=next_delay
-            )
+            self.schedule_sound(f"game_snakes/ladder{ladder_variant}.ogg", delay_ticks=next_delay)
             self.schedule_event(
                 "ladder",
                 {"player_id": player.id, "start": final_pos, "end": top},
-                delay_ticks=next_delay
+                delay_ticks=next_delay,
             )
 
             final_pos = top
-            next_delay += 15 # Pause for ladder
+            next_delay += 15  # Pause for ladder
 
             if final_pos == self.WINNING_SQUARE:
                 is_win = True
@@ -350,33 +338,22 @@ class SnakesAndLaddersGame(Game):
             tail = self.SNAKES[final_pos]
 
             # Sound + event
-            self.schedule_sound(
-                "game_snakes/snake.ogg",
-                delay_ticks=next_delay
-            )
+            self.schedule_sound("game_snakes/snake.ogg", delay_ticks=next_delay)
             self.schedule_event(
                 "snake",
                 {"player_id": player.id, "start": final_pos, "end": tail},
-                delay_ticks=next_delay
+                delay_ticks=next_delay,
             )
 
             final_pos = tail
-            next_delay += 12 # Pause for snake
+            next_delay += 12  # Pause for snake
 
         # --- PHASE 4: Conclusion ---
 
         if is_win:
-             self.schedule_event(
-                 "win",
-                 {"player_id": player.id},
-                 delay_ticks=next_delay
-             )
+            self.schedule_event("win", {"player_id": player.id}, delay_ticks=next_delay)
         else:
-             self.schedule_event(
-                 "end_turn",
-                 {},
-                 delay_ticks=next_delay + 5
-             )
+            self.schedule_event("end_turn", {}, delay_ticks=next_delay + 5)
 
     def on_game_event(self, event_type: str, data: dict) -> None:
         """Handle a scheduled game event."""
@@ -411,7 +388,7 @@ class SnakesAndLaddersGame(Game):
 
         elif event_type == "win":
             if player:
-                self._handle_win(player) # type: ignore
+                self._handle_win(player)  # type: ignore
 
         elif event_type == "end_turn":
             self.is_animating = False
@@ -452,8 +429,8 @@ class SnakesAndLaddersGame(Game):
         # Sort players by position (descending)
         sorted_players = sorted(
             self.get_active_players(),
-            key=lambda p: (p.finished, p.position), # Finished first, then highest position
-            reverse=True
+            key=lambda p: (p.finished, p.position),  # Finished first, then highest position
+            reverse=True,
         )
 
         # Store final positions for end screen
@@ -464,16 +441,13 @@ class SnakesAndLaddersGame(Game):
             timestamp=datetime.now().isoformat(),
             duration_ticks=self.sound_scheduler_tick,
             player_results=[
-                PlayerResult(
-                    player_id=p.id,
-                    player_name=p.name,
-                    is_bot=p.is_bot
-                ) for p in sorted_players # Return sorted list
+                PlayerResult(player_id=p.id, player_name=p.name, is_bot=p.is_bot)
+                for p in sorted_players  # Return sorted list
             ],
             custom_data={
                 "winner_name": winner.name if winner else None,
-                "final_positions": final_positions
-            }
+                "final_positions": final_positions,
+            },
         )
 
     def format_end_screen(self, result: GameResult, locale: str) -> list[str]:
@@ -484,11 +458,7 @@ class SnakesAndLaddersGame(Game):
             pos = result.custom_data["final_positions"].get(p_result.player_name, 0)
             lines.append(
                 Localization.get(
-                    locale,
-                    "snakes-end-score",
-                    rank=i,
-                    player=p_result.player_name,
-                    position=pos
+                    locale, "snakes-end-score", rank=i, player=p_result.player_name, position=pos
                 )
             )
 

@@ -35,6 +35,8 @@ whose-turn = Čigava poteza
 whos-at-table = Kdo je pri mizi
 check-scores = Preveri rezultate
 check-scores-detailed = Podrobni rezultati
+check-game-options = Preveri možnosti igre
+no-game-options = Ni možnosti igre.
 
 # Turn messages
 game-player-skipped = { $player } je preskočen.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] točka
    *[other] točk
 }
-status-box-closed = Zaprto.
 play = Igraj
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = Tvoj račun je blokiran in ni dostopen.
 incorrect-username = Vneseno uporabniško ime ne obstaja.
 incorrect-password = Vneseno geslo je napačno.
 already-logged-in = Ta račun je že prijavljen.
+
+# Credential validation
+credential-username-length = Uporabniško ime mora biti med { $min } in { $max } znaki.
+credential-password-length = Geslo mora biti med { $min } in { $max } znaki.
+
+# Rate limiting
+rate-limit-login-ip = Preveč poskusov prijave s tega naslova. Počakaj in poskusi znova.
+rate-limit-login-user = Preveč neuspešnih poskusov prijave za to uporabniško ime. Počakaj in poskusi znova.
+rate-limit-registration = Preveč poskusov registracije s tega naslova. Počakaj in poskusi znova.
+rate-limit-refresh = Preveč poskusov osvežitve s tega naslova. Počakaj in poskusi znova.
+
+# Session/auth errors
+account-not-found = Račun ni bil najden.
+session-expired = Seja je potekla. Prosimo, prijavi se znova.
+session-token-mismatch = Žeton seje se ne ujema z uporabniškim imenom.
+refresh-token-expired = Žeton za osvežitev je potekel. Prosimo, prijavi se znova.
+refresh-token-mismatch = Žeton za osvežitev se ne ujema z uporabniškim imenom.
+
+# Registration
+registration-success = Registracija je uspela! Tvoj račun čaka na odobritev.
+registration-username-taken = To uporabniško ime je že zasedeno. Prosimo, izberi drugačno.
+
+# Preference fallback
+pref-invalid-value = Neveljavna izbira, uporabljam privzeto vrednost.
 
 # Decline reason
 decline-reason-prompt = Vnesi razlog za zavrnitev (ali pritisni Escape za preklic):

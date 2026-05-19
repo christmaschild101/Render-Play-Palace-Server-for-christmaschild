@@ -280,9 +280,7 @@ def test_split_seven_pair_generates_options_and_applies() -> None:
     options = generate_split_options_for_pair(p1, 1, 2)
     assert options
     assert all(
-        m.steps is not None
-        and m.secondary_steps is not None
-        and m.steps + m.secondary_steps == 7
+        m.steps is not None and m.secondary_steps is not None and m.steps + m.secondary_steps == 7
         for m in options
     )
 
@@ -315,6 +313,5 @@ def test_forward_enters_home_path_and_requires_exact_home_count() -> None:
     _set_home_path(p1.pawns[0], SAFETY_LENGTH)
     cannot_overshoot = generate_legal_moves(state, p1, "2", Classic00390Rules())
     assert not any(
-        move.move_type == "forward" and move.pawn_index == 1
-        for move in cannot_overshoot
+        move.move_type == "forward" and move.pawn_index == 1 for move in cannot_overshoot
     )

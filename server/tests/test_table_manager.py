@@ -105,7 +105,7 @@ def test_add_table_and_save_all_rehydrate_state():
 
         def to_json(self) -> str:
             self.saved += 1
-            return f"{{\"saved\": {self.saved}}}"
+            return f'{{"saved": {self.saved}}}'
 
     table._game = DummyGame()
     manager.add_table(table)

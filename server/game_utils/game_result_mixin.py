@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING, Any
 
+from .game_status import GameStatus
+
 if TYPE_CHECKING:
     from ..games.base import Player
     from server.core.users.base import User
@@ -21,6 +23,8 @@ class GameResultMixin:
         players: list[Player].
         sound_scheduler_tick: int.
         _table: Table or server reference.
+        _is_transient_display_open(player) -> bool.
+        _close_transient_display(player, rebuild_menu=False).
         get_user(player) -> User | None.
         get_type() -> str.
         get_active_players() -> list[Player].
@@ -38,7 +42,7 @@ class GameResultMixin:
                              Set to False if you want to show it manually.
         """
         self.game_active = False
-        self.status = "finished"
+        self.status = GameStatus.FINISHED
 
         # Build and persist the game result
         result = self.build_game_result()
@@ -50,10 +54,7 @@ class GameResultMixin:
             self._show_end_screen(result)
 
         # Auto-destroy if no humans remain (bot-only games, but not virtual bot games)
-        has_humans = any(
-            not p.is_bot or getattr(p, "is_virtual_bot", False)
-            for p in self.players
-        )
+        has_humans = any(not p.is_bot or getattr(p, "is_virtual_bot", False) for p in self.players)
         if not has_humans:
             self.destroy()
 
@@ -135,10 +136,7 @@ class GameResultMixin:
         """
         winner_name = result.custom_data.get("winner_name")
         # Include humans and virtual bots, exclude table bots
-        human_players = [
-            p for p in result.player_results
-            if not p.is_bot or p.is_virtual_bot
-        ]
+        human_players = [p for p in result.player_results if not p.is_bot or p.is_virtual_bot]
 
         if not human_players:
             return []
@@ -163,15 +161,14 @@ class GameResultMixin:
     def _show_end_screen(self, result: GameResult) -> None:
         """Show the end screen to all players using structured result."""
         for player in self.players:
+            if self._is_transient_display_open(player):
+                self._close_transient_display(player, rebuild_menu=False)
             user = self.get_user(player)
             if user:
                 lines = self.format_end_screen(result, user.locale)
                 items = [MenuItem(text=line, id="score_line") for line in lines]
                 # Add Leave button at the end
-                items.append(MenuItem(
-                    text="Congratulations you did great!",
-                    id="leave_game"
-                ))
+                items.append(MenuItem(text=Localization.get(user.locale, "game-over-leave"), id="leave_game"))
                 user.show_menu("game_over", items, multiletter=False)
 
     def show_game_end_menu(self, score_lines: list[str]) -> None:
@@ -185,6 +182,8 @@ class GameResultMixin:
                          (e.g., ["Final Scores:", "1. Alice: 100 points", ...])
         """
         for player in self.players:
+            if self._is_transient_display_open(player):
+                self._close_transient_display(player, rebuild_menu=False)
             user = self.get_user(player)
             if user:
                 items = [MenuItem(text=line, id="score_line") for line in score_lines]

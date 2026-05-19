@@ -77,9 +77,7 @@ def _analyze_and_decide(game: "PiratesGame", player: "PiratesPlayer") -> BotDeci
     closest_gem = _find_closest_gem(game, player)
     gem_distance = abs(player.position - closest_gem) if closest_gem != -1 else 999
     valuable_target = _find_valuable_target(game, player, targets)
-    has_attack_buff = (
-        SWORD_FIGHTER.is_active(player) or SKILLED_CAPTAIN.is_active(player)
-    )
+    has_attack_buff = SWORD_FIGHTER.is_active(player) or SKILLED_CAPTAIN.is_active(player)
 
     decision = _maybe_attack_target(
         game,
@@ -253,9 +251,7 @@ def _find_closest_gem(game: "PiratesGame", player: "PiratesPlayer") -> int:
 
 
 def _find_valuable_target(
-    game: "PiratesGame",
-    player: "PiratesPlayer",
-    targets: list["PiratesPlayer"]
+    game: "PiratesGame", player: "PiratesPlayer", targets: list["PiratesPlayer"]
 ) -> "PiratesPlayer | None":
     """
     Find the most valuable target to attack.
@@ -304,7 +300,7 @@ def _calculate_attack_chance(
     target: "PiratesPlayer",
     has_attack_buff: bool,
     target_has_defense: bool,
-    gem_distance: int
+    gem_distance: int,
 ) -> float:
     """
     Calculate the probability that the bot should attack.
@@ -373,9 +369,7 @@ def _decide_movement(game: "PiratesGame", player: "PiratesPlayer") -> BotDecisio
 
 
 def _decide_movement_toward(
-    game: "PiratesGame",
-    player: "PiratesPlayer",
-    target_pos: int
+    game: "PiratesGame", player: "PiratesPlayer", target_pos: int
 ) -> BotDecision:
     """Decide movement toward a target position."""
     if player.position < target_pos:
@@ -391,10 +385,7 @@ def _decide_movement_toward(
 
 
 def _get_best_move_action(
-    game: "PiratesGame",
-    player: "PiratesPlayer",
-    direction: str,
-    target_pos: int | None = None
+    game: "PiratesGame", player: "PiratesPlayer", direction: str, target_pos: int | None = None
 ) -> BotDecision:
     """Get the best available move action for the given direction."""
     # Determine how many tiles we can move based on level
@@ -427,9 +418,7 @@ def _get_best_move_action(
 
 
 def bot_select_target(
-    game: "PiratesGame",
-    player: "PiratesPlayer",
-    targets: list["PiratesPlayer"]
+    game: "PiratesGame", player: "PiratesPlayer", targets: list["PiratesPlayer"]
 ) -> "PiratesPlayer | None":
     """
     Select a target for the bot to attack.
@@ -449,10 +438,7 @@ def bot_select_target(
 
 
 def bot_select_boarding_action(
-    game: "PiratesGame",
-    player: "PiratesPlayer",
-    defender: "PiratesPlayer",
-    can_steal: bool
+    game: "PiratesGame", player: "PiratesPlayer", defender: "PiratesPlayer", can_steal: bool
 ) -> str:
     """
     Select a boarding action for the bot.
@@ -490,9 +476,7 @@ def bot_select_boarding_action(
 
 
 def bot_select_portal_ocean(
-    game: "PiratesGame",
-    player: "PiratesPlayer",
-    ocean_options: list[tuple[int, str]]
+    game: "PiratesGame", player: "PiratesPlayer", ocean_options: list[tuple[int, str]]
 ) -> int | None:
     """
     Select an ocean for the bot to portal to.
@@ -541,9 +525,7 @@ def bot_select_portal_ocean(
 
 
 def bot_select_skill_choice(
-    game: "PiratesGame",
-    player: "PiratesPlayer",
-    skill_options: list[str]
+    game: "PiratesGame", player: "PiratesPlayer", skill_options: list[str]
 ) -> str:
     """
     Select a skill from the skill menu.

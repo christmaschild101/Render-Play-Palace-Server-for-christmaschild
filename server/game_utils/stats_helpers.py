@@ -97,9 +97,7 @@ class LeaderboardHelper:
                 raise ValueError(f"Unknown aggregate mode: {aggregate}")
 
         # Sort and build entries
-        sorted_players = sorted(
-            aggregated.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_players = sorted(aggregated.items(), key=lambda x: x[1], reverse=True)
 
         entries = []
         for rank, (player_id, value) in enumerate(sorted_players, 1):
@@ -148,9 +146,7 @@ class LeaderboardHelper:
                 return 1
             return 0
 
-        return LeaderboardHelper.build_from_results(
-            results, score_extractor, aggregate="sum"
-        )
+        return LeaderboardHelper.build_from_results(results, score_extractor, aggregate="sum")
 
 
 @dataclass
@@ -266,9 +262,7 @@ class RatingHelper:
         for group_idx, group in enumerate(rankings):
             for player_idx, pid in enumerate(group):
                 new_rating = new_teams[group_idx][player_idx]
-                self.db.set_player_rating(
-                    pid, self.game_type, new_rating.mu, new_rating.sigma
-                )
+                self.db.set_player_rating(pid, self.game_type, new_rating.mu, new_rating.sigma)
                 updated_ratings[pid] = PlayerRating(
                     player_id=pid,
                     mu=new_rating.mu,
@@ -299,10 +293,7 @@ class RatingHelper:
                 """Build winner-vs-rest rankings from a GameResult."""
                 winner_name = r.custom_data.get("winner_name")
                 # Include humans and virtual bots, exclude table bots
-                human_players = [
-                    p for p in r.player_results
-                    if not p.is_bot or p.is_virtual_bot
-                ]
+                human_players = [p for p in r.player_results if not p.is_bot or p.is_virtual_bot]
 
                 if not human_players:
                     return []
@@ -337,14 +328,9 @@ class RatingHelper:
         Returns players sorted by ordinal (conservative skill estimate).
         """
         rows = self.db.get_rating_leaderboard(self.game_type, limit)
-        return [
-            PlayerRating(player_id=pid, mu=mu, sigma=sigma)
-            for pid, mu, sigma in rows
-        ]
+        return [PlayerRating(player_id=pid, mu=mu, sigma=sigma) for pid, mu, sigma in rows]
 
-    def predict_win_probability(
-        self, player1_id: str, player2_id: str
-    ) -> float:
+    def predict_win_probability(self, player1_id: str, player2_id: str) -> float:
         """
         Predict the probability that player1 beats player2.
 

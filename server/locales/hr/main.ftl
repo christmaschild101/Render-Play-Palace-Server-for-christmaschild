@@ -35,6 +35,8 @@ whose-turn = Čiji je red
 whos-at-table = Tko je za stolom
 check-scores = Provjeri rezultate
 check-scores-detailed = Detaljni rezultati
+check-game-options = Provjeri opcije igre
+no-game-options = Nema opcija igre.
 
 # Turn messages
 game-player-skipped = { $player } je preskočen.
@@ -156,7 +158,6 @@ game-points = { $count } { $count ->
     [one] bod
    *[other] bodova
 }
-status-box-closed = Zatvoreno.
 play = Igraj
 
 # Leaderboards
@@ -260,6 +261,30 @@ account-banned = Tvoj račun je blokiran i ne može se pristupiti.
 incorrect-username = Korisničko ime koje si unio ne postoji.
 incorrect-password = Lozinka koju si unio je netočna.
 already-logged-in = Ovaj račun je već prijavljen.
+
+# Provjera valjanosti vjerodajnica
+credential-username-length = Korisničko ime mora imati između { $min } i { $max } znakova.
+credential-password-length = Lozinka mora imati između { $min } i { $max } znakova.
+
+# Ograničenje brzine
+rate-limit-login-ip = Previše pokušaja prijave s ove adrese. Pričekaj i pokušaj ponovo.
+rate-limit-login-user = Previše neuspjelih pokušaja prijave za ovo korisničko ime. Pričekaj i pokušaj ponovo.
+rate-limit-registration = Previše pokušaja registracije s ove adrese. Pričekaj i pokušaj ponovo.
+rate-limit-refresh = Previše pokušaja osvježavanja s ove adrese. Pričekaj i pokušaj ponovo.
+
+# Greške sesije i autentikacije
+account-not-found = Račun nije pronađen.
+session-expired = Sesija je istekla. Prijavi se ponovo.
+session-token-mismatch = Token sesije ne odgovara korisničkom imenu.
+refresh-token-expired = Token za osvježavanje je istekao. Prijavi se ponovo.
+refresh-token-mismatch = Token za osvježavanje ne odgovara korisničkom imenu.
+
+# Registracija
+registration-success = Registracija uspješna! Tvoj račun čeka odobrenje.
+registration-username-taken = Korisničko ime je već zauzeto. Odaberi drugo korisničko ime.
+
+# Zadana vrijednost preferencije
+pref-invalid-value = Nevažeći odabir, koristi se zadana vrijednost.
 
 # Decline reason
 decline-reason-prompt = Unesi razlog za odbijanje (ili pritisni Escape za odustajanje):

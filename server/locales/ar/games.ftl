@@ -38,7 +38,6 @@ option-on = مفعل
 option-off = معطل
 
 # Status box
-status-box-closed = تم إغلاق معلومات الحالة.
 
 # Game end
 game-leave = غادر اللعبة
@@ -63,6 +62,47 @@ game-player-deals = { $player } يوزع الأوراق.
 # Card names
 card-name = { $rank } من { $suit }
 no-cards = لا توجد أوراق
+
+# Colors (with gendered forms: m = masculine, f = feminine)
+color-black = أسود
+color-black-m = أسود
+color-black-f = سوداء
+color-blue = أزرق
+color-blue-m = أزرق
+color-blue-f = زرقاء
+color-brown = بني
+color-brown-m = بني
+color-brown-f = بنية
+color-gray = رمادي
+color-gray-m = رمادي
+color-gray-f = رمادية
+color-green = أخضر
+color-green-m = أخضر
+color-green-f = خضراء
+color-indigo = نيلي
+color-indigo-m = نيلي
+color-indigo-f = نيلية
+color-orange = برتقالي
+color-orange-m = برتقالي
+color-orange-f = برتقالية
+color-pink = وردي
+color-pink-m = وردي
+color-pink-f = وردية
+color-purple = أرجواني
+color-purple-m = أرجواني
+color-purple-f = أرجوانية
+color-red = أحمر
+color-red-m = أحمر
+color-red-f = حمراء
+color-violet = بنفسجي
+color-violet-m = بنفسجي
+color-violet-f = بنفسجية
+color-white = أبيض
+color-white-m = أبيض
+color-white-f = بيضاء
+color-yellow = أصفر
+color-yellow-m = أصفر
+color-yellow-f = صفراء
 
 # Suit names
 suit-diamonds = الماس

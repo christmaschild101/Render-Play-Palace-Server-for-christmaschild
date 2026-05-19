@@ -27,6 +27,7 @@ from accessible_lists import (
 # Example 1: Plain ManagedListBox (non-checkable)
 # -----------------------------------------------------------------------------
 
+
 class ManagedListBoxExample(wx.Panel):
     """
     Using ManagedListBox for a plain list with selection management.
@@ -140,6 +141,7 @@ class ManagedListBoxExample(wx.Panel):
 # -----------------------------------------------------------------------------
 # Example 2: Accessible CheckListBox (checkable)
 # -----------------------------------------------------------------------------
+
 
 class CheckListBoxExample(wx.Panel):
     """
@@ -270,6 +272,7 @@ class CheckListBoxExample(wx.Panel):
 # -----------------------------------------------------------------------------
 # Example 3: Multi-Column Checkable List (wx.ListCtrl)
 # -----------------------------------------------------------------------------
+
 
 class MultiColumnExample(wx.Panel):
     """
@@ -443,6 +446,7 @@ class MultiColumnExample(wx.Panel):
 # Example 4: Single-Column List (no header) - Accessible alternative to CheckListBox
 # -----------------------------------------------------------------------------
 
+
 class SingleColumnExample(wx.Panel):
     """
     Using AccessibleCheckListCtrl with show_header=False for simple lists.
@@ -562,6 +566,7 @@ class SingleColumnExample(wx.Panel):
 # -----------------------------------------------------------------------------
 # Main Application
 # -----------------------------------------------------------------------------
+
 
 class DemoFrame(wx.Frame):
     """Main demo window with all examples in a notebook."""

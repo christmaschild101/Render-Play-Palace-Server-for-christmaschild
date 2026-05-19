@@ -14,6 +14,7 @@ from ...game_utils.cards import Card
 # Card value helpers
 # ---------------------------------------------------------------------------
 
+
 def get_rank_value(rank: int) -> int:
     """Big Two rank value. 3 is lowest (3), 2 is highest (15)."""
     if rank == 2:
@@ -43,9 +44,14 @@ def sort_cards(cards: list[Card]) -> list[Card]:
 # ---------------------------------------------------------------------------
 
 TIER_MAP = {
-    "single": 0, "pair": 0, "three_of_a_kind": 0,
-    "straight": 1, "flush": 2, "full_house": 3,
-    "four_of_a_kind": 4, "straight_flush": 5,
+    "single": 0,
+    "pair": 0,
+    "three_of_a_kind": 0,
+    "straight": 1,
+    "flush": 2,
+    "full_house": 3,
+    "four_of_a_kind": 4,
+    "straight_flush": 5,
 }
 
 
@@ -91,8 +97,10 @@ class Combo(DataClassJSONMixin):
 # Straight detection
 # ---------------------------------------------------------------------------
 
-def _detect_straight(ranks: list[int], sorted_cards: list[Card],
-                     allow_2: bool) -> tuple[bool, int, int]:
+
+def _detect_straight(
+    ranks: list[int], sorted_cards: list[Card], allow_2: bool
+) -> tuple[bool, int, int]:
     """Return (is_straight, high_rank, high_suit) for a 5-card hand.
 
     *ranks* must be the rank_values of *sorted_cards* in ascending order.
@@ -134,6 +142,7 @@ def _detect_straight(ranks: list[int], sorted_cards: list[Card],
 # Combo evaluation
 # ---------------------------------------------------------------------------
 
+
 def evaluate_combo(cards: list[Card], *, allow_2_in_straights: bool = True) -> Combo | None:
     """Evaluate a list of cards and return a Combo if valid, else None."""
     n = len(cards)
@@ -147,8 +156,12 @@ def evaluate_combo(cards: list[Card], *, allow_2_in_straights: bool = True) -> C
 
     if n == 2:
         if sc[0].rank == sc[1].rank:
-            return Combo("pair", cards, get_rank_value(sc[0].rank),
-                         max(get_suit_value(sc[0].suit), get_suit_value(sc[1].suit)))
+            return Combo(
+                "pair",
+                cards,
+                get_rank_value(sc[0].rank),
+                max(get_suit_value(sc[0].suit), get_suit_value(sc[1].suit)),
+            )
         return None
 
     if n == 3:
@@ -192,6 +205,7 @@ def evaluate_combo(cards: list[Card], *, allow_2_in_straights: bool = True) -> C
 # ---------------------------------------------------------------------------
 # Instant win detection
 # ---------------------------------------------------------------------------
+
 
 def detect_instant_win(hand: list[Card], *, allow_2_in_straights: bool = True) -> str | None:
     """Check if a 13-card hand qualifies for an instant win.
