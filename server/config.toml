@@ -1,0 +1,182 @@
+# PlayPalace Server Configuration
+# On first startup the server copies this file to config.toml automatically.
+# Environment variable overrides (RENDER, PORT, etc.) are applied at startup.
+
+[auth]
+# Auto-approve new accounts (skip admin approval step).
+# Set to true if you can't approve accounts interactively (e.g., Render free plan).
+auto_approve_new_accounts = false
+# Block new accounts from being registered
+block_new_accounts = false
+# These limits are enforced during both login and registration.
+username_min_length = 3
+username_max_length = 32
+password_min_length = 8
+password_max_length = 128
+refresh_token_ttl_seconds = 2592000
+[auth.rate_limits]
+login_per_minute = 5
+login_failures_per_minute = 3
+registration_per_minute = 2
+refresh_per_minute = 10
+refresh_window_seconds = 60
+
+[network]
+# Maximum bytes accepted per websocket message (maps to websockets' max_size)
+max_message_bytes = 1048576
+# Allow ws:// without TLS (only for trusted local development).
+# On Render (or other PaaS with proxy TLS), keep this true since the
+# platform handles SSL termination at the load balancer.
+allow_insecure_ws = true
+# Paths to TLS certificate and key files (enables WSS). Both must be set together.
+# For Let's Encrypt, use fullchain.pem and privkey.pem respectively.
+# Leave commented out (or omit) to run without TLS (ws://).
+#ssl_cert = "/etc/letsencrypt/live/yourdomain.com/fullchain.pem"
+#ssl_key = "/etc/letsencrypt/live/yourdomain.com/privkey.pem"
+
+[server]
+# Bind interface IP address (default: 0.0.0.0). Use 127.0.0.1 for local-only
+# access or 0.0.0.0 to listen on all interfaces (required for Render/Docker).
+bind_ip = "0.0.0.0"
+# Port to listen on (default: 8000). Can be overridden at runtime with --port.
+port = 8000
+# Tick interval in milliseconds (default: 50ms = 20 ticks/sec)
+# Lower values = faster game updates but more CPU usage
+# Higher values = slower updates but less CPU usage
+tick_interval_ms = 50
+
+[documents]
+# How document contributions are handled:
+#   "manual"      - changes stay uncommitted; admin exports a ZIP file
+#   "auto_commit" - server auto-commits after each save (default)
+#   "auto_pr"     - auto-commit + admin can create a PR via the gh CLI
+contribution_mode = "auto_commit"
+
+[localization]
+# Default locale for new users (and for auth flows without a client locale)
+default_locale = "en"
+# Only load these locales at startup (English is always included).
+# Omit or leave empty to load all locales.
+# enabled_locales = ["en"]
+
+[virtual_bots]
+# Bot names - these will be used for virtual bot usernames
+names = [
+    "Smith", "Bastardo", "Scorpion", "Speakertest", "Kitana",
+    "Assembly_programmer", "Liu_kang", "Omega-alpha", "Alpha-omega", "Gama8",
+    "Electric-bastard", "Yamaha", "Jupiter", "Mars", "Artemis",
+    "Fire-lightning", "New_play", "Y2k-breaker", "R2dbag", "Subzero",
+    "H4mg", "4theplaying", "@mazing", "Virus", "Swordswing45",
+    "Extremekiller", "Tornado26", "Legend", "Gamesmaster", "Angel",
+    "Sa", "Gamerstorm", "Eternalgamer", "Sonic_ninja", "Summer",
+    "Sniper_70", "Blindgamer", "Nightblade", "Darkblade", "Dastardo",
+    "Boxer", "Music_and_lasers", "Ak47", "Hacker", "De_best",
+    "Flying_processor", "Best_gamer", "Destructionmaster", "Braillegamer", "Braillenote",
+    "Lasergun", "Michael", "Anna", "Emma", "Matt",
+    "Steamtrain", "Star06", "Cyrus", "Godlygamer", "Megagaming",
+    "Roflgamer_official", "Randomuser", "Capturer", "Commander", "Death",
+    "Timemaster", "Chronos", "Titan", "Aria", "Ares",
+    "Assassin", "Ball", "Master_fighter", "Lol", "Ultranovagaming",
+    "Silva", "Lily", "Yeet", "Mortalkombat", "Gun",
+    "Kai", "Sauce_code", "Lasergamer", "Still_thinking", "Still_existing",
+    "Never_existed", "Bladethegamer", "Bestgame"
+]
+
+# Timing settings (in ticks, 50ms each = 20 ticks/sec)
+min_idle_ticks = 100      # 5 sec minimum between actions when idle
+max_idle_ticks = 600      # 30 sec maximum between actions when idle
+min_online_ticks = 1200   # 1 min minimum online before considering going offline
+max_online_ticks = 6000   # 5 min maximum online
+min_offline_ticks = 600   # 30 sec minimum offline
+max_offline_ticks = 3000  # 2.5 min maximum offline
+leave_game_delay_ticks = 200  # 10 sec - spread bot departures after game ends
+start_game_delay_ticks = 400  # 20 sec - wait for players before starting
+
+# Behavior probabilities (per decision tick when idle)
+join_game_chance = 0.3    # Chance to try joining an existing game
+create_game_chance = 0.1  # Chance to try creating a new game
+go_offline_chance = 0.05  # Chance to go offline (when online long enough)
+
+# Post-game logout behavior
+logout_after_game_chance = 0.33    # 33% chance to log off after finishing a game
+logout_after_game_min_ticks = 40   # 2 sec minimum delay before logout
+logout_after_game_max_ticks = 100  # 5 sec maximum delay before logout
+
+# Maximum tables virtual bots can own per game type (0 = unlimited)
+# This limit applies to each game type separately.
+# E.g., if set to 2, bots can own up to 2 scopa tables AND 2 ninetynine tables, etc.
+max_tables_per_game = 0
+# Default guided-table seat bounds for bots that don't have profile overrides
+min_bots_per_table = 0
+max_bots_per_table = 0
+# Waiting window (in ticks) before bots retry joining a guided table after failure
+waiting_min_ticks = 40
+waiting_max_ticks = 100
+
+# Behavior when no guided-table rule applies
+#   "default"  - bots fall back to the probabilistic join/create logic
+#   "disabled" - bots stay idle/offline unless a guided slot explicitly needs them
+fallback_behavior = "default"
+# Default profile applied to bots without an explicit profile assignment
+default_profile = "default"
+# Allocation policy when total bot pool can't satisfy all guided min_bots
+#   "best_effort" (default) fills higher-priority tables first and warns if short
+#   "strict" fails fast at startup if requirements exceed the pool
+allocation_mode = "best_effort"
+
+[virtual_bots.profiles.default]
+# Profiles inherit any keys omitted here from the top-level [virtual_bots] block
+min_bots_per_table = 0  # 0 means no lower bound
+max_bots_per_table = 0  # 0 means no upper bound
+
+[virtual_bots.profiles.host]
+# Host bots fill empty tables (0 seated) and lean toward creating games
+min_bots_per_table = 0
+max_bots_per_table = 0
+
+[virtual_bots.profiles.patron]
+# Patrons only join tables that already have at least one user seated
+min_bots_per_table = 1
+max_bots_per_table = 0
+
+[virtual_bots.profiles.mixer]
+# Mixers look for partially-filled tables to round out (1-4 seated)
+min_bots_per_table = 1
+max_bots_per_table = 4
+
+[virtual_bots.bot_groups.hosts]
+# Tag specific bots and optionally pin them to a profile
+bots = ["Smith", "Bastardo", "Scorpion"]
+profile = "host"
+
+[virtual_bots.bot_groups.patrons]
+bots = ["Speakertest", "Kitana", "Assembly_programmer", "Liu_kang"]
+profile = "patron"
+
+[virtual_bots.bot_groups.mixers]
+bots = ["Omega-alpha", "Alpha-omega", "Gama8", "Electric-bastard", "Yamaha", "Jupiter", "Mars", "Artemis"]
+profile = "mixer"
+
+# Optional guided table rules pin bots to specific tables/channels.
+# Each rule lists the bot groups allowed to fill it, the enforced bot counts,
+# and the deterministic priority (lower numbers first). Tables only host one game
+# at a time, so add multiple entries if you want the same profile across games.
+# [[virtual_bots.guided_tables]]
+# table = "the table"
+# game = "crazyeights"
+# bot_groups = ["hosts", "patrons", "mixers"]
+# min_bots = 0  # Raise this to require a minimum number of bots.
+# max_bots = 4
+# priority = 10
+# profile = "mixer"  # Uncomment to force every assigned bot to behave like a mixer here
+#
+# [[virtual_bots.guided_tables]]
+# table = "scopa_lounge"
+# game = "scopa"
+# bot_groups = ["mixers"]
+# min_bots = 1
+# max_bots = 4
+# priority = 25
+# Optional tick-based scheduling: run this lounge for half of each 60-second (1200-tick) cycle
+# cycle_ticks = 1200
+# active_ticks = [0, 600]
