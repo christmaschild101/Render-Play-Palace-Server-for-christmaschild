@@ -115,20 +115,17 @@ class WebSocketServer:
     async def _health_check_handler(connection, request):
         """Handle HTTP health check requests for Render / PaaS.
 
-        websockets 14.x passes ``(connection, request)`` where
+        websockets 15.x passes ``(connection, request)`` where
         ``request.path`` is the HTTP request path. Returns an HTTP
-        response for known health-check paths, or ``None`` to let the
-        WebSocket upgrade proceed.
+        response for known health-check paths via ``connection.respond()``,
+        or ``None`` to let the WebSocket upgrade proceed.
         """
         path = getattr(request, "path", "/")
         if path in ("/", "/health", "/healthz", "/ready"):
-            body = b'{"status":"ok"}'
-            headers = {
-                "Content-Type": "application/json",
-                "Content-Length": str(len(body)),
-                "Cache-Control": "no-store",
-            }
-            return 200, headers, body
+            response = connection.respond(200, '{"status":"ok"}')
+            response.headers["Content-Type"] = "application/json"
+            response.headers["Cache-Control"] = "no-store"
+            return response
         return None
 
     async def start(self) -> None:
