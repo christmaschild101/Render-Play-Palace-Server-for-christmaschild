@@ -112,12 +112,15 @@ class WebSocketServer:
         return self._clients
 
     @staticmethod
-    async def _health_check_handler(path: str, request_headers) -> tuple[int, dict[str, str], str] | None:
+    async def _health_check_handler(connection, request):
         """Handle HTTP health check requests for Render / PaaS.
 
-        Returns an HTTP response for known health-check paths, or None to
-        let the WebSocket upgrade proceed normally.
+        websockets 14.x passes ``(connection, request)`` where
+        ``request.path`` is the HTTP request path. Returns an HTTP
+        response for known health-check paths, or ``None`` to let the
+        WebSocket upgrade proceed.
         """
+        path = getattr(request, "path", "/")
         if path in ("/", "/health", "/healthz", "/ready"):
             body = b'{"status":"ok"}'
             headers = {
