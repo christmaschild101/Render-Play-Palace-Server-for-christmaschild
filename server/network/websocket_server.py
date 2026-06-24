@@ -119,9 +119,18 @@ class WebSocketServer:
         ``request.path`` is the HTTP request path. Returns an HTTP
         response for known health-check paths via ``connection.respond()``,
         or ``None`` to let the WebSocket upgrade proceed.
+
+        WebSocket upgrade requests are never intercepted - they pass
+        through regardless of path.
         """
+        # Check for WebSocket upgrade by looking for the mandatory
+        # Sec-WebSocket-Key header (present ONLY in upgrade requests).
+        headers = getattr(request, "headers", {})
+        if headers and "sec-websocket-key" in {k.lower() for k in headers}:
+            return None
+
         path = getattr(request, "path", "/")
-        if path in ("/", "/health", "/healthz", "/ready"):
+        if path in ("/health", "/healthz", "/ready"):
             response = connection.respond(200, '{"status":"ok"}')
             response.headers["Content-Type"] = "application/json"
             response.headers["Cache-Control"] = "no-store"
