@@ -192,8 +192,14 @@ class WebSocketServer:
         self._clients[address] = client
 
         try:
-            if self._on_connect:
-                await self._on_connect(client)
+            try:
+                if self._on_connect:
+                    await self._on_connect(client)
+            except Exception:
+                identifier = client.username or client.address
+                PACKET_LOGGER.exception(
+                    "Unhandled error in on_connect for %s", identifier
+                )
 
             async for message in websocket:
                 try:
@@ -204,9 +210,6 @@ class WebSocketServer:
                     identifier = client.username or client.address
                     PACKET_LOGGER.warning("Malformed JSON from %s", identifier)
                 except Exception:
-                    # Safety net: log and continue so the connection survives.
-                    # The server layer should catch and handle errors before
-                    # they reach here, but this prevents silent disconnects.
                     identifier = client.username or client.address
                     PACKET_LOGGER.exception(
                         "Unhandled error processing message from %s", identifier

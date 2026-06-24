@@ -1470,17 +1470,8 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
     @staticmethod
     async def _send_refresh_failure(client: ClientConnection, reason: str, locale: str) -> None:
-        """Send a refresh failure with a specific reason and disconnect the client."""
+        """Send a refresh failure packet so the client can fall back to password auth."""
         await client.send({"type": "refresh_session_failure", "message": reason})
-        await client.send(
-            {
-                "type": "disconnect",
-                "reconnect": False,
-                "show_message": True,
-                "return_to_login": True,
-                "message": Localization.get(locale, "session-expired"),
-            }
-        )
 
     async def _handle_refresh_session(self, client: ClientConnection, packet: dict) -> None:
         """Refresh an access session using a refresh token."""
