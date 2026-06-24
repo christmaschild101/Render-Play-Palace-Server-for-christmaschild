@@ -604,9 +604,9 @@ class ServerEditorDialog(wx.Dialog):
 
         try:
             port_num = int(port)
-            if port_num < 1000 or port_num > 65535:
+            if port_num < 1 or port_num > 65535:
                 wx.MessageBox(
-                    "Port must be between 1000 and 65535.",
+                    "Port must be between 1 and 65535 (e.g. 443 for WSS, 80 for WS).",
                     "Validation Error",
                     wx.OK | wx.ICON_ERROR,
                 )

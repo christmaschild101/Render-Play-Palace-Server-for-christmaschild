@@ -508,6 +508,9 @@ class ConfigManager:
     def get_server_url(self, server_id: str) -> Optional[str]:
         """Build WebSocket URL for a server.
 
+        Omits the port when it matches the scheme default (443 for WSS, 80
+        for WS) so Render URLs don't need an explicit port.
+
         Args:
             server_id: Server ID
 
@@ -525,8 +528,13 @@ class ConfigManager:
         if "://" in host:
             scheme = host.split("://")[0].lower()
             host_part = host.split("://", 1)[1]
+            if (scheme == "wss" and port == 443) or (scheme == "ws" and port == 80):
+                return f"{scheme}://{host_part}"
             return f"{scheme}://{host_part}:{port}"
         else:
+            # No scheme: use wss:// when port is 443, ws:// otherwise
+            if port == 443:
+                return f"wss://{host}"
             return f"ws://{host}:{port}"
 
     def set_last_server(self, server_id: str):
