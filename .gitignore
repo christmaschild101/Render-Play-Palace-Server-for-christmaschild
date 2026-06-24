@@ -26,7 +26,7 @@ server/.coverage
 server/coverage-report.txt
 
 # Web client local deployment config
-clients/web/config.js
+# clients/web/config.js - NOT ignored since Render deploys need it committed
 
 # Documents infrastructure (server-local and runtime data)
 server/documents/independent/
