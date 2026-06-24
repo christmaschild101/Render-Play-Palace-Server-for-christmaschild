@@ -15,6 +15,7 @@ from getpass import getpass
 from pathlib import Path
 
 import json
+import re
 import websockets
 from enum import Enum
 from typing import Any
@@ -4419,14 +4420,23 @@ async def run_server(
     example_path = get_example_config_path()
     db_path = _ensure_var_server_dir() / "playpalace.db"
 
-    if _ensure_config_file(config_path, example_path):
-        return
+    _ensure_config_file(config_path, example_path)
+
+    # Apply environment variable overrides to config (Render PORT, etc.)
+    _apply_env_config_overrides(config_path)
 
     db_created, needs_owner = _inspect_database(db_path)
     if needs_owner:
         _ensure_server_owner(db_path, config_path, db_created)
 
     host = _resolve_bind_host(host, config_path)
+    # PORT env var (set by Render, Heroku, etc.) overrides the config file
+    env_port = os.environ.get("PORT")
+    if env_port is not None and port is None:
+        try:
+            port = int(env_port)
+        except (TypeError, ValueError):
+            LOG.warning("Invalid PORT env var %r, ignoring.", env_port)
     port = _resolve_port(port, config_path)
     ssl_cert, ssl_key = _resolve_ssl(ssl_cert, ssl_key, config_path)
 
@@ -4495,8 +4505,61 @@ def _install_exception_handlers(loop: asyncio.AbstractEventLoop) -> None:
     loop.set_exception_handler(_asyncio_exception_handler)
 
 
+def _apply_env_config_overrides(config_path: Path) -> None:
+    """Apply environment variable overrides to config.toml.
+
+    Checks Render-provided env vars and PlayPalace-specific overrides.
+    Silently returns if the config file can't be read/written.
+    """
+    try:
+        with open(config_path, "rb") as fh:
+            config_text = fh.read().decode("utf-8")
+    except OSError:
+        return
+
+    changed = False
+
+    # Render provides PORT env var for web services
+    port = os.environ.get("PORT")
+    if port:
+        try:
+            int(port)
+        except ValueError:
+            pass
+        else:
+            new_text, count = re.subn(
+                r"^port\s*=\s*\d+", f"port = {port}", config_text, flags=re.MULTILINE
+            )
+            if count:
+                config_text = new_text
+                changed = True
+
+    # Render sets RENDER=1 to identify the platform
+    if os.environ.get("RENDER"):
+        # Ensure bind_ip is 0.0.0.0 on Render
+        new_text, count = re.subn(
+            r'^bind_ip\s*=\s*"[^"]*"',
+            'bind_ip = "0.0.0.0"',
+            config_text,
+            flags=re.MULTILINE,
+        )
+        if count:
+            config_text = new_text
+            changed = True
+
+    if not changed:
+        return
+
+    try:
+        with open(config_path, "w", encoding="utf-8") as fh:
+            fh.write(config_text)
+        print(f"Applied environment variable overrides to '{config_path}'.")
+    except OSError:
+        pass
+
+
 def _ensure_config_file(config_path: Path, example_path: Path) -> bool:
-    """Ensure a server config exists; return True if created and exit needed."""
+    """Ensure a server config exists; return False always (no longer exits)."""
     if config_path.exists():
         return False
     if not example_path.exists():
@@ -4515,14 +4578,13 @@ def _ensure_config_file(config_path: Path, example_path: Path) -> bool:
         )
         raise SystemExit(1) from exc
     print(f"Created '{config_path}' from '{example_path}'.")
+    _apply_env_config_overrides(config_path)
     print(
-        "Review the generated configuration before running in production. "
-        "TLS is required unless you explicitly allow insecure mode.\n"
-        "Edit the file and run the server with:\n"
-        "  uv run python main.py --ssl-cert <cert> --ssl-key <key>\n"
-        "or set [network].allow_insecure_ws=true for local development."
+        "Auto-generated configuration with environment-aware defaults. "
+        "The server will continue starting up. "
+        "Set RENDER=1 or PLAYPLACE_ALLOW_INSECURE_WS=true env vars as needed."
     )
-    return True
+    return False
 
 
 def _inspect_database(db_path: Path) -> tuple[bool, bool]:
@@ -4543,7 +4605,12 @@ def _inspect_database(db_path: Path) -> tuple[bool, bool]:
 
 
 def _ensure_server_owner(db_path: Path, config_path: Path, db_created: bool) -> None:
-    """Create the initial server owner if required."""
+    """Create the initial server owner if required.
+
+    In non-interactive sessions (Render, CI, Docker) this logs a warning
+    and continues — the owner must be bootstrapped via ``account_creator.py``
+    or ``server.cli bootstrap-owner`` before the first deploy.
+    """
     from server.cli import bootstrap_owner
 
     if db_created:
@@ -4553,12 +4620,16 @@ def _ensure_server_owner(db_path: Path, config_path: Path, db_created: bool) -> 
 
     if not sys.stdin.isatty():
         print(
-            "ERROR: Cannot prompt for a server owner in a non-interactive session. "
-            "Run `uv run python -m server.cli bootstrap-owner --username <name>` "
-            "to create the initial owner.",
+            "WARNING: Cannot prompt for a server owner in a non-interactive session.\n"
+            "  The server will start without an owner account.\n"
+            "  Create one locally with:\n"
+            "    uv run python -m server.cli bootstrap-owner --username <name>\n"
+            "  or use the account creator:\n"
+            "    uv run python server/account_creator.py\n"
+            "  Then commit the database and re-deploy.",
             file=sys.stderr,
         )
-        raise SystemExit(1)
+        return
 
     min_user_len, max_user_len, min_pass_len, max_pass_len = _load_auth_limits(config_path)
 

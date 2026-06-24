@@ -1,8 +1,10 @@
 # PlayPalace Server Configuration
-# Important: Copy this file to config.toml first. Ccustomize as needed.
+# On first startup the server copies this file to config.toml automatically.
+# Environment variable overrides (RENDER, PORT, etc.) are applied at startup.
 
 [auth]
-# Auto-approve new accounts (skip admin approval step)
+# Auto-approve new accounts (skip admin approval step).
+# Account approval is handled through the Play Palace client.
 auto_approve_new_accounts = false
 # Block new accounts from being registered
 block_new_accounts = false
@@ -22,8 +24,10 @@ refresh_window_seconds = 60
 [network]
 # Maximum bytes accepted per websocket message (maps to websockets' max_size)
 max_message_bytes = 1048576
-# Allow ws:// without TLS (only for trusted local development)
-allow_insecure_ws = false
+# Allow ws:// without TLS (only for trusted local development).
+# On Render (or other PaaS with proxy TLS), keep this true since the
+# platform handles SSL termination at the load balancer.
+allow_insecure_ws = true
 # Paths to TLS certificate and key files (enables WSS). Both must be set together.
 # For Let's Encrypt, use fullchain.pem and privkey.pem respectively.
 # Leave commented out (or omit) to run without TLS (ws://).
@@ -31,9 +35,9 @@ allow_insecure_ws = false
 #ssl_key = "/etc/letsencrypt/live/yourdomain.com/privkey.pem"
 
 [server]
-# Bind interface IP address (default: 127.0.0.1). Use 127.0.0.1 for local-only
-# access or 0.0.0.0 to listen on all interfaces.
-bind_ip = "127.0.0.1"
+# Bind interface IP address (default: 0.0.0.0). Use 127.0.0.1 for local-only
+# access or 0.0.0.0 to listen on all interfaces (required for Render/Docker).
+bind_ip = "0.0.0.0"
 # Port to listen on (default: 8000). Can be overridden at runtime with --port.
 port = 8000
 # Tick interval in milliseconds (default: 50ms = 20 ticks/sec)

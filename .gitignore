@@ -5,9 +5,12 @@
 *.pytest_cache
 server/.ruff_cache
 server/.cache/
-server/config.toml
 var/*
 !var/.gitkeep
+!var/server/
+
+var/server/*
+!var/server/playpalace.db
 
 # PyInstaller artifacts
 clients/desktop/build/
