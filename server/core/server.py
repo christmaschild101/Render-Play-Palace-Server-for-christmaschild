@@ -133,7 +133,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         Args:
             host: Address to bind the server to.
             port: Port to bind the server to.
-            db_path: Path to the sqlite database file.
+            db_path: Path for the database identifier (used with PostgreSQL via DATABASE_URL).
             locales_dir: Optional directory for locale files.
             ssl_cert: Optional SSL certificate path for TLS.
             ssl_key: Optional SSL private key path for TLS.
@@ -237,17 +237,17 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         self._validate_transport_security()
 
         # Connect to database
-        self._db.connect()
+        await self._db.connect()
         self._auth = AuthManager(self._db)
 
         # Initialize trust levels for users
-        promoted_user = self._db.initialize_trust_levels()
+        promoted_user = await self._db.initialize_trust_levels()
         if promoted_user:
             print(f"User '{promoted_user}' has been promoted to server owner (trust level 3).")
-        self._warn_if_no_users()
+        await self._warn_if_no_users()
 
         # Load existing tables
-        self._load_tables()
+        await self._load_tables()
 
         # Load documents
         doc_count = self._documents.load()
@@ -259,7 +259,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         except ValueError as exc:
             print(f"ERROR: Invalid virtual bot configuration: {exc}", file=sys.stderr)
             raise SystemExit(1) from exc
-        loaded = self._virtual_bots.load_state()
+        loaded = await self._virtual_bots.load_state()
         if loaded > 0:
             print(f"Restored {loaded} virtual bots from previous session.")
 
@@ -307,10 +307,10 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             self._localization_warmup_task = None
 
         # Save all tables
-        self._save_tables()
+        await self._save_tables()
 
         # Save virtual bot state (they persist across restarts)
-        self._virtual_bots.save_state()
+        await self._virtual_bots.save_state()
 
         # Stop tick scheduler
         if self._tick_scheduler:
@@ -321,7 +321,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             await self._ws_server.stop()
 
         # Close database
-        self._db.close()
+        await self._db.close()
 
         print("Server stopped.")
 
@@ -612,12 +612,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             return Localization.get(locale, "rate-limit-refresh")
         return None
 
-    def _warn_if_no_users(self) -> None:
+    async def _warn_if_no_users(self) -> None:
         """Print a warning if no user accounts exist yet."""
         if os.environ.get(BOOTSTRAP_WARNING_ENV):
             return
         try:
-            if self._db.get_user_count() > 0:
+            if await self._db.get_user_count() > 0:
                 return
         except Exception:
             LOG.warning("Failed to check user count at startup", exc_info=True)
@@ -820,11 +820,11 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         await asyncio.to_thread(Localization.preload_bundles)
         self._lifecycle.resolve_gate(LOCALIZATION_GATE_ID)
 
-    def _load_tables(self) -> None:
+    async def _load_tables(self) -> None:
         """Load tables from database and restore their games."""
         from .users.bot import Bot
 
-        tables = self._db.load_all_tables()
+        tables = await self._db.load_all_tables()
         for table in tables:
             self._tables.add_table(table)
 
@@ -856,12 +856,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         # Delete all tables from database after loading to prevent stale data
         # on subsequent restarts. Tables will be re-saved on shutdown.
-        self._db.delete_all_tables()
+        await self._db.delete_all_tables()
 
-    def _save_tables(self) -> None:
+    async def _save_tables(self) -> None:
         """Save all tables to database."""
         tables = self._tables.save_all()
-        self._db.save_all_tables(tables)
+        await self._db.save_all_tables(tables)
         print(f"Saved {len(tables)} tables to database.")
 
     def _on_tick(self) -> None:
@@ -1090,7 +1090,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
     ) -> None:
         """Attach user state and send login success packets."""
         # Create or update network user with preferences and persistent UUID
-        user_record = self._auth.get_user(username)
+        user_record = await self._auth.get_user(username)
         if not user_record:
             await self._send_credential_error(
                 client, Localization.get(locale, "account-not-found")
@@ -1128,7 +1128,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         # Notify admin of pending account approvals (excluding banned users)
         if user.trust_level.value >= TrustLevel.ADMIN.value:
-            self._notify_pending_account_requests(user)
+            await self._notify_pending_account_requests(user)
 
         # Check if user is in a table
         if not self._restore_login_table(user, username):
@@ -1256,9 +1256,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         elif user.trust_level.value >= TrustLevel.ADMIN.value:
             self._broadcast_admin_announcement(user.username)
 
-    def _notify_pending_account_requests(self, user: NetworkUser) -> None:
+    async def _notify_pending_account_requests(self, user: NetworkUser) -> None:
         """Notify admins about pending account approvals."""
-        pending_users = self._db.get_pending_users(exclude_banned=True)
+        pending_users = await self._db.get_pending_users(exclude_banned=True)
         if not pending_users:
             return
         user.speak_l("account-request", buffer="activity")
@@ -1309,7 +1309,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         client.platform = packet.get("platform") or ""
 
         if session_token:
-            token_username = self._auth.validate_session(session_token)
+            token_username = await self._auth.validate_session(session_token)
             if not token_username:
                 await self._send_credential_error(
                     client, Localization.get(locale, "session-expired")
@@ -1336,7 +1336,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 return
 
             # Try to authenticate or register
-            auth_result = self._auth.authenticate(username, password)
+            auth_result = await self._auth.authenticate(username, password)
             if auth_result != AuthResult.SUCCESS:
                 if auth_result == AuthResult.WRONG_PASSWORD:
                     self._record_login_failure(username)
@@ -1358,12 +1358,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     return
 
                 # User not found - check if this will be a new user that needs approval
-                needs_approval = not self._auto_approve_new_accounts and self._db.get_user_count() > 0
+                needs_approval = not self._auto_approve_new_accounts and await self._db.get_user_count() > 0
                 # Try to register if accounts are not blocked
                 if self._block_new_accounts:
                     await self._send_accounts_blocked(client, locale)
                     return
-                if not self._auth.register(username, password, approved=self._auto_approve_new_accounts, locale=locale):
+                if not await self._auth.register(username, password, approved=self._auto_approve_new_accounts, locale=locale):
                     self._record_login_failure(username)
                     # Registration failed (shouldn't happen if user not found, but handle anyway)
                     error_message = Localization.get(locale, "incorrect-username")
@@ -1386,10 +1386,10 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 if needs_approval:
                     self._notify_admins("account-request", "accountrequest.ogg")
 
-        access_token, access_expires = self._auth.create_session(
+        access_token, access_expires = await self._auth.create_session(
             username, self._access_token_ttl_seconds
         )
-        refresh_token, refresh_expires = self._auth.create_refresh_token(
+        refresh_token, refresh_expires = await self._auth.create_refresh_token(
             username, self._refresh_token_ttl_seconds
         )
 
@@ -1431,12 +1431,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
 
         # All self-registered users require approval.
-        needs_approval = not self._auto_approve_new_accounts and self._db.get_user_count() > 0
+        needs_approval = not self._auto_approve_new_accounts and await self._db.get_user_count() > 0
         # Try to register the user
         if self._block_new_accounts:
             await self._send_accounts_blocked(client, locale)
             return
-        if self._auth.register(username, password, approved=self._auto_approve_new_accounts, locale=locale):
+        if await self._auth.register(username, password, approved=self._auto_approve_new_accounts, locale=locale):
             await client.send({
                 "type": "speak",
                 "text": Localization.get(locale, "registration-success"),
@@ -1486,7 +1486,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             await self._send_credential_error(client, throttle_message)
             return
 
-        result = self._auth.refresh_session(
+        result = await self._auth.refresh_session(
             refresh_token, self._access_token_ttl_seconds, self._refresh_token_ttl_seconds
         )
         if not result:
@@ -2015,7 +2015,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         languages = Localization.get_available_languages(fallback=user.locale)
         if lang_code in languages:
             user.set_locale(lang_code)
-            self._db.update_user_locale(user.username, lang_code)
+            await self._db.update_user_locale(user.username, lang_code)
             user.speak_l("language-changed", language=languages[lang_code])
         self._show_options_menu(user)
 
@@ -2025,12 +2025,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         await handle_language_menu_selection(user, selection_id)
 
-    def _show_saved_tables_menu(self, user: NetworkUser) -> bool:
+    async def _show_saved_tables_menu(self, user: NetworkUser) -> bool:
         """Show saved tables menu.
 
         Returns True if the menu was shown, False if there was nothing to show.
         """
-        saved = self._db.get_user_saved_tables(user.username)
+        saved = await self._db.get_user_saved_tables(user.username)
 
         if not saved:
             user.speak_l("no-saved-tables")
@@ -2340,7 +2340,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         elif selection_id == "saved_tables":
             if not self._ensure_user_approved(user):
                 return
-            if not self._show_saved_tables_menu(user):
+            if not await self._show_saved_tables_menu(user):
                 return  # No saved tables — user stays on main menu
         elif selection_id == "leaderboards":
             if not self._ensure_user_approved(user):
@@ -2349,7 +2349,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         elif selection_id == "my_stats":
             if not self._ensure_user_approved(user):
                 return
-            if not self._show_my_stats_menu(user):
+            if not await self._show_my_stats_menu(user):
                 return  # No stats — user stays on main menu
         elif selection_id == "documents":
             self._show_documents_menu(user)
@@ -2394,7 +2394,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             self._show_pref_category_menu(user, category)
         elif selection_id == "pref_reset_all":
             user.preferences.reset_all()
-            self._save_user_preferences(user)
+            await self._save_user_preferences(user)
             user.speak_l("pref-reset-done")
             self._show_options_menu(user)
         elif selection_id == "back":
@@ -2412,7 +2412,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         def on_done(u: NetworkUser, selected: set[str]) -> None:
             u.fluent_languages[:] = list(selected)
-            self._db.set_user_fluent_languages(u.username, u.fluent_languages)
+            asyncio.create_task(self._db.set_user_fluent_languages(u.username, u.fluent_languages))
             self._show_options_menu(u)
 
         def on_cancel(u: NetworkUser) -> None:
@@ -2464,7 +2464,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             style_value = selection_id[6:]  # Remove "style_" prefix
             style = DiceKeepingStyle.from_str(style_value)
             user.preferences.dice_keeping_style = style
-            self._save_user_preferences(user)
+            await self._save_user_preferences(user)
             style_key = self.DICE_KEEPING_STYLES.get(style, "dice-keeping-style-indexes")
             style_name = Localization.get(user.locale, style_key)
             user.speak_l("dice-keeping-style-changed", style=style_name)
@@ -2496,7 +2496,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 new_val = not getattr(prefs, field_name)
                 setattr(prefs, field_name, new_val)
                 user.play_sound("checkbox_list_on.wav" if new_val else "checkbox_list_off.wav")
-                self._save_user_preferences(user)
+                await self._save_user_preferences(user)
                 self._show_pref_category_menu(user, category, refresh=True)
             elif meta.kind == "menu":
                 # Global menu choice
@@ -2504,7 +2504,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         elif selection_id.startswith("pref_reset_cat_"):
             cat = selection_id[15:]  # Remove "pref_reset_cat_"
             user.preferences.reset_category(cat)
-            self._save_user_preferences(user)
+            await self._save_user_preferences(user)
             user.speak_l("pref-reset-done")
             self._show_pref_category_menu(user, cat, refresh=True)
         elif selection_id == "back":
@@ -2526,7 +2526,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 new_val = not getattr(prefs, field_name)
                 setattr(prefs, field_name, new_val)
                 user.play_sound("checkbox_list_on.wav" if new_val else "checkbox_list_off.wav")
-                self._save_user_preferences(user)
+                await self._save_user_preferences(user)
                 self._show_pref_detail_menu(user, field_name, refresh=True)
             elif meta.kind == "menu":
                 self._show_pref_menu_choices(user, field_name)
@@ -2545,7 +2545,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 else:
                     prefs.clear_game_override(field_name, game_type)
                     user.play_sound("checkbox_list_off.wav")
-                self._save_user_preferences(user)
+                await self._save_user_preferences(user)
                 self._show_pref_detail_menu(user, field_name, refresh=True)
             elif meta.kind == "menu":
                 self._show_pref_menu_choices(user, field_name, game_type=game_type)
@@ -2569,7 +2569,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                     user.preferences.clear_game_override(field_name, game_type)
                 else:
                     user.preferences.set_game_override(field_name, game_type, value_str)
-                self._save_user_preferences(user)
+                await self._save_user_preferences(user)
                 self._show_pref_detail_menu(user, field_name)
             else:
                 # Global value
@@ -2588,7 +2588,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 else:
                     new_val = value_str
                 setattr(prefs, field_name, new_val)
-                self._save_user_preferences(user)
+                await self._save_user_preferences(user)
 
                 display = self._format_pref_value(user.locale, meta, new_val)
                 user.speak_l(meta.change_msg, choice=display)
@@ -2603,10 +2603,10 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             else:
                 self._show_pref_category_menu(user, category)
 
-    def _save_user_preferences(self, user: NetworkUser) -> None:
+    async def _save_user_preferences(self, user: NetworkUser) -> None:
         """Save user preferences to database."""
         prefs_json = json.dumps(user.preferences.to_dict())
-        self._db.update_user_preferences(user.username, prefs_json)
+        await self._db.update_user_preferences(user.username, prefs_json)
 
     async def _handle_categories_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -2889,12 +2889,12 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         if selection_id == "restore":
             await self._restore_saved_table(user, save_id)
         elif selection_id == "delete":
-            self._db.delete_saved_table(save_id)
+            await self._db.delete_saved_table(save_id)
             user.speak_l("saved-table-deleted")
-            if not self._show_saved_tables_menu(user):
+            if not await self._show_saved_tables_menu(user):
                 self._show_main_menu(user)
         elif selection_id == "back":
-            if not self._show_saved_tables_menu(user):
+            if not await self._show_saved_tables_menu(user):
                 self._show_main_menu(user)
 
     async def _restore_saved_table(self, user: NetworkUser, save_id: int) -> None:
@@ -2907,7 +2907,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         import json
         from .users.bot import Bot
 
-        record = self._db.get_saved_table(save_id)
+        record = await self._db.get_saved_table(save_id)
         if not record:
             user.speak_l("table-not-exists")
             self._show_main_menu(user)
@@ -2938,7 +2938,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         if missing_players:
             user.speak_l("missing-players", players=", ".join(missing_players))
-            if not self._show_saved_tables_menu(user):
+            if not await self._show_saved_tables_menu(user):
                 self._show_main_menu(user)
             return
 
@@ -2992,7 +2992,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         game.broadcast_l("table-restored")
 
         # Delete the saved table now that it's been restored
-        self._db.delete_saved_table(save_id)
+        await self._db.delete_saved_table(save_id)
 
     def _show_leaderboards_menu(self, user: NetworkUser) -> None:
         """Show leaderboards game selection menu.
@@ -3019,7 +3019,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         )
         self._user_states[user.username] = {"menu": "leaderboards_menu"}
 
-    def _show_leaderboard_types_menu(self, user: NetworkUser, game_type: str) -> None:
+    async def _show_leaderboard_types_menu(self, user: NetworkUser, game_type: str) -> None:
         """Show leaderboard type selection menu for a game.
 
         Args:
@@ -3032,7 +3032,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             return
 
         # Check if there's any data for this game
-        results = self._db.get_game_stats(game_type, limit=1)
+        results = await self._db.get_game_stats(game_type, limit=1)
         if not results:
             # No data - speak message and stay on game selection
             user.speak_l("leaderboard-no-data")
@@ -3090,17 +3090,17 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "game_name": game_name,
         }
 
-    def _get_game_results(self, game_type: str) -> list:
+    async def _get_game_results(self, game_type: str) -> list:
         """Get game results as GameResult objects."""
         from ..game_utils.game_result import GameResult, PlayerResult
         import json
 
-        results = self._db.get_game_stats(game_type, limit=100)
+        results = await self._db.get_game_stats(game_type, limit=100)
         game_results = []
 
         for row in results:
             custom_data = json.loads(row[4]) if row[4] else {}
-            player_rows = self._db.get_game_result_players(row[0])
+            player_rows = await self._db.get_game_result_players(row[0])
             player_results = [
                 PlayerResult(
                     player_id=p["player_id"],
@@ -3122,7 +3122,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         return game_results
 
-    def _show_wins_leaderboard(self, user: NetworkUser, game_type: str, game_name: str) -> None:
+    async def _show_wins_leaderboard(self, user: NetworkUser, game_type: str, game_name: str) -> None:
         """Show win count leaderboard for a game.
 
         Args:
@@ -3132,7 +3132,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         """
         from ..game_utils.stats_helpers import LeaderboardHelper
 
-        game_results = self._get_game_results(game_type)
+        game_results = await self._get_game_results(game_type)
 
         # Build player stats: {player_id: {wins, losses, name}}
         player_stats: dict[str, dict] = {}
@@ -3191,7 +3191,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "game_name": game_name,
         }
 
-    def _show_rating_leaderboard(self, user: NetworkUser, game_type: str, game_name: str) -> None:
+    async def _show_rating_leaderboard(self, user: NetworkUser, game_type: str, game_name: str) -> None:
         """Show skill rating leaderboard.
 
         Args:
@@ -3202,7 +3202,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         from ..game_utils.stats_helpers import RatingHelper
 
         rating_helper = RatingHelper(self._db, game_type)
-        ratings = rating_helper.get_leaderboard(limit=10)
+        ratings = await rating_helper.get_leaderboard(limit=10)
 
         items = []
 
@@ -3218,9 +3218,9 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
                 # Get player name from UUID - check recent game results
                 player_name = rating.player_id
                 # Look up name from game results
-                results = self._db.get_game_stats(game_type, limit=100)
+                results = await self._db.get_game_stats(game_type, limit=100)
                 for result in results:
-                    players = self._db.get_game_result_players(result[0])
+                    players = await self._db.get_game_result_players(result[0])
                     for p in players:
                         if p["player_id"] == rating.player_id:
                             player_name = p["player_name"]
@@ -3257,7 +3257,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "game_name": game_name,
         }
 
-    def _show_total_score_leaderboard(
+    async def _show_total_score_leaderboard(
         self, user: NetworkUser, game_type: str, game_name: str
     ) -> None:
         """Show total score leaderboard.
@@ -3269,7 +3269,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         """
         from ..game_utils.stats_helpers import LeaderboardHelper
 
-        game_results = self._get_game_results(game_type)
+        game_results = await self._get_game_results(game_type)
 
         # Build total scores per player
         player_scores: dict[str, dict] = {}
@@ -3318,7 +3318,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "game_name": game_name,
         }
 
-    def _show_high_score_leaderboard(
+    async def _show_high_score_leaderboard(
         self, user: NetworkUser, game_type: str, game_name: str
     ) -> None:
         """Show high score leaderboard.
@@ -3328,7 +3328,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             game_type: Game type identifier.
             game_name: Localized game name.
         """
-        game_results = self._get_game_results(game_type)
+        game_results = await self._get_game_results(game_type)
 
         # Build high scores per player
         player_high: dict[str, dict] = {}
@@ -3376,7 +3376,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             "game_name": game_name,
         }
 
-    def _show_games_played_leaderboard(
+    async def _show_games_played_leaderboard(
         self, user: NetworkUser, game_type: str, game_name: str
     ) -> None:
         """Show games played leaderboard.
@@ -3386,7 +3386,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             game_type: Game type identifier.
             game_name: Localized game name.
         """
-        game_results = self._get_game_results(game_type)
+        game_results = await self._get_game_results(game_type)
 
         # Count games per player
         player_games: dict[str, dict] = {}
@@ -3456,7 +3456,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             return float(current)
         return None
 
-    def _show_custom_leaderboard(
+    async def _show_custom_leaderboard(
         self,
         user: NetworkUser,
         game_type: str,
@@ -3471,7 +3471,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             game_name: Localized game name.
             config: Leaderboard config dict from game class.
         """
-        game_results = self._get_game_results(game_type)
+        game_results = await self._get_game_results(game_type)
 
         lb_id = config["id"]
         aggregate = config.get("aggregate", "sum")
@@ -3589,7 +3589,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         """
         if selection_id.startswith("lb_"):
             game_type = selection_id[3:]  # Remove "lb_" prefix
-            self._show_leaderboard_types_menu(user, game_type)
+            await self._show_leaderboard_types_menu(user, game_type)
         elif selection_id == "back":
             self._show_main_menu(user)
 
@@ -3608,15 +3608,15 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
 
         # Built-in leaderboard types
         if selection_id == "type_wins":
-            self._show_wins_leaderboard(user, game_type, game_name)
+            await self._show_wins_leaderboard(user, game_type, game_name)
         elif selection_id == "type_rating":
-            self._show_rating_leaderboard(user, game_type, game_name)
+            await self._show_rating_leaderboard(user, game_type, game_name)
         elif selection_id == "type_total_score":
-            self._show_total_score_leaderboard(user, game_type, game_name)
+            await self._show_total_score_leaderboard(user, game_type, game_name)
         elif selection_id == "type_high_score":
-            self._show_high_score_leaderboard(user, game_type, game_name)
+            await self._show_high_score_leaderboard(user, game_type, game_name)
         elif selection_id == "type_games_played":
-            self._show_games_played_leaderboard(user, game_type, game_name)
+            await self._show_games_played_leaderboard(user, game_type, game_name)
         elif selection_id == "back":
             self._show_leaderboards_menu(user)
         elif selection_id.startswith("type_"):
@@ -3626,7 +3626,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             if game_class:
                 for config in game_class.get_leaderboard_types():
                     if config["id"] == lb_id:
-                        self._show_custom_leaderboard(user, game_type, game_name, config)
+                        await self._show_custom_leaderboard(user, game_type, game_name, config)
                         return
 
     async def _handle_game_leaderboard_selection(
@@ -3642,14 +3642,14 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         if selection_id == "back":
             game_type = state.get("game_type", "")
             game_name = state.get("game_name", "")
-            self._show_leaderboard_types_menu(user, game_type)
+            await self._show_leaderboard_types_menu(user, game_type)
         # Other selections (entries, header) are informational only
 
     # =========================================================================
     # My Stats menu
     # =========================================================================
 
-    def _show_my_stats_menu(self, user: NetworkUser) -> bool:
+    async def _show_my_stats_menu(self, user: NetworkUser) -> bool:
         """Show game selection menu for personal stats.
 
         Returns True if the menu was shown, False if there was nothing to show.
@@ -3662,7 +3662,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             for game_class in categories[category_key]:
                 game_type = game_class.get_type()
                 # Check if user has played this game
-                game_results = self._get_game_results(game_type)
+                game_results = await self._get_game_results(game_type)
                 has_stats = any(
                     p.player_id == user.uuid
                     for result in game_results
@@ -3687,7 +3687,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         self._user_states[user.username] = {"menu": "my_stats_menu"}
         return True
 
-    def _show_my_game_stats(self, user: NetworkUser, game_type: str) -> None:
+    async def _show_my_game_stats(self, user: NetworkUser, game_type: str) -> None:
         """Show personal stats for a specific game.
 
         Args:
@@ -3702,7 +3702,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             return
 
         game_name = Localization.get(user.locale, game_class.get_name_key())
-        game_results = self._get_game_results(game_type)
+        game_results = await self._get_game_results(game_type)
 
         # Calculate player's personal stats
         wins = 0
@@ -3984,7 +3984,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             self._show_main_menu(user)
         elif selection_id.startswith("stats_"):
             game_type = selection_id[6:]  # Remove "stats_" prefix
-            self._show_my_game_stats(user, game_type)
+            await self._show_my_game_stats(user, game_type)
 
     async def _handle_my_game_stats_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -3997,7 +3997,7 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             state: Current menu state.
         """
         if selection_id == "back":
-            if not self._show_my_stats_menu(user):
+            if not await self._show_my_stats_menu(user):
                 self._show_main_menu(user)
         # Other selections (stats entries) are informational only
 
@@ -4027,16 +4027,18 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
         if not isinstance(result, GameResult):
             return
 
-        # Save to database
-        self._db.save_game_result(
-            game_type=result.game_type,
-            timestamp=result.timestamp,
-            duration_ticks=result.duration_ticks,
-            players=[
-                (p.player_id, p.player_name, p.is_bot, getattr(p, "is_virtual_bot", False))
-                for p in result.player_results
-            ],
-            custom_data=result.custom_data,
+        # Save to database (fire-and-forget async task)
+        asyncio.create_task(
+            self._db.save_game_result(
+                game_type=result.game_type,
+                timestamp=result.timestamp,
+                duration_ticks=result.duration_ticks,
+                players=[
+                    (p.player_id, p.player_name, p.is_bot, getattr(p, "is_virtual_bot", False))
+                    for p in result.player_results
+                ],
+                custom_data=result.custom_data,
+            )
         )
 
     def on_table_save(self, table, username: str) -> None:
@@ -4070,13 +4072,15 @@ class Server(AdministrationMixin, DocumentBrowsingMixin, TranscriberRoleMixin):
             )
         members_json = json.dumps(members_data)
 
-        # Save to database
-        self._db.save_user_table(
-            username=username,
-            save_name=save_name,
-            game_type=table.game_type,
-            game_json=game_json,
-            members_json=members_json,
+        # Save to database (fire-and-forget async task)
+        asyncio.create_task(
+            self._db.save_user_table(
+                username=username,
+                save_name=save_name,
+                game_type=table.game_type,
+                game_json=game_json,
+                members_json=members_json,
+            )
         )
 
         # Broadcast save message and destroy the table
@@ -4409,16 +4413,15 @@ async def run_server(
 
     config_path = get_default_config_path()
     example_path = get_example_config_path()
-    db_path = _ensure_var_server_dir() / "playpalace.db"
 
     _ensure_config_file(config_path, example_path)
 
     # Apply environment variable overrides to config (Render PORT, etc.)
     _apply_env_config_overrides(config_path)
 
-    db_created, needs_owner = _inspect_database(db_path)
+    needs_owner = await _inspect_database()
     if needs_owner:
-        _ensure_server_owner(db_path, config_path, db_created)
+        await _ensure_server_owner(config_path)
 
     host = _resolve_bind_host(host, config_path)
     # PORT env var (set by Render, Heroku, etc.) overrides the config file
@@ -4437,7 +4440,7 @@ async def run_server(
         port=port,
         ssl_cert=ssl_cert,
         ssl_key=ssl_key,
-        db_path=str(db_path),
+        db_path="playpalace.db",
         preload_locales=preload_locales,
     )
     await server.start()
@@ -4578,24 +4581,21 @@ def _ensure_config_file(config_path: Path, example_path: Path) -> bool:
     return False
 
 
-def _inspect_database(db_path: Path) -> tuple[bool, bool]:
-    """Check if the database exists and whether an owner is required."""
-    if not db_path.exists():
-        return True, True
-
+async def _inspect_database() -> bool:
+    """Connect to PostgreSQL and check whether an owner is required."""
     try:
-        database = Database(str(db_path))
-        database.connect()
-        user_count = database.get_user_count()
-        owner = database.get_server_owner()
-        database.close()
-        return False, user_count == 0 or owner is None
+        database = Database()
+        await database.connect()
+        user_count = await database.get_user_count()
+        owner = await database.get_server_owner()
+        await database.close()
+        return user_count == 0 or owner is None
     except Exception as exc:
-        print(f"ERROR: Failed to open database '{db_path}': {exc}", file=sys.stderr)
+        print(f"ERROR: Failed to inspect database: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
 
-def _ensure_server_owner(db_path: Path, config_path: Path, db_created: bool) -> None:
+async def _ensure_server_owner(config_path: Path) -> None:
     """Create the initial server owner if required.
 
     In non-interactive sessions (Render, CI, Docker) this logs a warning
@@ -4604,10 +4604,7 @@ def _ensure_server_owner(db_path: Path, config_path: Path, db_created: bool) -> 
     """
     from server.cli import bootstrap_owner
 
-    if db_created:
-        print(f"Creating database at '{db_path}'.")
-    else:
-        print("No server owner found in the database. Creating one now.")
+    print("No server owner found in the database. Creating one now.")
 
     if not sys.stdin.isatty():
         print(
@@ -4617,7 +4614,7 @@ def _ensure_server_owner(db_path: Path, config_path: Path, db_created: bool) -> 
             "    uv run python -m server.cli bootstrap-owner --username <name>\n"
             "  or use the account creator:\n"
             "    uv run python server/account_creator.py\n"
-            "  Then commit the database and re-deploy.",
+            "  Then deploy with a configured PostgreSQL database.",
             file=sys.stderr,
         )
         return
@@ -4628,8 +4625,7 @@ def _ensure_server_owner(db_path: Path, config_path: Path, db_created: bool) -> 
     password = _prompt_password(min_pass_len, max_pass_len)
 
     try:
-        bootstrap_owner(
-            db_path=str(db_path),
+        await bootstrap_owner(
             username=username,
             password=password,
             quiet=True,

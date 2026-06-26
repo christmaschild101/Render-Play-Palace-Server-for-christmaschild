@@ -58,30 +58,30 @@ class DummyDB:
         self.pending = []
         self.non_admins = ["newbie", "trouble"]
 
-    def update_user_trust(self, username, trust_level, approved):
+    async def update_user_trust(self, username, trust_level, approved):
         self.updated.append((username, trust_level, approved))
 
-    def get_pending_users(self, exclude_banned=True):
+    async def get_pending_users(self, exclude_banned=True):
         return self.pending
 
-    def get_non_admin_users(self, exclude_banned=True):
+    async def get_non_admin_users(self, exclude_banned=True):
         return [
             SimpleNamespace(username=u, trust_level=TrustLevel.USER, approved=False)
             for u in self.non_admins
         ]
 
-    def approve_user(self, username):
+    async def approve_user(self, username):
         self.updated.append((username, TrustLevel.USER, True))
         return True
 
-    def delete_user(self, username):
+    async def delete_user(self, username):
         self.updated.append((username, "deleted", False))
         return True
 
-    def update_user_trust_level(self, username, trust_level):
+    async def update_user_trust_level(self, username, trust_level):
         self.updated.append((username, trust_level, True))
 
-    def get_game_stats(self, game_type, limit=1):
+    async def get_game_stats(self, game_type, limit=1):
         return [("row",)]  # signal data exists
 
 
@@ -152,7 +152,8 @@ async def test_handle_ban_reason_editbox_applies(server):
     assert admin.menus[-1] in {"admin_menu", "ban_user_menu"}
 
 
-def test_show_leaderboard_types_menu_with_data(server):
+@pytest.mark.asyncio
+async def test_show_leaderboard_types_menu_with_data(server):
     user = DummyUser("alice")
     server._users = {"alice": user}
     # Stub registry: return a fake game class with leaderboard types
@@ -170,6 +171,6 @@ def test_show_leaderboard_types_menu_with_data(server):
 
     core_server_module.get_game_class = registry.get_game_class  # type: ignore[assignment]
 
-    server._show_leaderboard_types_menu(user, "fake")
+    await server._show_leaderboard_types_menu(user, "fake")
 
     assert user.menus[-1] == "leaderboard_types_menu"

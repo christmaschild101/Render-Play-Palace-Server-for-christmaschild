@@ -21,7 +21,7 @@ class GamePredictionMixin:
         status_box(player, lines).
     """
 
-    def _action_predict_outcomes(self, player: "Player", action_id: str) -> None:
+    async def _action_predict_outcomes(self, player: "Player", action_id: str) -> None:
         """Show predicted outcomes based on player ratings."""
         user = self.get_user(player)
         if not user:
@@ -36,8 +36,8 @@ class GamePredictionMixin:
             user.speak_l("predict-need-players")
             return
 
-        player_ratings = self._collect_player_ratings(rating_helper, human_players)
-        lines = self._build_prediction_lines(user, rating_helper, player_ratings)
+        player_ratings = await self._collect_player_ratings(rating_helper, human_players)
+        lines = await self._build_prediction_lines(user, rating_helper, player_ratings)
         self.status_box(player, lines)
 
     def _get_prediction_helper(self, user: "User") -> RatingHelper | None:
@@ -51,15 +51,18 @@ class GamePredictionMixin:
         """Return human, non-spectator players."""
         return [p for p in self.players if not p.is_bot and not p.is_spectator]
 
-    def _collect_player_ratings(
+    async def _collect_player_ratings(
         self, rating_helper: RatingHelper, players: list["Player"]
     ) -> list[tuple["Player", Any]]:
         """Collect and sort ratings for the provided players."""
-        player_ratings = [(p, rating_helper.get_rating(p.id)) for p in players]
-        player_ratings.sort(key=lambda x: x[1].ordinal, reverse=True)
-        return player_ratings
+        ratings = []
+        for p in players:
+            rating = await rating_helper.get_rating(p.id)
+            ratings.append((p, rating))
+        ratings.sort(key=lambda x: x[1].ordinal, reverse=True)
+        return ratings
 
-    def _build_prediction_lines(
+    async def _build_prediction_lines(
         self,
         user: "User",
         rating_helper: RatingHelper,
@@ -68,14 +71,13 @@ class GamePredictionMixin:
         """Format prediction lines for display."""
         lines = [Localization.get(user.locale, "predict-header")]
         for rank, (player, rating) in enumerate(player_ratings, 1):
-            lines.append(
-                self._format_prediction_entry(
-                    user, rating_helper, player_ratings, rank, player, rating
-                )
+            entry = await self._format_prediction_entry(
+                user, rating_helper, player_ratings, rank, player, rating
             )
+            lines.append(entry)
         return lines
 
-    def _format_prediction_entry(
+    async def _format_prediction_entry(
         self,
         user: "User",
         rating_helper: RatingHelper,
@@ -87,7 +89,7 @@ class GamePredictionMixin:
         """Format a single prediction entry."""
         if len(player_ratings) == 2:
             other = player_ratings[1] if rank == 1 else player_ratings[0]
-            win_prob = rating_helper.predict_win_probability(player.id, other[0].id)
+            win_prob = await rating_helper.predict_win_probability(player.id, other[0].id)
             return Localization.get(
                 user.locale,
                 "predict-entry-2p",

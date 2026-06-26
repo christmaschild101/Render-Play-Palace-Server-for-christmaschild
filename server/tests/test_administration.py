@@ -44,19 +44,19 @@ class DummyDB:
         self.non_admin_users: list[str] = []
         self.admin_users: list[str] = []
 
-    def get_pending_users(self):
+    async def get_pending_users(self):
         return [SimpleNamespace(username=name) for name in self.pending_users]
 
-    def get_non_admin_users(self, exclude_banned=True):
+    async def get_non_admin_users(self, exclude_banned=True):
         return [SimpleNamespace(username=name) for name in self.non_admin_users]
 
-    def get_admin_users(self, include_server_owner=True):
+    async def get_admin_users(self, include_server_owner=True):
         users = [SimpleNamespace(username=name) for name in self.admin_users]
         if not include_server_owner and self.admin_users:
             return users
         return users
 
-    def get_user(self, username):
+    async def get_user(self, username):
         if username in self.non_admin_users:
             return SimpleNamespace(username=username, trust_level=TrustLevel.USER)
         if username in self.admin_users:
@@ -167,18 +167,18 @@ def test_show_admin_menu_includes_owner_actions():
     ]
 
 
-def test_account_approval_menu_handles_pending_and_empty():
+async def test_account_approval_menu_handles_pending_and_empty():
     db = DummyDB()
     host = AdminHost(db=db)
     admin_user = DummyUser("admin", TrustLevel.ADMIN)
 
-    host._show_account_approval_menu(admin_user)
+    await host._show_account_approval_menu(admin_user)
     assert admin_user.spoken[0][0] == "no-pending-accounts"
     assert admin_user.menus[-1]["menu_id"] == "admin_menu"
 
     db.pending_users = ["alice", "bob"]
     admin_user.spoken.clear()
-    host._show_account_approval_menu(admin_user)
+    await host._show_account_approval_menu(admin_user)
     ids = _get_menu_ids(admin_user)
     assert ids == ["pending_alice", "pending_bob", "back"]
     assert host._user_states["admin"]["menu"] == "account_approval_menu"
@@ -200,50 +200,50 @@ def test_virtual_bots_menu_shows_status_and_updates_state():
     assert host._user_states["owner"]["menu"] == "virtual_bots_menu"
 
 
-def test_show_promote_admin_menu_handles_empty_and_entries():
+async def test_show_promote_admin_menu_handles_empty_and_entries():
     db = DummyDB()
     host = AdminHost(db=db)
     owner_user = DummyUser("owner", TrustLevel.SERVER_OWNER)
 
-    host._show_promote_admin_menu(owner_user)
+    await host._show_promote_admin_menu(owner_user)
     assert owner_user.spoken[-1][0] == "no-users-to-promote"
     assert host._user_states["owner"]["menu"] == "admin_menu"
 
     db.non_admin_users = ["alice"]
     owner_user.spoken.clear()
-    host._show_promote_admin_menu(owner_user)
+    await host._show_promote_admin_menu(owner_user)
     assert owner_user.menus[-1]["menu_id"] == "promote_admin_menu"
     assert _get_menu_ids(owner_user) == ["promote_alice", "back"]
 
 
-def test_show_demote_admin_menu_filters_self_and_empty():
+async def test_show_demote_admin_menu_filters_self_and_empty():
     db = DummyDB()
     host = AdminHost(db=db)
     owner_user = DummyUser("owner", TrustLevel.SERVER_OWNER)
 
-    host._show_demote_admin_menu(owner_user)
+    await host._show_demote_admin_menu(owner_user)
     assert owner_user.spoken[-1][0] == "no-admins-to-demote"
     assert host._user_states["owner"]["menu"] == "admin_menu"
 
     db.admin_users = ["owner", "eve"]
     owner_user.spoken.clear()
-    host._show_demote_admin_menu(owner_user)
+    await host._show_demote_admin_menu(owner_user)
     assert owner_user.menus[-1]["menu_id"] == "demote_admin_menu"
     assert _get_menu_ids(owner_user) == ["demote_eve", "back"]
 
 
-def test_show_reset_password_user_menu_handles_empty_and_entries():
+async def test_show_reset_password_user_menu_handles_empty_and_entries():
     db = DummyDB()
     host = AdminHost(db=db)
     admin_user = DummyUser("admin", TrustLevel.ADMIN)
 
-    host._show_reset_password_user_menu(admin_user)
+    await host._show_reset_password_user_menu(admin_user)
     assert admin_user.spoken[-1][0] == "no-users-to-reset-password"
     assert host._user_states["admin"]["menu"] == "admin_menu"
 
     db.non_admin_users = ["alice"]
     admin_user.spoken.clear()
-    host._show_reset_password_user_menu(admin_user)
+    await host._show_reset_password_user_menu(admin_user)
     assert admin_user.menus[-1]["menu_id"] == "reset_password_user_menu"
     assert _get_menu_ids(admin_user) == ["reset_password_alice", "back"]
 
@@ -330,9 +330,9 @@ async def test_handle_pending_user_actions_selection_paths(monkeypatch):
     host._show_decline_reason_editbox = types.MethodType(
         lambda self, user, target: declines.append(target), host
     )
-    host._show_account_approval_menu = types.MethodType(
-        lambda self, user: backs.append(user.username), host
-    )
+    async def _show_account_approval_menu_stub(self, user):
+        backs.append(user.username)
+    host._show_account_approval_menu = types.MethodType(_show_account_approval_menu_stub, host)
 
     state = {"pending_username": "newbie"}
     await host._handle_pending_user_actions_selection(admin_user, "approve", state)
@@ -354,9 +354,9 @@ async def test_handle_promote_confirm_selection(monkeypatch):
     host._show_broadcast_choice_menu = types.MethodType(
         lambda self, user, action, target: calls.append((action, target)), host
     )
-    host._show_promote_admin_menu = types.MethodType(
-        lambda self, user: calls.append(("menu", user.username)), host
-    )
+    async def _show_promote_admin_menu_stub(self, user):
+        calls.append(("menu", user.username))
+    host._show_promote_admin_menu = types.MethodType(_show_promote_admin_menu_stub, host)
 
     await host._handle_promote_confirm_selection(owner_user, "yes", {"target_username": "bob"})
     await host._handle_promote_confirm_selection(owner_user, "no", {"target_username": "bob"})

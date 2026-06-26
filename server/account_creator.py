@@ -1,12 +1,13 @@
-"""Account creator GUI — creates the server owner account in the local database.
+"""Account creator GUI — creates the server owner account.
 
 Run locally before deploying to Render:
     uv run python server/account_creator.py
 
-The database (var/server/playpalace.db) and config (config.toml) can then be
-committed to git and pushed to Render so the server starts with an owner.
+The config (config.toml) can then be committed to git and pushed to Render.
+The owner account is stored in PostgreSQL (DATABASE_URL) and persists across deploys.
 """
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -14,7 +15,6 @@ import wx
 
 _MODULE_DIR = Path(__file__).parent
 _REPO_ROOT = _MODULE_DIR.parent
-_VAR_SERVER_DIR = _REPO_ROOT / "var" / "server"
 
 
 class AccountCreatorApp(wx.App):
@@ -43,14 +43,6 @@ class AccountCreatorDialog(wx.Dialog):
         title_font = title_font.Bold()
         title.SetFont(title_font)
         sizer.Add(title, 0, wx.ALL | wx.CENTER, 10)
-
-        # Database path info
-        db_path = _VAR_SERVER_DIR / "playpalace.db"
-        db_label = wx.StaticText(
-            panel, label=f"Database: {db_path}"
-        )
-        db_label.SetForegroundColour(wx.Colour(100, 100, 100))
-        sizer.Add(db_label, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Username
         user_label = wx.StaticText(panel, label="&Username:")
@@ -129,30 +121,29 @@ class AccountCreatorDialog(wx.Dialog):
             self._password.SetFocus()
             return
 
-        db_path = _VAR_SERVER_DIR / "playpalace.db"
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-
-        self._log(f"Connecting to database at {db_path}...")
+        self._log("Connecting to PostgreSQL (DATABASE_URL)...")
         self._create_btn.Enable(False)
         wx.SafeYield()
 
         try:
             from server.cli import bootstrap_owner
 
-            action = bootstrap_owner(
-                db_path=str(db_path),
-                username=username,
-                password=password,
-                locale="en",
-                force=True,
-                quiet=True,
-            )
+            async def _do_bootstrap():
+                return await bootstrap_owner(
+                    username=username,
+                    password=password,
+                    locale="en",
+                    force=True,
+                    quiet=True,
+                )
+
+            action = asyncio.run(_do_bootstrap())
             self._log(f"SUCCESS: {action} server owner '{username}'.")
             self._log("")
-            self._log("You can now commit the database to git:")
-            self._log(f"  git add -f {db_path}")
+            self._log("The owner account is stored in PostgreSQL and persists across deploys.")
+            self._log("You can now commit the config and re-deploy:")
             self._log("  git add -f server/config.toml")
-            self._log("  git commit -m 'Add server config and owner account'")
+            self._log("  git commit -m 'Update server config'")
             self._log("  git push")
         except Exception as exc:
             self._log(f"ERROR: {exc}")

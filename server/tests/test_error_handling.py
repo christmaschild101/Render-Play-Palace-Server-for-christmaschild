@@ -274,7 +274,8 @@ def test_preferences_type_error_caught(server, caplog):
 # ---------------------------------------------------------------------------
 
 
-def test_warn_if_no_users_db_error_logs(server, caplog, monkeypatch):
+@pytest.mark.asyncio
+async def test_warn_if_no_users_db_error_logs(server, caplog, monkeypatch):
     """Database errors during startup check should be logged."""
     monkeypatch.delenv("PLAYPALACE_BOOTSTRAP_WARNING_SUPPRESSED", raising=False)
 
@@ -285,7 +286,7 @@ def test_warn_if_no_users_db_error_logs(server, caplog, monkeypatch):
     server._db = BrokenDB()
 
     with caplog.at_level(logging.WARNING, logger="playpalace.server"):
-        server._warn_if_no_users()
+        await server._warn_if_no_users()
 
     assert any("Failed to check user count" in r.message for r in caplog.records)
 

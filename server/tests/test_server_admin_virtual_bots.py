@@ -49,19 +49,19 @@ class DummyDB:
         self.users = users or []
         self.updated = []
 
-    def get_admin_users(self, include_server_owner=True):
+    async def get_admin_users(self, include_server_owner=True):
         return [SimpleNamespace(username=u, trust_level=TrustLevel.ADMIN) for u in self.users]
 
-    def get_non_admin_users(self, exclude_banned=True):
+    async def get_non_admin_users(self, exclude_banned=True):
         return [
             SimpleNamespace(username=u, trust_level=TrustLevel.USER, approved=True)
             for u in self.users
         ]
 
-    def update_user_trust_level(self, username, trust_level):
+    async def update_user_trust_level(self, username, trust_level):
         self.updated.append((username, trust_level))
 
-    def get_pending_users(self, exclude_banned=True):
+    async def get_pending_users(self, exclude_banned=True):
         return []
 
 
@@ -75,15 +75,12 @@ class DummyBotsManager:
         self.filled = True
         return (1, 1)
 
-    def save_state(self):
+    async def save_state(self):
         self.saved = True
 
-    def clear_bots(self):
+    async def clear_bots(self):
         self.cleared = True
         return 2, 0
-
-    def save_state(self):
-        self.saved = True
 
     def get_status(self):
         return {"online": 0, "total": 0, "offline": 0, "in_game": 0}

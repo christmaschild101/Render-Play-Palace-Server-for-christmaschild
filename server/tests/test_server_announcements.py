@@ -32,7 +32,7 @@ class FakeDBPending:
     def __init__(self, pending: list[str]) -> None:
         self.pending = pending
 
-    def get_pending_users(self, exclude_banned: bool = True):
+    async def get_pending_users(self, exclude_banned: bool = True):
         return self.pending
 
 
@@ -63,21 +63,23 @@ def test_broadcast_owner_announcement_only_hits_approved(server):
     assert unapproved.spoken == []
 
 
-def test_notify_pending_account_requests_speaks_and_sounds(server):
+@pytest.mark.asyncio
+async def test_notify_pending_account_requests_speaks_and_sounds(server):
     user = DummyUser()
     server._db = FakeDBPending(["someone"])
 
-    server._notify_pending_account_requests(user)
+    await server._notify_pending_account_requests(user)
 
     assert ("account-request", "activity", {}) in user.spoken
     assert "accountrequest.ogg" in user.sounds
 
 
-def test_notify_pending_account_requests_no_pending_silent(server):
+@pytest.mark.asyncio
+async def test_notify_pending_account_requests_no_pending_silent(server):
     user = DummyUser()
     server._db = FakeDBPending([])
 
-    server._notify_pending_account_requests(user)
+    await server._notify_pending_account_requests(user)
 
     assert user.spoken == []
     assert user.sounds == []

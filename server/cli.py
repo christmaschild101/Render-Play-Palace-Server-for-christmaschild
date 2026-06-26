@@ -27,6 +27,7 @@ Usage examples:
 """
 
 import argparse
+import asyncio
 import json
 import sys
 from dataclasses import dataclass, field
@@ -739,14 +740,14 @@ def _resolve_bootstrap_password(args: argparse.Namespace) -> str:
     return _prompt_for_password()
 
 
-def bootstrap_owner(
+async def bootstrap_owner(
     *,
-    db_path: str,
     username: str,
     password: str,
     locale: str = "en",
     force: bool = False,
     quiet: bool = False,
+    database: Database | None = None,
 ) -> str:
     """
     Create or update the initial server owner account.
@@ -757,12 +758,14 @@ def bootstrap_owner(
     if not password:
         raise RuntimeError("Password cannot be empty.")
 
-    database = Database(db_path)
-    database.connect()
+    own_db = database is None
+    if own_db:
+        database = Database()
+        await database.connect()
 
     try:
         auth = AuthManager(database)
-        user_count = database.get_user_count()
+        user_count = await database.get_user_count()
         password_hash = auth.hash_password(password)
 
         if user_count > 0 and not force:
@@ -770,17 +773,17 @@ def bootstrap_owner(
                 "Database already contains users. Use --force if you intend to replace or update an existing account."
             )
 
-        if database.user_exists(username):
+        if await database.user_exists(username):
             if not force:
                 raise RuntimeError(
                     f"User '{username}' already exists. Use --force to elevate/update the account."
                 )
-            database.update_user_password(username, password_hash)
-            database.update_user_trust_level(username, TrustLevel.SERVER_OWNER)
-            database.approve_user(username)
+            await database.update_user_password(username, password_hash)
+            await database.update_user_trust_level(username, TrustLevel.SERVER_OWNER)
+            await database.approve_user(username)
             action = "Updated"
         else:
-            database.create_user(
+            await database.create_user(
                 username=username,
                 password_hash=password_hash,
                 locale=locale,
@@ -790,10 +793,11 @@ def bootstrap_owner(
             action = "Created"
 
         if not quiet:
-            print(f"{action} server owner '{username}' in {db_path}.")
+            print(f"{action} server owner '{username}'.")
         return action
     finally:
-        database.close()
+        if own_db:
+            await database.close()
 
 
 def cmd_bootstrap_owner(args: argparse.Namespace) -> None:
@@ -805,14 +809,13 @@ def cmd_bootstrap_owner(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     try:
-        bootstrap_owner(
-            db_path=args.db_path,
+        asyncio.run(bootstrap_owner(
             username=args.username,
             password=password,
             locale=args.locale,
             force=args.force,
             quiet=args.quiet,
-        )
+        ))
     except RuntimeError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -905,11 +908,6 @@ def main():
         "--password-stdin",
         action="store_true",
         help="Read password from stdin (useful for automation)",
-    )
-    bootstrap_parser.add_argument(
-        "--db-path",
-        default="playpalace.db",
-        help="Path to the server database (default resolves to var/server/playpalace.db)",
     )
     bootstrap_parser.add_argument(
         "--locale",

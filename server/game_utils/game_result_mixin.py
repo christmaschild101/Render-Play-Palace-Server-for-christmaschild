@@ -1,5 +1,6 @@
 """Mixin providing game result handling and persistence."""
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from .game_status import GameStatus
@@ -122,8 +123,8 @@ class GameResultMixin:
             # Need at least 2 teams/players to update ratings
             return
 
-        # Update ratings
-        rating_helper.update_ratings(rankings)
+        # Update ratings (fire-and-forget async task)
+        asyncio.create_task(rating_helper.update_ratings(rankings))
 
     def get_rankings_for_rating(self, result: GameResult) -> list[list[str]]:
         """Get player rankings for rating update. Override for custom ranking logic.

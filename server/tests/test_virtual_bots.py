@@ -1618,10 +1618,10 @@ class VirtualBotStub:
         self.fill_calls += 1
         return self.fill_result
 
-    def save_state(self):
+    async def save_state(self):
         self.save_calls += 1
 
-    def clear_bots(self):
+    async def clear_bots(self):
         self.clear_calls += 1
         return self.clear_result
 
@@ -2185,17 +2185,18 @@ async def test_admin_guided_overview_with_warning(monkeypatch):
     assert "host" in owner.messages[-1]
 
 
-def test_virtual_bots_save_and_load_state(monkeypatch):
+@pytest.mark.asyncio
+async def test_virtual_bots_save_and_load_state(monkeypatch):
     saved = []
 
     class FakeDB:
-        def delete_all_virtual_bots(self):
+        async def delete_all_virtual_bots(self):
             saved.clear()
 
-        def save_virtual_bot(self, **payload):
+        async def save_virtual_bot(self, **payload):
             saved.append(payload)
 
-        def load_all_virtual_bots(self):
+        async def load_all_virtual_bots(self):
             return [
                 {
                     "name": "Alpha",
@@ -2225,12 +2226,12 @@ def test_virtual_bots_save_and_load_state(monkeypatch):
         target_online_ticks=10,
     )
 
-    manager.save_state()
+    await manager.save_state()
     assert saved[0]["name"] == "Alpha"
     assert saved[0]["state"] == VirtualBotState.ONLINE_IDLE.value
 
     manager._bots.clear()
-    loaded = manager.load_state()
+    loaded = await manager.load_state()
     assert loaded == 1
     assert "Alpha" in manager._bots
     assert "Alpha" in server._users
@@ -2549,7 +2550,8 @@ def test_try_create_game_builds_table(monkeypatch):
     assert server.table_broadcasts[-1] == ("Creator", "dummy")
 
 
-def test_clear_bots_removes_tables_and_calls_db(monkeypatch):
+@pytest.mark.asyncio
+async def test_clear_bots_removes_tables_and_calls_db(monkeypatch):
     tables_removed = []
 
     class TableWithGame:
@@ -2563,7 +2565,7 @@ def test_clear_bots_removes_tables_and_calls_db(monkeypatch):
         def __init__(self):
             self.cleared = 0
 
-        def delete_all_virtual_bots(self):
+        async def delete_all_virtual_bots(self):
             self.cleared += 1
 
     server = FakeServer(db=DBTracker())
@@ -2575,7 +2577,7 @@ def test_clear_bots_removes_tables_and_calls_db(monkeypatch):
         game=SimpleNamespace(broadcast_l=lambda *args, **kwargs: None),
     )
 
-    bots_cleared, tables_killed = manager.clear_bots()
+    bots_cleared, tables_killed = await manager.clear_bots()
 
     assert bots_cleared == 1
     assert tables_killed == 1

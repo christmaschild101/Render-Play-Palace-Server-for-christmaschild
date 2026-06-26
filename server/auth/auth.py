@@ -66,7 +66,7 @@ class AuthManager:
 
         return False
 
-    def authenticate(self, username: str, password: str) -> AuthResult:
+    async def authenticate(self, username: str, password: str) -> AuthResult:
         """Authenticate a user.
 
         Args:
@@ -76,7 +76,7 @@ class AuthManager:
         Returns:
             AuthResult indicating success or failure reason.
         """
-        user = self._db.get_user(username)
+        user = await self._db.get_user(username)
         if not user:
             return AuthResult.USER_NOT_FOUND
 
@@ -86,11 +86,11 @@ class AuthManager:
         # Upgrade legacy hash to Argon2 on successful login
         if self._is_legacy_hash(user.password_hash):
             new_hash = self.hash_password(password)
-            self._db.update_user_password(username, new_hash)
+            await self._db.update_user_password(username, new_hash)
 
         return AuthResult.SUCCESS
 
-    def register(self, username: str, password: str, *, approved: bool = False, locale: str = "en") -> bool:
+    async def register(self, username: str, password: str, *, approved: bool = False, locale: str = "en") -> bool:
         """Register a new user.
 
         Args:
@@ -102,17 +102,17 @@ class AuthManager:
         Returns:
             True if registration succeeded, False if username taken.
         """
-        if self._db.user_exists(username):
+        if await self._db.user_exists(username):
             return False
 
         trust_level = TrustLevel.USER
 
         password_hash = self.hash_password(password)
-        self._db.create_user(username, password_hash, locale, trust_level, approved)
+        await self._db.create_user(username, password_hash, locale, trust_level, approved)
 
         return True
 
-    def reset_password(self, username: str, new_password: str) -> bool:
+    async def reset_password(self, username: str, new_password: str) -> bool:
         """Reset a user's password.
 
         Args:
@@ -122,18 +122,18 @@ class AuthManager:
         Returns:
             True if successful, False if user doesn't exist.
         """
-        if not self._db.user_exists(username):
+        if not await self._db.user_exists(username):
             return False
 
         password_hash = self.hash_password(new_password)
-        self._db.update_user_password(username, password_hash)
+        await self._db.update_user_password(username, password_hash)
         self.invalidate_user_sessions(username)
-        self._db.revoke_user_refresh_tokens(username, int(time.time()))
+        await self._db.revoke_user_refresh_tokens(username, int(time.time()))
         return True
 
-    def get_user(self, username: str) -> "UserRecord | None":
+    async def get_user(self, username: str) -> "UserRecord | None":
         """Get a user record."""
-        return self._db.get_user(username)
+        return await self._db.get_user(username)
 
     def create_session(self, username: str, ttl_seconds: int) -> tuple[str, int]:
         """Create an access session token for a user.
@@ -175,15 +175,15 @@ class AuthManager:
         for token in to_remove:
             del self._sessions[token]
 
-    def create_refresh_token(self, username: str, ttl_seconds: int) -> tuple[str, int]:
+    async def create_refresh_token(self, username: str, ttl_seconds: int) -> tuple[str, int]:
         """Create and persist a refresh token."""
         token = secrets.token_hex(32)
         now = int(time.time())
         expires_at = now + ttl_seconds
-        self._db.store_refresh_token(username, token, expires_at, now)
+        await self._db.store_refresh_token(username, token, expires_at, now)
         return token, expires_at
 
-    def refresh_session(
+    async def refresh_session(
         self, refresh_token: str, access_ttl_seconds: int, refresh_ttl_seconds: int
     ) -> tuple[str, str, int, str, int] | None:
         """Rotate refresh token and issue a new access token.
@@ -191,25 +191,25 @@ class AuthManager:
         Returns:
             (username, access_token, access_expires_at, refresh_token, refresh_expires_at)
         """
-        record = self._db.get_refresh_token(refresh_token)
+        record = await self._db.get_refresh_token(refresh_token)
         if not record:
             return None
 
         username = record.username
-        if not self._db.user_exists(username):
+        if not await self._db.user_exists(username):
             return None
 
         now = int(time.time())
         if record.revoked_at is not None or record.replaced_by:
             return None
         if record.expires_at <= now:
-            self._db.revoke_refresh_token(refresh_token, now)
+            await self._db.revoke_refresh_token(refresh_token, now)
             return None
 
         new_refresh_token = secrets.token_hex(32)
         new_refresh_expires = now + refresh_ttl_seconds
-        self._db.store_refresh_token(username, new_refresh_token, new_refresh_expires, now)
-        self._db.revoke_refresh_token(refresh_token, now, replaced_by=new_refresh_token)
+        await self._db.store_refresh_token(username, new_refresh_token, new_refresh_expires, now)
+        await self._db.revoke_refresh_token(refresh_token, now, replaced_by=new_refresh_token)
 
         access_token, access_expires = self.create_session(username, access_ttl_seconds)
         return username, access_token, access_expires, new_refresh_token, new_refresh_expires

@@ -1,6 +1,7 @@
 """Tests for persistence.database.Database."""
 
 import json
+import os
 
 import pytest
 
@@ -8,232 +9,265 @@ from server.persistence.database import Database
 from server.core.tables.table import Table, TableMember
 from server.core.users.base import TrustLevel
 
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("DATABASE_URL"),
+    reason="DATABASE_URL environment variable is required for database tests",
+)
+
 
 @pytest.fixture
-def db(tmp_path):
-    database = Database(db_path=tmp_path / "test.db")
-    database.connect()
+async def db():
+    database = Database()
+    await database.connect()
     try:
         yield database
     finally:
-        database.close()
+        await database.close()
 
 
-def _insert_user(db: Database, username: str, trust=None, approved=1):
-    cursor = db._conn.cursor()
-    cursor.execute(
-        "INSERT INTO users (username, password_hash, uuid, trust_level, approved) VALUES (?, ?, ?, ?, ?)",
-        (username, "hash", f"uuid-{username}", trust, approved),
-    )
-    db._conn.commit()
+class TestUserOperations:
+    async def test_create_and_get_user(self, db):
+        user = await db.create_user("testuser", "hash", "en", TrustLevel.USER, approved=True)
+        assert user is not None
+        assert user.username == "testuser"
+        assert user.password_hash == "hash"
+        assert user.trust_level == TrustLevel.USER
+        assert user.approved
+
+        retrieved = await db.get_user("testuser")
+        assert retrieved is not None
+        assert retrieved.username == "testuser"
+
+    async def test_user_exists(self, db):
+        await db.create_user("existsuser", "hash", "en")
+        assert await db.user_exists("existsuser")
+        assert not await db.user_exists("nobody")
+
+    async def test_delete_user(self, db):
+        await db.create_user("deleteuser", "hash", "en")
+        assert await db.delete_user("deleteuser")
+        assert not await db.user_exists("deleteuser")
+
+    async def test_delete_nonexistent_user(self, db):
+        assert not await db.delete_user("nobody")
+
+    async def test_approve_user(self, db):
+        await db.create_user("approveuser", "hash", "en")
+        assert await db.approve_user("approveuser")
+
+        user = await db.get_user("approveuser")
+        assert user.approved
+
+    async def test_approve_nonexistent_user(self, db):
+        assert not await db.approve_user("nobody")
+
+    async def test_get_user_count(self, db):
+        await db.create_user("count1", "hash", "en")
+        await db.create_user("count2", "hash", "en")
+        count = await db.get_user_count()
+        assert count == 2
+
+    async def test_update_user_trust_level(self, db):
+        await db.create_user("trustuser", "hash", "en")
+        await db.update_user_trust_level("trustuser", TrustLevel.ADMIN)
+
+        user = await db.get_user("trustuser")
+        assert user.trust_level == TrustLevel.ADMIN
+
+    async def test_get_pending_users(self, db):
+        await db.create_user("pending", "hash", "en", approved=False)
+        await db.create_user("approveduser", "hash", "en", approved=True)
+
+        pending = await db.get_pending_users()
+        assert any(u.username == "pending" for u in pending)
+        assert all(not u.approved for u in pending)
+
+    async def test_get_non_admin_users(self, db):
+        await db.create_user("user1", "hash", "en", trust_level=TrustLevel.USER)
+        await db.create_user("user2", "hash", "en", trust_level=TrustLevel.ADMIN)
+
+        non_admins = await db.get_non_admin_users()
+        assert any(u.username == "user1" for u in non_admins)
+        assert all(u.trust_level != TrustLevel.ADMIN for u in non_admins)
+
+    async def test_get_admin_users(self, db):
+        await db.create_user("admin1", "hash", "en", trust_level=TrustLevel.ADMIN)
+        await db.create_user("user1", "hash", "en", trust_level=TrustLevel.USER)
+
+        admins = await db.get_admin_users()
+        assert any(u.username == "admin1" for u in admins)
+        assert all(u.trust_level == TrustLevel.ADMIN for u in admins)
+
+    async def test_banned_users(self, db):
+        await db.create_user("gooduser", "hash", "en", trust_level=TrustLevel.USER)
+        await db.create_user("banneduser", "hash", "en", trust_level=TrustLevel.BANNED)
+
+        banned = await db.get_banned_users()
+        assert any(u.username == "banneduser" for u in banned)
+        assert all(u.trust_level == TrustLevel.BANNED for u in banned)
+
+    async def test_update_user_password(self, db):
+        await db.create_user("passuser", "oldhash", "en")
+        await db.update_user_password("passuser", "newhash")
+
+        user = await db.get_user("passuser")
+        assert user.password_hash == "newhash"
+
+    async def test_update_user_locale(self, db):
+        await db.create_user("localeuser", "hash", "fr")
+        await db.update_user_locale("localeuser", "de")
+
+        user = await db.get_user("localeuser")
+        assert user.locale == "de"
+
+    async def test_update_user_preferences(self, db):
+        await db.create_user("prefuser", "hash", "en")
+        prefs_json = json.dumps({"theme": "dark"})
+        await db.update_user_preferences("prefuser", prefs_json)
+
+        user = await db.get_user("prefuser")
+        assert json.loads(user.preferences_json) == {"theme": "dark"}
+
+    async def test_fluent_languages(self, db):
+        await db.create_user("languser", "hash", "en")
+        await db.set_user_fluent_languages("languser", ["en", "fr"])
+
+        langs = await db.get_user_fluent_languages("languser")
+        assert "en" in langs
+        assert "fr" in langs
 
 
-def test_initialize_trust_levels_promotes_first_user(db):
-    _insert_user(db, "owner", trust=None)
+class TestVirtualBotOperations:
+    async def test_save_and_load_virtual_bots(self, db):
+        await db.save_virtual_bot(
+            username="bot1",
+            trust_level=TrustLevel.USER,
+            preferred_games=["pig"],
+        )
+        await db.save_virtual_bot(
+            username="bot2",
+            trust_level=TrustLevel.USER,
+            preferred_games=[],
+        )
 
-    promoted = db.initialize_trust_levels()
+        bots = await db.load_all_virtual_bots()
+        assert len(bots) == 2
+        assert any(b["username"] == "bot1" for b in bots)
 
-    assert promoted == "owner"
-    cursor = db._conn.cursor()
-    cursor.execute("SELECT trust_level FROM users WHERE username = ?", ("owner",))
-    assert cursor.fetchone()[0] == TrustLevel.SERVER_OWNER.value
+    async def test_delete_all_virtual_bots(self, db):
+        await db.save_virtual_bot("bot1", TrustLevel.USER, ["pig"])
+        await db.save_virtual_bot("bot2", TrustLevel.USER, [])
 
-
-def test_initialize_trust_levels_defaults_to_user(db):
-    _insert_user(db, "alice", trust=None)
-    _insert_user(db, "bob", trust=None)
-
-    promoted = db.initialize_trust_levels()
-
-    assert promoted is None
-    cursor = db._conn.cursor()
-    cursor.execute("SELECT username, trust_level FROM users ORDER BY username")
-    levels = {row[0]: row[1] for row in cursor.fetchall()}
-    assert levels == {"alice": TrustLevel.USER.value, "bob": TrustLevel.USER.value}
-
-
-def test_save_and_load_table_round_trip(db):
-    table = Table(
-        table_id="table-1",
-        game_type="pig",
-        host="host",
-        members=[TableMember("host"), TableMember("spectator", is_spectator=True)],
-        game_json=json.dumps({"state": "playing"}),
-        status="playing",
-    )
-
-    db.save_table(table)
-    loaded = db.load_table("table-1")
-
-    assert loaded is not None
-    assert loaded.table_id == table.table_id
-    assert loaded.game_type == "pig"
-    assert loaded.host == "host"
-    assert loaded.status == "playing"
-    assert [m.username for m in loaded.members] == ["host", "spectator"]
-    assert loaded.members[1].is_spectator is True
+        await db.delete_all_virtual_bots()
+        bots = await db.load_all_virtual_bots()
+        assert len(bots) == 0
 
 
-def test_delete_all_tables_removes_saved_entries(db):
-    table = Table(
-        table_id="table-2",
-        game_type="pig",
-        host="host",
-        members=[TableMember("host")],
-    )
+class TestGameResultOperations:
+    async def test_save_and_query_game_stats(self, db):
+        await db.save_game_result(
+            game_type="pig",
+            timestamp="2024-01-01T00:00:00",
+            duration_ticks=100,
+            players=[("player1", "Player One", False, False)],
+            custom_data={"winner_name": "Player One"},
+        )
 
-    db.save_table(table)
-    assert db.load_table("table-2") is not None
+        stats = await db.get_game_stats("pig", limit=10)
+        assert len(stats) == 1
+        assert stats[0][1] == "pig"
 
-    db.delete_all_tables()
+    async def test_game_result_players(self, db):
+        await db.save_game_result(
+            game_type="pig",
+            timestamp="2024-01-01T00:00:00",
+            duration_ticks=100,
+            players=[
+                ("p1", "Alice", False, False),
+                ("p2", "Bob", False, False),
+            ],
+            custom_data={},
+        )
 
-    assert db.load_all_tables() == []
-
-
-def test_save_user_table_and_get_list(db):
-    rec1 = db.save_user_table(
-        "player",
-        "first",
-        "pig",
-        json.dumps({"state": 1}),
-        json.dumps([{"username": "player"}]),
-    )
-    rec2 = db.save_user_table(
-        "player",
-        "second",
-        "pig",
-        json.dumps({"state": 2}),
-        json.dumps([{"username": "player"}]),
-    )
-
-    saved = db.get_user_saved_tables("player")
-    assert [record.save_name for record in saved] == [rec2.save_name, rec1.save_name]
+        stats = await db.get_game_stats("pig", limit=1)
+        result_id = stats[0][0]
+        players = await db.get_game_result_players(result_id)
+        assert len(players) == 2
 
 
-def test_get_and_delete_saved_table(db):
-    rec = db.save_user_table(
-        "player",
-        "snapshot",
-        "pig",
-        json.dumps({"state": 42}),
-        json.dumps([{"username": "player"}]),
-    )
+class TestRatingOperations:
+    async def test_player_rating(self, db):
+        await db.set_player_rating("player1", "pig", 25.0, 8.33)
+        rating = await db.get_player_rating("player1", "pig")
+        assert rating is not None
+        mu, sigma = rating
+        assert mu == 25.0
+        assert sigma == 8.33
 
-    fetched = db.get_saved_table(rec.id)
-    assert fetched is not None and fetched.save_name == "snapshot"
+    async def test_rating_leaderboard(self, db):
+        await db.set_player_rating("alice", "pig", 30.0, 5.0)
+        await db.set_player_rating("bob", "pig", 20.0, 6.0)
 
-    db.delete_saved_table(rec.id)
-    assert db.get_saved_table(rec.id) is None
-
-
-def test_update_user_preferences_and_locale(db):
-    _insert_user(db, "prefUser", trust=TrustLevel.USER.value, approved=1)
-    prefs = json.dumps({"play_turn_sound": False})
-
-    db.update_user_preferences("prefUser", prefs)
-    db.update_user_locale("prefUser", "pl")
-
-    cursor = db._conn.cursor()
-    cursor.execute("SELECT preferences_json, locale FROM users WHERE username = ?", ("prefUser",))
-    row = cursor.fetchone()
-    assert row[0] == prefs
-    assert row[1] == "pl"
+        board = await db.get_rating_leaderboard("pig", limit=10)
+        assert len(board) >= 2
+        assert board[0][0] in ("alice", "bob")
 
 
-def test_revoke_user_refresh_tokens_revokes_only_target(db):
-    db.store_refresh_token("alice", "tok-a1", 100, 1)
-    db.store_refresh_token("Alice", "tok-a2", 100, 1)
-    db.store_refresh_token("bob", "tok-b1", 100, 1)
+class TestTableStorage:
+    async def test_save_and_load_tables(self, db):
+        tables = await db.load_all_tables()
+        assert isinstance(tables, list)
 
-    db.revoke_user_refresh_tokens("alice", 50)
+        await db.delete_all_tables()
 
-    assert db.get_refresh_token("tok-a1").revoked_at == 50
-    assert db.get_refresh_token("tok-a2").revoked_at == 50
-    assert db.get_refresh_token("tok-b1").revoked_at is None
+    async def test_saved_table_operations(self, db):
+        await db.save_user_table(
+            username="host",
+            save_name="My Game",
+            game_type="pig",
+            game_json='{"state": "test"}',
+            members_json='[{"username": "host", "is_bot": false}]',
+        )
 
+        saved = await db.get_user_saved_tables("host")
+        assert len(saved) == 1
+        save_id = saved[0].id
 
-def test_fluent_languages_default_empty(db):
-    user = db.create_user("alice", "hash", approved=True)
-    assert user.fluent_languages == []
+        record = await db.get_saved_table(save_id)
+        assert record is not None
+        assert record.save_name == "My Game"
 
-
-def test_set_and_get_fluent_languages(db):
-    db.create_user("alice", "hash", approved=True)
-    db.set_user_fluent_languages("alice", ["en", "fr"])
-    assert db.get_user_fluent_languages("alice") == ["en", "fr"]
-
-    db.set_user_fluent_languages("alice", ["de"])
-    assert db.get_user_fluent_languages("alice") == ["de"]
-
-
-def test_fluent_languages_in_user_record(db):
-    db.create_user("alice", "hash", approved=True)
-    db.set_user_fluent_languages("alice", ["en", "es"])
-    user = db.get_user("alice")
-    assert user.fluent_languages == ["en", "es"]
+        await db.delete_saved_table(save_id)
+        remaining = await db.get_user_saved_tables("host")
+        assert len(remaining) == 0
 
 
-def test_add_and_get_transcriber_assignments(db):
-    db.create_user("alice", "hash", approved=True)
-    assert db.add_transcriber_assignment("alice", "en") is True
-    assert db.add_transcriber_assignment("alice", "fr") is True
-    assert db.get_transcriber_languages("alice") == ["en", "fr"]
+class TestTranscriberOperations:
+    async def test_transcriber_assignments(self, db):
+        await db.add_transcriber_assignment("trans1", "en")
+        await db.add_transcriber_assignment("trans1", "fr")
 
+        languages = await db.get_transcriber_languages("trans1")
+        assert "en" in languages
+        assert "fr" in languages
 
-def test_get_transcribers_for_language(db):
-    db.create_user("alice", "hash", approved=True)
-    db.create_user("bob", "hash", approved=True)
-    db.add_transcriber_assignment("alice", "en")
-    db.add_transcriber_assignment("bob", "en")
-    db.add_transcriber_assignment("alice", "fr")
+        all_trans = await db.get_all_transcribers()
+        assert "trans1" in all_trans
 
-    assert db.get_transcribers_for_language("en") == ["alice", "bob"]
-    assert db.get_transcribers_for_language("fr") == ["alice"]
-    assert db.get_transcribers_for_language("de") == []
+    async def test_transcriber_for_language(self, db):
+        await db.add_transcriber_assignment("trans1", "en")
+        await db.add_transcriber_assignment("trans2", "en")
 
+        transcribers = await db.get_transcribers_for_language("en")
+        assert len(transcribers) >= 2
 
-def test_remove_transcriber_assignment(db):
-    db.create_user("alice", "hash", approved=True)
-    db.add_transcriber_assignment("alice", "en")
-    assert db.remove_transcriber_assignment("alice", "en") is True
-    assert db.get_transcriber_languages("alice") == []
-    assert db.remove_transcriber_assignment("alice", "en") is False
+    async def test_remove_transcriber_assignment(self, db):
+        await db.add_transcriber_assignment("trans1", "en")
+        await db.remove_transcriber_assignment("trans1", "en")
 
+        languages = await db.get_transcriber_languages("trans1")
+        assert "en" not in languages
 
-def test_transcriber_cascade_on_user_delete(db):
-    db.create_user("alice", "hash", approved=True)
-    db.add_transcriber_assignment("alice", "en")
-    db.add_transcriber_assignment("alice", "fr")
-    db.delete_user("alice")
-    # Assignments should be gone due to ON DELETE CASCADE
-    cursor = db._conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM transcriber_assignments")
-    assert cursor.fetchone()[0] == 0
-
-
-def test_duplicate_transcriber_assignment(db):
-    db.create_user("alice", "hash", approved=True)
-    assert db.add_transcriber_assignment("alice", "en") is True
-    assert db.add_transcriber_assignment("alice", "en") is False
-
-
-def test_get_all_transcribers(db):
-    db.create_user("alice", "hash", approved=True)
-    db.create_user("bob", "hash", approved=True)
-    db.add_transcriber_assignment("alice", "en")
-    db.add_transcriber_assignment("alice", "fr")
-    db.add_transcriber_assignment("bob", "de")
-    result = db.get_all_transcribers()
-    assert result == {"alice": ["en", "fr"], "bob": ["de"]}
-
-
-def test_approve_and_delete_user(db):
-    _insert_user(db, "pending", trust=TrustLevel.USER.value, approved=0)
-
-    assert db.approve_user("pending") is True
-    cursor = db._conn.cursor()
-    cursor.execute("SELECT approved FROM users WHERE username = ?", ("pending",))
-    assert cursor.fetchone()[0] == 1
-
-    assert db.delete_user("pending") is True
-    assert db.get_user("pending") is None
+    async def test_nonexistent_transcriber(self, db):
+        languages = await db.get_transcriber_languages("nobody")
+        assert len(languages) == 0

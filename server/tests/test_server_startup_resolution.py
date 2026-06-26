@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -9,19 +10,19 @@ import server.core.server as core_server
 
 
 class _DummyDB:
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str = "playpalace.db") -> None:
         self.path = path
 
-    def connect(self) -> None:
+    async def connect(self) -> None:
         return None
 
-    def get_user_count(self) -> int:
+    async def get_user_count(self) -> int:
         return 1
 
-    def get_server_owner(self) -> str:
+    async def get_server_owner(self) -> str:
         return "owner"
 
-    def close(self) -> None:
+    async def close(self) -> None:
         return None
 
 
@@ -71,7 +72,7 @@ def server_env(tmp_path, monkeypatch):
     monkeypatch.setattr(core_server, "Database", _DummyDB)
     monkeypatch.setattr(core_server, "Server", DummyServer)
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
-    monkeypatch.setattr(core_server, "_ensure_server_owner", lambda *args, **kwargs: None)
+    monkeypatch.setattr(core_server, "_ensure_server_owner", AsyncMock())
 
     def write_config(toml_text: str) -> None:
         config_path.write_text(toml_text, encoding="utf-8")

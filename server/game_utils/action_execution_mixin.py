@@ -1,5 +1,7 @@
 """Mixin providing action execution for games."""
 
+import asyncio
+import inspect
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -85,12 +87,19 @@ class ActionExecutionMixin:
 
         try:
             # Execute the action handler (always pass action_id for context)
-            if action.input_request is not None and input_value is not None:
-                # Handler expects input value: (player, input_value, action_id)
-                handler(player, input_value, action_id)
+            if asyncio.iscoroutinefunction(handler):
+                # Async handlers are scheduled as fire-and-forget tasks
+                if action.input_request is not None and input_value is not None:
+                    asyncio.create_task(handler(player, input_value, action_id))
+                else:
+                    asyncio.create_task(handler(player, action_id))
             else:
-                # Handler doesn't expect input: (player, action_id)
-                handler(player, action_id)
+                if action.input_request is not None and input_value is not None:
+                    # Handler expects input value: (player, input_value, action_id)
+                    handler(player, input_value, action_id)
+                else:
+                    # Handler doesn't expect input: (player, action_id)
+                    handler(player, action_id)
         finally:
             # Clean up context
             self._action_context.pop(player.id, None)

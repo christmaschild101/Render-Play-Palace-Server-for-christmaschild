@@ -196,13 +196,13 @@ class RatingHelper:
         self.game_type = game_type
         self.model = PlackettLuce()
 
-    def get_rating(self, player_id: str) -> PlayerRating:
+    async def get_rating(self, player_id: str) -> PlayerRating:
         """
         Get a player's current rating.
 
         Returns default rating if player has no rating history.
         """
-        result = self.db.get_player_rating(player_id, self.game_type)
+        result = await self.db.get_player_rating(player_id, self.game_type)
         if result:
             mu, sigma = result
             return PlayerRating(player_id=player_id, mu=mu, sigma=sigma)
@@ -212,11 +212,11 @@ class RatingHelper:
             sigma=self.DEFAULT_SIGMA,
         )
 
-    def get_ratings(self, player_ids: list[str]) -> dict[str, PlayerRating]:
+    async def get_ratings(self, player_ids: list[str]) -> dict[str, PlayerRating]:
         """Get ratings for multiple players."""
-        return {pid: self.get_rating(pid) for pid in player_ids}
+        return {pid: await self.get_rating(pid) for pid in player_ids}
 
-    def update_ratings(
+    async def update_ratings(
         self,
         rankings: list[list[str]],
     ) -> dict[str, PlayerRating]:
@@ -242,7 +242,7 @@ class RatingHelper:
         all_players = [pid for group in rankings for pid in group]
 
         # Get current ratings
-        current_ratings = self.get_ratings(all_players)
+        current_ratings = await self.get_ratings(all_players)
 
         # Convert to OpenSkill format
         teams = []
@@ -262,7 +262,7 @@ class RatingHelper:
         for group_idx, group in enumerate(rankings):
             for player_idx, pid in enumerate(group):
                 new_rating = new_teams[group_idx][player_idx]
-                self.db.set_player_rating(pid, self.game_type, new_rating.mu, new_rating.sigma)
+                await self.db.set_player_rating(pid, self.game_type, new_rating.mu, new_rating.sigma)
                 updated_ratings[pid] = PlayerRating(
                     player_id=pid,
                     mu=new_rating.mu,
@@ -271,7 +271,7 @@ class RatingHelper:
 
         return updated_ratings
 
-    def update_from_result(
+    async def update_from_result(
         self,
         result: "GameResult",
         ranking_extractor: Callable[["GameResult"], list[list[str]]] | None = None,
@@ -319,25 +319,25 @@ class RatingHelper:
         if not rankings:
             return {}
 
-        return self.update_ratings(rankings)
+        return await self.update_ratings(rankings)
 
-    def get_leaderboard(self, limit: int = 10) -> list[PlayerRating]:
+    async def get_leaderboard(self, limit: int = 10) -> list[PlayerRating]:
         """
         Get the rating leaderboard for this game type.
 
         Returns players sorted by ordinal (conservative skill estimate).
         """
-        rows = self.db.get_rating_leaderboard(self.game_type, limit)
+        rows = await self.db.get_rating_leaderboard(self.game_type, limit)
         return [PlayerRating(player_id=pid, mu=mu, sigma=sigma) for pid, mu, sigma in rows]
 
-    def predict_win_probability(self, player1_id: str, player2_id: str) -> float:
+    async def predict_win_probability(self, player1_id: str, player2_id: str) -> float:
         """
         Predict the probability that player1 beats player2.
 
         Returns a value between 0 and 1.
         """
-        r1 = self.get_rating(player1_id)
-        r2 = self.get_rating(player2_id)
+        r1 = await self.get_rating(player1_id)
+        r2 = await self.get_rating(player2_id)
 
         rating1 = self.model.rating(mu=r1.mu, sigma=r1.sigma)
         rating2 = self.model.rating(mu=r2.mu, sigma=r2.sigma)

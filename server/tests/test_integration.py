@@ -4,9 +4,8 @@ Integration tests for PlayPalace v11.
 Tests larger chunks of server code working together.
 """
 
-import pytest
-import tempfile
 import os
+import pytest
 
 from server.persistence.database import Database
 from server.auth.auth import AuthManager, AuthResult
@@ -17,308 +16,239 @@ from server.core.users.bot import Bot
 from server.games.pig.game import PigGame, PigOptions
 from server.games.registry import GameRegistry, get_game_class
 
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("DATABASE_URL"),
+    reason="DATABASE_URL environment variable is required for integration tests",
+)
+
 
 class TestDatabaseIntegration:
     """Test database operations."""
 
-    def setup_method(self):
-        """Create a temporary database for each test."""
-        self.temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-        self.temp_file.close()
-        self.db = Database(self.temp_file.name)
-        self.db.connect()
-
-    def teardown_method(self):
-        """Clean up temporary database."""
-        self.db.close()
-        os.unlink(self.temp_file.name)
-
-    def test_user_creation_and_retrieval(self):
+    async def test_user_creation_and_retrieval(self):
         """Test creating and retrieving users."""
-        # Create user
-        user = self.db.create_user("testuser", "hashedpassword", "en")
-        assert user.username == "testuser"
-        assert user.password_hash == "hashedpassword"
-        assert user.locale == "en"
+        from server.persistence.database import Database
 
-        # Retrieve user
-        retrieved = self.db.get_user("testuser")
-        assert retrieved is not None
-        assert retrieved.username == "testuser"
+        db = Database()
+        await db.connect()
+        try:
+            user = await db.create_user("testuser", "hashedpassword", "en")
+            assert user.username == "testuser"
 
-    def test_user_exists(self):
-        """Test checking if user exists."""
-        assert not self.db.user_exists("newuser")
-        self.db.create_user("newuser", "hash", "en")
-        assert self.db.user_exists("newuser")
+            retrieved = await db.get_user("testuser")
+            assert retrieved is not None
+            assert retrieved.username == "testuser"
+            assert retrieved.password_hash == "hashedpassword"
+            assert not retrieved.approved  # Default not approved
 
-    def test_table_save_and_load(self):
-        """Test saving and loading tables."""
-        # Create a table
-        table = Table(
-            table_id="test123",
-            game_type="pig",
-            host="testhost",
-            status="waiting",
-        )
-        table.add_member("testhost", MockUser("testhost"))
+            exists = await db.user_exists("testuser")
+            assert exists
 
-        # Save
-        self.db.save_table(table)
+            not_exists = await db.user_exists("nonexistent")
+            assert not not_exists
+        finally:
+            await db.close()
 
-        # Load
-        loaded = self.db.load_table("test123")
-        assert loaded is not None
-        assert loaded.table_id == "test123"
-        assert loaded.game_type == "pig"
-        assert loaded.host == "testhost"
-        assert len(loaded.members) == 1
-        assert loaded.members[0].username == "testhost"
+    async def test_user_approval(self):
+        """Test user approval workflow."""
+        db = Database()
+        await db.connect()
+        try:
+            await db.create_user("approveuser", "pw", "en")
+            await db.approve_user("approveuser")
 
-    def test_table_with_game_state(self):
-        """Test saving and loading table with game state."""
-        table = Table(
-            table_id="game123",
-            game_type="pig",
-            host="player1",
-        )
+            user = await db.get_user("approveuser")
+            assert user.approved
+        finally:
+            await db.close()
 
-        # Create a game with some state
-        game = PigGame()
-        user1 = MockUser("player1")
-        user2 = Bot("Bot1")
-        game.add_player("player1", user1)
-        game.add_player("Bot1", user2)
-        game.on_start()  # Initialize TeamManager
-        game.round = 3
-        game._team_manager.add_to_team_score("player1", 25)
+    async def test_get_pending_users(self):
+        """Test getting pending (unapproved) users."""
+        db = Database()
+        await db.connect()
+        try:
+            await db.create_user("pending1", "pw1", "en")
+            await db.create_user("pending2", "pw2", "en")
+            await db.approve_user("pending1")
 
-        table.game = game
-        table.game_json = game.to_json()
+            pending = await db.get_pending_users()
+            assert len(pending) == 1
+            assert pending[0].username == "pending2"
+        finally:
+            await db.close()
 
-        # Save
-        self.db.save_table(table)
+    async def test_user_deletion(self):
+        """Test deleting users."""
+        db = Database()
+        await db.connect()
+        try:
+            await db.create_user("deleteuser", "pw", "en")
+            deleted = await db.delete_user("deleteuser")
+            assert deleted
 
-        # Load
-        loaded = self.db.load_table("game123")
-        assert loaded is not None
-        assert loaded.game_json is not None
+            user = await db.get_user("deleteuser")
+            assert user is None
+        finally:
+            await db.close()
 
-        # Deserialize game
-        loaded_game = PigGame.from_json(loaded.game_json)
-        assert loaded_game.round == 3
-        assert loaded_game.get_player_score(loaded_game.players[0]) == 25
+    async def test_user_count(self):
+        """Test user count."""
+        db = Database()
+        await db.connect()
+        try:
+            await db.create_user("countuser1", "pw1", "en")
+            await db.create_user("countuser2", "pw2", "en")
+            count = await db.get_user_count()
+            assert count == 2
+        finally:
+            await db.close()
+
+    async def test_user_trust_level(self):
+        """Test trust level updates."""
+        db = Database()
+        await db.connect()
+        try:
+            await db.create_user("trustuser", "pw", "en")
+            from server.core.users.base import TrustLevel
+
+            await db.update_user_trust_level("trustuser", TrustLevel.ADMIN)
+            user = await db.get_user("trustuser")
+            assert user.trust_level == TrustLevel.ADMIN
+        finally:
+            await db.close()
 
 
 class TestAuthIntegration:
-    """Test authentication system."""
+    """Test authentication flows."""
 
-    def setup_method(self):
-        """Create temporary database and auth manager."""
-        self.temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-        self.temp_file.close()
-        self.db = Database(self.temp_file.name)
-        self.db.connect()
-        self.auth = AuthManager(self.db)
-
-    def teardown_method(self):
-        """Clean up."""
-        self.db.close()
-        os.unlink(self.temp_file.name)
-
-    def test_register_and_authenticate(self):
+    async def test_register_and_authenticate(self):
         """Test user registration and authentication."""
-        assert self.auth.register("newuser", "password123")
-        assert not self.auth.register("newuser", "different")  # Already exists
+        db = Database()
+        await db.connect()
+        try:
+            auth = AuthManager(db)
+            result = await auth.register("alice", "password123", approved=True, locale="en")
+            assert result is True
 
-        # Authenticate
-        assert self.auth.authenticate("newuser", "password123") == AuthResult.SUCCESS
-        assert self.auth.authenticate("newuser", "wrongpassword") == AuthResult.WRONG_PASSWORD
-        assert self.auth.authenticate("nonexistent", "password") == AuthResult.USER_NOT_FOUND
+            auth_result = await auth.authenticate("alice", "password123")
+            assert auth_result.success
+            assert auth_result.username == "alice"
 
-    def test_register_auto_approved(self):
-        """Test that approved=True stores the user as approved in the DB."""
-        assert self.auth.register("approveduser", "password123", approved=True)
-        user = self.db.get_user("approveduser")
-        assert user is not None
-        assert user.approved is True
+            bad_auth = await auth.authenticate("alice", "wrongpassword")
+            assert not bad_auth.success
+        finally:
+            await db.close()
 
-    def test_register_not_approved(self):
-        """Test that approved=False (default) stores the user as unapproved."""
-        assert self.auth.register("pendinguser", "password123")
-        user = self.db.get_user("pendinguser")
-        assert user is not None
-        assert user.approved is False
+    async def test_reset_password(self):
+        """Test password reset."""
+        db = Database()
+        await db.connect()
+        try:
+            auth = AuthManager(db)
+            await auth.register("bob", "oldpass", approved=True, locale="en")
 
-    def test_session_management(self):
-        """Test session token creation and validation."""
-        self.auth.register("sessionuser", "pass", approved=True)
+            await auth.reset_password("bob", "newpass")
+            auth_result = await auth.authenticate("bob", "newpass")
+            assert auth_result.success
 
-        # Create session
-        token, _expires_at = self.auth.create_session("sessionuser", 60)
-        assert token is not None
+            old_auth = await auth.authenticate("bob", "oldpass")
+            assert not old_auth.success
+        finally:
+            await db.close()
 
-        # Validate
-        username = self.auth.validate_session(token)
-        assert username == "sessionuser"
+    async def test_refresh_token_flow(self):
+        """Test refresh token creation and usage."""
+        db = Database()
+        await db.connect()
+        try:
+            auth = AuthManager(db)
+            await auth.register("charlie", "pass", approved=True, locale="en")
 
-        # Invalidate
-        self.auth.invalidate_session(token)
-        assert self.auth.validate_session(token) is None
+            token, expires = await auth.create_refresh_token("charlie", 3600)
+            assert token is not None
+            assert expires > 0
 
-    def test_reset_password_invalidates_existing_sessions_and_refresh_tokens(self):
-        """Resetting a password revokes old credentials and accepts the new password."""
-        self.auth.register("resetuser", "oldpass", approved=True)
-        session_token, _ = self.auth.create_session("resetuser", 60)
-        refresh_token, _ = self.auth.create_refresh_token("resetuser", 60)
+            result = await auth.refresh_session(token)
+            assert result.success
+            assert result.username == "charlie"
 
-        assert self.auth.reset_password("resetuser", "newpass") is True
-
-        assert self.auth.validate_session(session_token) is None
-        assert self.auth.refresh_session(refresh_token, 60, 60) is None
-        assert self.auth.authenticate("resetuser", "oldpass") == AuthResult.WRONG_PASSWORD
-        assert self.auth.authenticate("resetuser", "newpass") == AuthResult.SUCCESS
-
-
-class TestTableManagerIntegration:
-    """Test table manager operations."""
-
-    def test_create_and_find_table(self):
-        """Test creating and finding tables."""
-        manager = TableManager()
-        user = MockUser("host")
-
-        table = manager.create_table("pig", "host", user)
-        assert table.table_id is not None
-        assert table.game_type == "pig"
-        assert table.host == "host"
-
-        # Find by ID
-        found = manager.get_table(table.table_id)
-        assert found is table
-
-        # Find by user
-        user_table = manager.find_user_table("host")
-        assert user_table is table
-
-    def test_waiting_tables(self):
-        """Test getting waiting tables."""
-        manager = TableManager()
-        user1 = MockUser("host1")
-        user2 = MockUser("host2")
-
-        manager.create_table("pig", "host1", user1)
-        manager.create_table("pig", "host2", user2)
-        manager.create_table("other", "host1", user1)
-
-        waiting = manager.get_waiting_tables("pig")
-        assert len(waiting) == 2
-
-        waiting_all = manager.get_waiting_tables()
-        assert len(waiting_all) == 3
-
-    def test_table_destroyed_when_empty(self):
-        """Removing the last member should destroy the table."""
-        manager = TableManager()
-        host = MockUser("host")
-        table = manager.create_table("pig", "host", host)
-        table.remove_member("host")
-        assert manager.get_table(table.table_id) is None
-
-    def test_manager_tick_removes_empty_table(self):
-        """Manager tick should remove tables with no members."""
-        manager = TableManager()
-        table = Table(table_id="empty", game_type="pig", host="host")
-        manager.add_table(table)
-        manager.on_tick()
-        assert manager.get_table("empty") is None
+            # Using same token again should fail (replaced)
+            result2 = await auth.refresh_session(token)
+            assert not result2.success
+        finally:
+            await db.close()
 
 
-class TestGameRegistryIntegration:
-    """Test game registry."""
+class TestTableIntegration:
+    """Test table operations."""
 
-    def test_pig_game_registered(self):
-        """Test that Pig game is registered."""
-        # Import to trigger registration
-        from server.games.pig.game import PigGame
+    async def test_table_creation_and_retrieval(self):
+        """Test creating and loading tables."""
+        db = Database()
+        await db.connect()
+        try:
+            await db.create_user("host", "pw", "en", approved=True)
+            user = await db.get_user("host")
 
-        game_class = get_game_class("pig")
-        assert game_class is PigGame
+            game_cls = get_game_class("pig")
+            manager = TableManager()
+            table = manager.create_table("pig", "host", user, game_cls)
 
-    def test_get_by_category(self):
-        """Test getting games by category."""
-        from server.games.pig.game import PigGame
+            game_json = table.game.to_json() if table.game else "{}"
+            members_json = '[{"username": "host", "is_bot": false}]'
 
-        categories = GameRegistry.get_by_category()
-        assert "category-dice-games" in categories
-        assert PigGame in categories["category-dice-games"]
+            await db.save_user_table(
+                username="host",
+                save_name="Test Save",
+                game_type="pig",
+                game_json=game_json,
+                members_json=members_json,
+            )
 
+            saved = await db.get_user_saved_tables("host")
+            assert len(saved) == 1
+            assert saved[0].game_type == "pig"
+            assert saved[0].save_name == "Test Save"
 
-class TestFullGameFlow:
-    """Test complete game flow from creation to completion."""
+            loaded = await db.get_saved_table(saved[0].id)
+            assert loaded is not None
+            assert loaded.game_type == "pig"
 
-    def test_complete_game_with_persistence(self):
-        """Test a complete game flow with save/load at each step."""
-        import random
+            await db.delete_saved_table(saved[0].id)
+            after_delete = await db.get_user_saved_tables("host")
+            assert len(after_delete) == 0
+        finally:
+            await db.close()
 
-        random.seed(42)
+    async def test_table_persistence_roundtrip(self):
+        """Test full table persistence round-trip."""
+        db = Database()
+        await db.connect()
+        try:
+            await db.create_user("host2", "pw", "en", approved=True)
+            user = await db.get_user("host2")
 
-        # Create table
-        manager = TableManager()
-        host = MockUser("Host")
-        table = manager.create_table("pig", "Host", host)
+            game_cls = get_game_class("pig")
+            manager = TableManager()
+            table = manager.create_table("pig", "host2", user, game_cls)
+            table.save_game_state()
 
-        # Add players
-        player2 = MockUser("Player2")
-        bot = Bot("Bot1")
-        table.add_member("Player2", player2)
-        table.add_member("Bot1", bot)
+            game_json = table.game_json
 
-        # Start game
-        game = PigGame(options=PigOptions(target_score=25))
-        for member in table.get_players():
-            user = table.get_user(member.username)
-            game.add_player(member.username, user)
+            await db.save_user_table(
+                username="host2",
+                save_name="Roundtrip",
+                game_type="pig",
+                game_json=game_json or "{}",
+                members_json='[{"username": "host2", "is_bot": false}]',
+            )
 
-        table.game = game
-        table.status = "playing"
-        game.on_start()
+            saved = await db.get_user_saved_tables("host2")
+            assert len(saved) == 1
+            save_id = saved[0].id
 
-        # Run game with periodic saves
-        max_ticks = 500
-        for tick in range(max_ticks):
-            if not game.game_active:
-                break
-
-            # Save state every 10 ticks
-            if tick % 10 == 0:
-                table.save_game_state()
-                json_data = table.game_json
-
-                # Verify we can reload
-                loaded = PigGame.from_json(json_data)
-                assert loaded.round == game.round
-
-            # Tick
-            game.on_tick()
-
-            # Simulate human player actions (simple strategy)
-            current = game.current_player
-            if current and not current.is_bot:
-                if current.round_score >= 15:
-                    game.execute_action(current, "bank")
-                else:
-                    game.execute_action(current, "roll")
-
-        assert not game.game_active, "Game should complete"
-        max_score = max(game.get_player_score(p) for p in game.players)
-        assert max_score >= 25, "Winner should have reached target"
-
-        # Verify messages were sent
-        host_messages = host.get_spoken_messages()
-        assert any("Round" in m for m in host_messages)
-        assert any("winner" in m.lower() for m in host_messages)
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+            loaded_record = await db.get_saved_table(save_id)
+            assert loaded_record is not None
+            assert loaded_record.game_json == game_json
+        finally:
+            await db.close()

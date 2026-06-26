@@ -450,9 +450,18 @@ async def test_stop_cancels_localization_warmup_task(monkeypatch, make_server):
     await started.wait()
     srv._localization_warmup_task = task
 
-    monkeypatch.setattr(srv, "_save_tables", lambda: None)
-    monkeypatch.setattr(srv._virtual_bots, "save_state", lambda: None)
-    monkeypatch.setattr(srv._db, "close", lambda: None)
+    async def fake_save_tables():
+        pass
+
+    async def fake_save_state():
+        pass
+
+    async def fake_close():
+        pass
+
+    monkeypatch.setattr(srv, "_save_tables", fake_save_tables)
+    monkeypatch.setattr(srv._virtual_bots, "save_state", fake_save_state)
+    monkeypatch.setattr(srv._db, "close", fake_close)
 
     await srv.stop()
 

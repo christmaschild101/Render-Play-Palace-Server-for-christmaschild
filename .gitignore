@@ -9,17 +9,19 @@ var/*
 !var/.gitkeep
 !var/server/
 
+# PostgreSQL (via DATABASE_URL) — no local SQLite db tracked
 var/server/*
-!var/server/playpalace.db
 
 # PyInstaller artifacts
 clients/desktop/build/
 clients/desktop/dist/
 clients/desktop/*.spec
 
+# Environment / secrets
+.env
+
 # Runtime artifacts
 server/errors.log
-server/playpalace.db
 
 # Test report coverage files
 server/.coverage

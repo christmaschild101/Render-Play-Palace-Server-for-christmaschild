@@ -491,18 +491,18 @@ class VirtualBotManager:
             key=lambda state: (state.config.priority, state.config.name),
         )
 
-    def save_state(self) -> None:
+    async def save_state(self) -> None:
         """Save all virtual bot state to the database for persistence."""
         db = self._server._db
         if not db:
             return
 
         # Clear existing saved state
-        db.delete_all_virtual_bots()
+        await db.delete_all_virtual_bots()
 
         # Save each bot's state
         for bot in self._bots.values():
-            db.save_virtual_bot(
+            await db.save_virtual_bot(
                 name=bot.name,
                 state=bot.state.value,
                 online_ticks=bot.online_ticks,
@@ -511,7 +511,7 @@ class VirtualBotManager:
                 game_join_tick=bot.game_join_tick,
             )
 
-    def load_state(self) -> int:
+    async def load_state(self) -> int:
         """
         Load virtual bot state from the database.
 
@@ -521,7 +521,7 @@ class VirtualBotManager:
         if not db:
             return 0
 
-        bot_data = db.load_all_virtual_bots()
+        bot_data = await db.load_all_virtual_bots()
         count = 0
 
         for data in bot_data:
@@ -720,7 +720,7 @@ class VirtualBotManager:
 
         return added, online
 
-    def clear_bots(self) -> tuple[int, int]:
+    async def clear_bots(self) -> tuple[int, int]:
         """
         Remove all instantiated bots and kill tables they're in.
 
@@ -753,7 +753,7 @@ class VirtualBotManager:
 
         # Also clear from database
         if self._server._db:
-            self._server._db.delete_all_virtual_bots()
+            await self._server._db.delete_all_virtual_bots()
 
         return bot_count, len(tables_killed)
 

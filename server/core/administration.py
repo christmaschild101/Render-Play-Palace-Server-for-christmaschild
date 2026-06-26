@@ -153,9 +153,9 @@ class AdministrationMixin:
         )
         self._user_states[user.username] = {"menu": menu_id}
 
-    def _show_account_approval_menu(self, user: NetworkUser) -> None:
+    async def _show_account_approval_menu(self, user: NetworkUser) -> None:
         """Show account approval menu with pending users."""
-        pending = self._db.get_pending_users()
+        pending = await self._db.get_pending_users()
 
         if not pending:
             _speak_activity(user, "no-pending-accounts")
@@ -182,9 +182,9 @@ class AdministrationMixin:
             "pending_username": pending_username,
         }
 
-    def _show_promote_admin_menu(self, user: NetworkUser) -> None:
+    async def _show_promote_admin_menu(self, user: NetworkUser) -> None:
         """Show promote admin menu with list of non-admin users."""
-        non_admins = self._db.get_non_admin_users()
+        non_admins = await self._db.get_non_admin_users()
 
         if not non_admins:
             user.speak_l("no-users-to-promote", buffer="misc")
@@ -193,10 +193,10 @@ class AdministrationMixin:
 
         self._show_user_list_menu(user, "promote_admin_menu", non_admins, "promote")
 
-    def _show_demote_admin_menu(self, user: NetworkUser) -> None:
+    async def _show_demote_admin_menu(self, user: NetworkUser) -> None:
         """Show demote admin menu with list of admin users."""
         # Exclude server owner from demotion list
-        admins = self._db.get_admin_users(include_server_owner=False)
+        admins = await self._db.get_admin_users(include_server_owner=False)
 
         # Filter out the current user (can't demote yourself)
         admins = [a for a in admins if a.username != user.username]
@@ -208,9 +208,9 @@ class AdministrationMixin:
 
         self._show_user_list_menu(user, "demote_admin_menu", admins, "demote")
 
-    def _show_reset_password_user_menu(self, user: NetworkUser) -> None:
+    async def _show_reset_password_user_menu(self, user: NetworkUser) -> None:
         """Show reset password menu with users admins may reset."""
-        resettable_users = self._db.get_non_admin_users(exclude_banned=True)
+        resettable_users = await self._db.get_non_admin_users(exclude_banned=True)
 
         if not resettable_users:
             user.speak_l("no-users-to-reset-password", buffer="misc")
@@ -289,10 +289,10 @@ class AdministrationMixin:
             "target_username": target_username,
         }
 
-    def _show_transfer_ownership_menu(self, user: NetworkUser) -> None:
+    async def _show_transfer_ownership_menu(self, user: NetworkUser) -> None:
         """Show transfer ownership menu with list of admin users."""
         # Only admins can receive ownership (exclude server owner)
-        admins = self._db.get_admin_users(include_server_owner=False)
+        admins = await self._db.get_admin_users(include_server_owner=False)
 
         if not admins:
             user.speak_l("no-admins-for-transfer", buffer="misc")
@@ -332,10 +332,10 @@ class AdministrationMixin:
             "target_username": target_username,
         }
 
-    def _show_ban_user_menu(self, user: NetworkUser) -> None:
+    async def _show_ban_user_menu(self, user: NetworkUser) -> None:
         """Show ban user menu with list of non-admin users who aren't banned."""
         # Get non-admin users who aren't banned (admins must be demoted first)
-        bannable_users = self._db.get_non_admin_users(exclude_banned=True)
+        bannable_users = await self._db.get_non_admin_users(exclude_banned=True)
 
         if not bannable_users:
             user.speak_l("no-users-to-ban", buffer="misc")
@@ -344,9 +344,9 @@ class AdministrationMixin:
 
         self._show_user_list_menu(user, "ban_user_menu", bannable_users, "ban")
 
-    def _show_unban_user_menu(self, user: NetworkUser) -> None:
+    async def _show_unban_user_menu(self, user: NetworkUser) -> None:
         """Show unban user menu with list of banned users."""
-        banned_users = self._db.get_banned_users()
+        banned_users = await self._db.get_banned_users()
 
         if not banned_users:
             user.speak_l("no-users-to-unban", buffer="misc")
@@ -463,19 +463,19 @@ class AdministrationMixin:
     async def _handle_admin_menu_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle admin menu selection."""
         if selection_id == "account_approval":
-            self._show_account_approval_menu(user)
+            await self._show_account_approval_menu(user)
         elif selection_id == "reset_user_password":
-            self._show_reset_password_user_menu(user)
+            await self._show_reset_password_user_menu(user)
         elif selection_id == "promote_admin":
-            self._show_promote_admin_menu(user)
+            await self._show_promote_admin_menu(user)
         elif selection_id == "demote_admin":
-            self._show_demote_admin_menu(user)
+            await self._show_demote_admin_menu(user)
         elif selection_id == "transfer_ownership":
-            self._show_transfer_ownership_menu(user)
+            await self._show_transfer_ownership_menu(user)
         elif selection_id == "ban_user":
-            self._show_ban_user_menu(user)
+            await self._show_ban_user_menu(user)
         elif selection_id == "unban_user":
-            self._show_unban_user_menu(user)
+            await self._show_unban_user_menu(user)
         elif selection_id == "virtual_bots":
             self._show_virtual_bots_menu(user)
         elif selection_id == "back":
@@ -497,7 +497,7 @@ class AdministrationMixin:
         """Handle pending user actions menu selection."""
         pending_username = state.get("pending_username")
         if not pending_username:
-            self._show_account_approval_menu(user)
+            await self._show_account_approval_menu(user)
             return
 
         if selection_id == "approve":
@@ -505,7 +505,7 @@ class AdministrationMixin:
         elif selection_id == "decline":
             self._show_decline_reason_editbox(user, pending_username)
         elif selection_id == "back":
-            self._show_account_approval_menu(user)
+            await self._show_account_approval_menu(user)
 
     def _show_decline_reason_editbox(self, user: NetworkUser, pending_username: str) -> None:
         """Show editbox for entering decline reason."""
@@ -528,7 +528,7 @@ class AdministrationMixin:
         """Handle decline reason editbox submission."""
         pending_username = state.get("pending_username")
         if not pending_username:
-            self._show_account_approval_menu(admin)
+            await self._show_account_approval_menu(admin)
             return
 
         # Proceed with decline, passing the reason (empty text uses fallback)
@@ -566,7 +566,7 @@ class AdministrationMixin:
         """Handle replacement password submission."""
         target_username = state.get("target_username")
         if not target_username:
-            self._show_reset_password_user_menu(admin)
+            await self._show_reset_password_user_menu(admin)
             return
 
         password = text or ""
@@ -590,7 +590,7 @@ class AdministrationMixin:
         """Handle promote confirmation menu selection."""
         target_username = state.get("target_username")
         if not target_username:
-            self._show_promote_admin_menu(user)
+            await self._show_promote_admin_menu(user)
             return
 
         if selection_id == "yes":
@@ -598,7 +598,7 @@ class AdministrationMixin:
             self._show_broadcast_choice_menu(user, "promote", target_username)
         else:
             # No or back - return to promote admin menu
-            self._show_promote_admin_menu(user)
+            await self._show_promote_admin_menu(user)
 
     async def _handle_demote_confirm_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -606,7 +606,7 @@ class AdministrationMixin:
         """Handle demote confirmation menu selection."""
         target_username = state.get("target_username")
         if not target_username:
-            self._show_demote_admin_menu(user)
+            await self._show_demote_admin_menu(user)
             return
 
         if selection_id == "yes":
@@ -614,7 +614,7 @@ class AdministrationMixin:
             self._show_broadcast_choice_menu(user, "demote", target_username)
         else:
             # No or back - return to demote admin menu
-            self._show_demote_admin_menu(user)
+            await self._show_demote_admin_menu(user)
 
     async def _handle_broadcast_choice_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -655,7 +655,7 @@ class AdministrationMixin:
         """Handle transfer ownership confirmation menu selection."""
         target_username = state.get("target_username")
         if not target_username:
-            self._show_transfer_ownership_menu(user)
+            await self._show_transfer_ownership_menu(user)
             return
 
         if selection_id == "yes":
@@ -663,7 +663,7 @@ class AdministrationMixin:
             self._show_transfer_broadcast_choice_menu(user, target_username)
         else:
             # No or back - return to transfer ownership menu
-            self._show_transfer_ownership_menu(user)
+            await self._show_transfer_ownership_menu(user)
 
     async def _handle_transfer_broadcast_choice_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -702,7 +702,7 @@ class AdministrationMixin:
         """Handle ban confirmation menu selection."""
         target_username = state.get("target_username")
         if not target_username:
-            self._show_ban_user_menu(user)
+            await self._show_ban_user_menu(user)
             return
 
         if selection_id == "yes":
@@ -710,7 +710,7 @@ class AdministrationMixin:
             self._show_broadcast_choice_menu(user, "ban", target_username)
         else:
             # No or back - return to ban user menu
-            self._show_ban_user_menu(user)
+            await self._show_ban_user_menu(user)
 
     async def _handle_unban_confirm_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -718,7 +718,7 @@ class AdministrationMixin:
         """Handle unban confirmation menu selection."""
         target_username = state.get("target_username")
         if not target_username:
-            self._show_unban_user_menu(user)
+            await self._show_unban_user_menu(user)
             return
 
         if selection_id == "yes":
@@ -726,14 +726,14 @@ class AdministrationMixin:
             self._show_broadcast_choice_menu(user, "unban", target_username)
         else:
             # No or back - return to unban user menu
-            self._show_unban_user_menu(user)
+            await self._show_unban_user_menu(user)
 
     async def _handle_ban_reason_editbox(self, admin: NetworkUser, text: str, state: dict) -> None:
         """Handle ban reason editbox submission."""
         target_username = state.get("target_username")
         broadcast_scope = state.get("broadcast_scope", "nobody")
         if not target_username:
-            self._show_ban_user_menu(admin)
+            await self._show_ban_user_menu(admin)
             return
 
         # Proceed with ban, passing the reason and broadcast scope
@@ -746,7 +746,7 @@ class AdministrationMixin:
         target_username = state.get("target_username")
         broadcast_scope = state.get("broadcast_scope", "nobody")
         if not target_username:
-            self._show_unban_user_menu(admin)
+            await self._show_unban_user_menu(admin)
             return
 
         # Proceed with unban, passing the reason and broadcast scope
@@ -783,7 +783,7 @@ class AdministrationMixin:
     @require_admin
     async def _approve_user(self, admin: NetworkUser, username: str) -> None:
         """Approve a pending user account."""
-        if self._db.approve_user(username):
+        if await self._db.approve_user(username):
             _speak_activity(admin, "account-approved", player=username)
 
             # Notify other admins of the account action
@@ -807,17 +807,17 @@ class AdministrationMixin:
                     waiting_user.play_sound("accountapprove.ogg")
                     self._show_main_menu(waiting_user)
 
-        self._show_account_approval_menu(admin)
+        await self._show_account_approval_menu(admin)
 
     @require_admin
     async def _reset_user_password(
         self, admin: NetworkUser, username: str, new_password: str
     ) -> None:
         """Reset a user's password to an admin-provided temporary value."""
-        target_record = self._db.get_user(username)
+        target_record = await self._db.get_user(username)
         if not target_record or target_record.trust_level.value >= TrustLevel.ADMIN.value:
             _speak_activity(admin, "reset-user-password-unavailable", player=username)
-            self._show_reset_password_user_menu(admin)
+            await self._show_reset_password_user_menu(admin)
             return
 
         if self._auth.reset_password(username, new_password):
@@ -841,7 +841,7 @@ class AdministrationMixin:
         else:
             _speak_activity(admin, "reset-user-password-unavailable", player=username)
 
-        self._show_reset_password_user_menu(admin)
+        await self._show_reset_password_user_menu(admin)
 
     @require_admin
     async def _decline_user(self, admin: NetworkUser, username: str, reason: str = "") -> None:
@@ -849,7 +849,7 @@ class AdministrationMixin:
         # Check if the user is online first
         waiting_user = self._users.get(username)
 
-        if self._db.delete_user(username):
+        if await self._db.delete_user(username):
             _speak_activity(admin, "account-declined", player=username)
 
             # Notify other admins of the account action
@@ -883,7 +883,7 @@ class AdministrationMixin:
                     }
                 )
 
-        self._show_account_approval_menu(admin)
+        await self._show_account_approval_menu(admin)
 
     @require_server_owner
     async def _promote_to_admin(
@@ -891,7 +891,7 @@ class AdministrationMixin:
     ) -> None:
         """Promote a user to admin. Only server owner can do this."""
         # Update trust level in database
-        self._db.update_user_trust_level(username, TrustLevel.ADMIN)
+        await self._db.update_user_trust_level(username, TrustLevel.ADMIN)
 
         # Update the user's trust level if they are online
         target_user = self._users.get(username)
@@ -926,7 +926,7 @@ class AdministrationMixin:
     ) -> None:
         """Demote an admin to regular user. Only server owner can do this."""
         # Update trust level in database
-        self._db.update_user_trust_level(username, TrustLevel.USER)
+        await self._db.update_user_trust_level(username, TrustLevel.USER)
 
         # Update the user's trust level if they are online
         target_user = self._users.get(username)
@@ -980,10 +980,10 @@ class AdministrationMixin:
     ) -> None:
         """Transfer server ownership to another admin. Only server owner can do this."""
         # Update new owner to SERVER_OWNER
-        self._db.update_user_trust_level(username, TrustLevel.SERVER_OWNER)
+        await self._db.update_user_trust_level(username, TrustLevel.SERVER_OWNER)
 
         # Demote current owner to ADMIN
-        self._db.update_user_trust_level(owner.username, TrustLevel.ADMIN)
+        await self._db.update_user_trust_level(owner.username, TrustLevel.ADMIN)
 
         # Update the new owner's trust level if they are online
         target_user = self._users.get(username)
@@ -1024,7 +1024,7 @@ class AdministrationMixin:
         target_user = self._users.get(username)
 
         # Update trust level in database to BANNED
-        self._db.update_user_trust_level(username, TrustLevel.BANNED)
+        await self._db.update_user_trust_level(username, TrustLevel.BANNED)
 
         # Broadcast the ban announcement based on scope
         if broadcast_scope == "nobody":
@@ -1066,7 +1066,7 @@ class AdministrationMixin:
                 }
             )
 
-        self._show_ban_user_menu(admin)
+        await self._show_ban_user_menu(admin)
 
     @require_admin
     async def _unban_user(
@@ -1074,10 +1074,10 @@ class AdministrationMixin:
     ) -> None:
         """Unban a user. Admins and server owner can do this."""
         # Update trust level in database to USER
-        self._db.update_user_trust_level(username, TrustLevel.USER)
+        await self._db.update_user_trust_level(username, TrustLevel.USER)
 
         # Also set approved to True when unbanning
-        self._db.approve_user(username)
+        await self._db.approve_user(username)
 
         # Broadcast the unban announcement based on scope
         if broadcast_scope == "nobody":
@@ -1093,7 +1093,7 @@ class AdministrationMixin:
                 broadcast_scope,
             )
 
-        self._show_unban_user_menu(admin)
+        await self._show_unban_user_menu(admin)
 
     # ==================== Virtual Bot Actions ====================
 
@@ -1109,7 +1109,7 @@ class AdministrationMixin:
         if added > 0:
             owner.speak_l("virtual-bots-filled", added=added, online=online, buffer="misc")
             # Save state after filling
-            self._virtual_bots.save_state()
+            await self._virtual_bots.save_state()
         else:
             owner.speak_l("virtual-bots-already-filled", buffer="misc")
 
@@ -1123,7 +1123,7 @@ class AdministrationMixin:
             self._show_virtual_bots_menu(owner)
             return
 
-        bots_cleared, tables_killed = self._virtual_bots.clear_bots()
+        bots_cleared, tables_killed = await self._virtual_bots.clear_bots()
         if bots_cleared > 0:
             owner.speak_l(
                 "virtual-bots-cleared",

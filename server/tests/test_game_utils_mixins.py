@@ -3,6 +3,8 @@ import threading
 from dataclasses import dataclass
 from types import SimpleNamespace
 
+import pytest
+
 from server.game_utils.action_execution_mixin import ActionExecutionMixin
 from server.game_utils.actions import Action, MenuInput, EditboxInput, ResolvedAction
 from server.game_utils.duration_estimate_mixin import DurationEstimateMixin
@@ -72,20 +74,22 @@ class DummyPredictionGame(GamePredictionMixin):
         self.status_calls.append((player.id, lines))
 
 
-def test_prediction_requires_db(monkeypatch):
+@pytest.mark.asyncio
+async def test_prediction_requires_db(monkeypatch):
     user = StubUser()
     game = DummyPredictionGame({"p1": user})
     player = Player(id="p1", name="Alice")
     game.players = [player]
     game._table = SimpleNamespace(_db=None)
 
-    game._action_predict_outcomes(player, "predict")
+    await game._action_predict_outcomes(player, "predict")
 
     assert ("speak_l", "predict-unavailable", "misc", {}) in user.spoken
     assert game.status_calls == []
 
 
-def test_prediction_needs_two_humans(monkeypatch):
+@pytest.mark.asyncio
+async def test_prediction_needs_two_humans(monkeypatch):
     user = StubUser()
     other_user = StubUser()
     game = DummyPredictionGame({"p1": user, "p2": other_user})
@@ -93,13 +97,14 @@ def test_prediction_needs_two_humans(monkeypatch):
     spectator = Player(id="p2", name="Bob", is_spectator=True)
     game.players = [p1, spectator]
 
-    game._action_predict_outcomes(p1, "predict")
+    await game._action_predict_outcomes(p1, "predict")
 
     assert ("speak_l", "predict-need-players", "misc", {}) in user.spoken
     assert game.status_calls == []
 
 
-def test_prediction_formats_results(monkeypatch):
+@pytest.mark.asyncio
+async def test_prediction_formats_results(monkeypatch):
     user = StubUser()
     other_user = StubUser()
     game = DummyPredictionGame({"p1": user, "p2": other_user})
@@ -115,10 +120,10 @@ def test_prediction_formats_results(monkeypatch):
         def __init__(self, db, game_type):
             self.calls = []
 
-        def get_rating(self, player_id: str):
+        async def get_rating(self, player_id: str):
             return DummyRating({"p1": 30, "p2": 20}[player_id])
 
-        def predict_win_probability(self, player_id: str, other_id: str) -> float:
+        async def predict_win_probability(self, player_id: str, other_id: str) -> float:
             assert {player_id, other_id} == {"p1", "p2"}
             return 0.65 if player_id == "p1" else 0.35
 
@@ -127,7 +132,7 @@ def test_prediction_formats_results(monkeypatch):
         DummyRatingHelper,
     )
 
-    game._action_predict_outcomes(p1, "predict")
+    await game._action_predict_outcomes(p1, "predict")
 
     assert not user.spoken  # status box used instead
     assert game.status_calls

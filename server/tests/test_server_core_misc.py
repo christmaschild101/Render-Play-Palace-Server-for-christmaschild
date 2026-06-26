@@ -22,7 +22,7 @@ class FakeDBCount:
     def __init__(self, count: int):
         self.count = count
 
-    def get_user_count(self):
+    async def get_user_count(self):
         return self.count
 
 
@@ -59,30 +59,33 @@ def test_validate_transport_requires_tls_or_opt_out(server):
         server._validate_transport_security()
 
 
-def test_warn_if_no_users_respects_env(server, capsys, monkeypatch):
+@pytest.mark.asyncio
+async def test_warn_if_no_users_respects_env(server, capsys, monkeypatch):
     monkeypatch.setenv(BOOTSTRAP_WARNING_ENV, "1")
     server._db = FakeDBCount(0)
 
-    server._warn_if_no_users()
+    await server._warn_if_no_users()
 
     captured = capsys.readouterr()
     assert "WARNING: No user accounts exist" not in captured.out
 
 
-def test_warn_if_no_users_prints_when_empty(server, capsys, monkeypatch):
+@pytest.mark.asyncio
+async def test_warn_if_no_users_prints_when_empty(server, capsys, monkeypatch):
     monkeypatch.delenv(BOOTSTRAP_WARNING_ENV, raising=False)
     server._db = FakeDBCount(0)
 
-    server._warn_if_no_users()
+    await server._warn_if_no_users()
 
     assert "WARNING: No user accounts exist" in capsys.readouterr().out
 
 
-def test_warn_if_no_users_silent_when_existing(server, capsys, monkeypatch):
+@pytest.mark.asyncio
+async def test_warn_if_no_users_silent_when_existing(server, capsys, monkeypatch):
     monkeypatch.delenv(BOOTSTRAP_WARNING_ENV, raising=False)
     server._db = FakeDBCount(2)
 
-    server._warn_if_no_users()
+    await server._warn_if_no_users()
 
     assert capsys.readouterr().out == ""
 

@@ -87,13 +87,13 @@ class DummyDB:
     def __init__(self):
         self.store = {}
 
-    def get_player_rating(self, player_id, game_type):
+    async def get_player_rating(self, player_id, game_type):
         return self.store.get((player_id, game_type))
 
-    def set_player_rating(self, player_id, game_type, mu, sigma):
+    async def set_player_rating(self, player_id, game_type, mu, sigma):
         self.store[(player_id, game_type)] = (mu, sigma)
 
-    def get_rating_leaderboard(self, game_type, limit):
+    async def get_rating_leaderboard(self, game_type, limit):
         rows = [
             (pid, mu, sigma) for (pid, gt), (mu, sigma) in self.store.items() if gt == game_type
         ]
@@ -101,13 +101,13 @@ class DummyDB:
         return rows[:limit]
 
 
-def test_rating_helper_update_and_prediction_flow():
+async def test_rating_helper_update_and_prediction_flow():
     db = DummyDB()
     helper = RatingHelper(db, game_type="test")
 
-    updated = helper.update_ratings([["alice"], ["bob", "carol"]])
+    updated = await helper.update_ratings([["alice"], ["bob", "carol"]])
     assert set(updated.keys()) == {"alice", "bob", "carol"}
-    assert db.get_player_rating("alice", "test") is not None
+    assert await db.get_player_rating("alice", "test") is not None
 
     result = make_result(
         [
@@ -118,14 +118,14 @@ def test_rating_helper_update_and_prediction_flow():
         ],
         {"winner_name": "Alice"},
     )
-    helper.update_from_result(result)
-    alice_rating = helper.get_rating("alice")
-    vbot_rating = helper.get_rating("vbot")
+    await helper.update_from_result(result)
+    alice_rating = await helper.get_rating("alice")
+    vbot_rating = await helper.get_rating("vbot")
     assert alice_rating.mu != helper.DEFAULT_MU  # updated
     assert vbot_rating.mu != helper.DEFAULT_MU  # virtual bot included
 
-    leaderboard = helper.get_leaderboard(limit=5)
+    leaderboard = await helper.get_leaderboard(limit=5)
     assert leaderboard[0].ordinal >= leaderboard[-1].ordinal
 
-    probability = helper.predict_win_probability("alice", "bob")
+    probability = await helper.predict_win_probability("alice", "bob")
     assert 0 <= probability <= 1

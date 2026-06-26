@@ -1,6 +1,7 @@
 """Security tests for document and transcriber authorization."""
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -72,7 +73,7 @@ def write_document(documents_dir, folder_name: str, metadata: str, files: dict[s
 @pytest.mark.asyncio
 async def test_non_admin_cannot_open_new_document_flow(server):
     user = make_user("player")
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
     await server._handle_documents_menu_selection(user, "new_document", {})
 
@@ -94,7 +95,7 @@ async def test_non_admin_cannot_open_delete_document_confirm(server, documents_d
         {"en": "hello"},
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
     await server._handle_document_settings_selection(
         user,
@@ -110,8 +111,8 @@ async def test_non_admin_cannot_open_delete_document_confirm(server, documents_d
 async def test_non_admin_cannot_add_transcriber_user(server):
     user = make_user("player")
     server._db = SimpleNamespace(
-        get_transcriber_languages=lambda username: [],
-        get_category_document_counts=lambda: {},
+        get_transcriber_languages=AsyncMock(return_value=[]),
+        get_category_document_counts=AsyncMock(return_value={}),
     )
 
     await server._handle_transcribers_by_user_selection(user, "add_user", {})
@@ -167,7 +168,8 @@ async def test_handle_menu_allows_selection_present_in_current_menu(server, monk
     }
 
 
-def test_admin_can_change_titles_without_transcriber_assignments(server, documents_dir):
+@pytest.mark.asyncio
+async def test_admin_can_change_titles_without_transcriber_assignments(server, documents_dir):
     admin = make_user("admin", trust=TrustLevel.ADMIN)
     write_document(
         documents_dir,
@@ -180,16 +182,17 @@ def test_admin_can_change_titles_without_transcriber_assignments(server, documen
         {"en": "hello"},
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
-    server._show_document_title_languages(admin, "title_doc", {"category_slug": None})
+    await server._show_document_title_languages(admin, "title_doc", {"category_slug": None})
 
     assert server._user_states[admin.username]["menu"] == "document_title_lang_menu"
     items = admin._current_menus["document_title_lang_menu"]["items"]
     assert any(item["id"] == "lang_en" for item in items if isinstance(item, dict))
 
 
-def test_admin_can_add_translation_without_transcriber_assignments(server, documents_dir):
+@pytest.mark.asyncio
+async def test_admin_can_add_translation_without_transcriber_assignments(server, documents_dir):
     admin = make_user("admin", trust=TrustLevel.ADMIN)
     write_document(
         documents_dir,
@@ -202,9 +205,9 @@ def test_admin_can_add_translation_without_transcriber_assignments(server, docum
         {"en": "hello"},
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
-    server._show_add_translation_languages(admin, "translation_doc", {"category_slug": None})
+    await server._show_add_translation_languages(admin, "translation_doc", {"category_slug": None})
 
     assert server._user_states[admin.username]["menu"] == "add_translation_lang_menu"
     items = admin._current_menus["add_translation_lang_menu"]["items"]
@@ -224,14 +227,15 @@ def test_admin_can_open_delete_confirm_without_transcriber_assignments(server, d
         {"en": "hello"},
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
     server._show_delete_document_confirm(admin, "delete_doc", {"category_slug": None})
 
     assert server._user_states[admin.username]["menu"] == "delete_document_confirm"
 
 
-def test_document_view_uses_visible_title_for_fallback_locale(server, documents_dir):
+@pytest.mark.asyncio
+async def test_document_view_uses_visible_title_for_fallback_locale(server, documents_dir):
     user = make_user("reader", locale="en")
     write_document(
         documents_dir,
@@ -247,9 +251,9 @@ def test_document_view_uses_visible_title_for_fallback_locale(server, documents_
         {"en": "secret", "fr": "bonjour"},
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
-    server._show_document_view(user, "visible_doc", {"category_slug": None})
+    await server._show_document_view(user, "visible_doc", {"category_slug": None})
 
     packet = user.get_queued_messages()[-1]
     assert packet["type"] == "request_input"
@@ -257,7 +261,8 @@ def test_document_view_uses_visible_title_for_fallback_locale(server, documents_
     assert packet["default_value"] == "bonjour"
 
 
-def test_document_view_does_not_fallback_to_private_english_title(server, documents_dir):
+@pytest.mark.asyncio
+async def test_document_view_does_not_fallback_to_private_english_title(server, documents_dir):
     user = make_user("reader", locale="fr")
     write_document(
         documents_dir,
@@ -273,9 +278,9 @@ def test_document_view_does_not_fallback_to_private_english_title(server, docume
         {"fr": "bonjour"},
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
-    server._show_document_view(user, "title_safe_doc", {"category_slug": None})
+    await server._show_document_view(user, "title_safe_doc", {"category_slug": None})
 
     packet = user.get_queued_messages()[-1]
     assert packet["type"] == "request_input"
@@ -283,7 +288,8 @@ def test_document_view_does_not_fallback_to_private_english_title(server, docume
     assert packet["default_value"] == "bonjour"
 
 
-def test_document_view_skips_missing_visible_fallback_files(server, documents_dir):
+@pytest.mark.asyncio
+async def test_document_view_skips_missing_visible_fallback_files(server, documents_dir):
     user = make_user("reader", locale="en")
     write_document(
         documents_dir,
@@ -300,9 +306,9 @@ def test_document_view_skips_missing_visible_fallback_files(server, documents_di
         {"fr": "bonjour", "de": "guten tag"},
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
-    server._show_document_view(user, "fallback_doc", {"category_slug": None})
+    await server._show_document_view(user, "fallback_doc", {"category_slug": None})
 
     packet = user.get_queued_messages()[-1]
     assert packet["type"] == "request_input"
@@ -310,7 +316,8 @@ def test_document_view_skips_missing_visible_fallback_files(server, documents_di
     assert packet["default_value"] == "bonjour"
 
 
-def test_documents_menu_counts_hide_fully_private_documents(server, documents_dir):
+@pytest.mark.asyncio
+async def test_documents_menu_counts_hide_fully_private_documents(server, documents_dir):
     user = make_user("reader", locale="en")
     write_document(
         documents_dir,
@@ -328,9 +335,9 @@ def test_documents_menu_counts_hide_fully_private_documents(server, documents_di
         encoding="utf-8",
     )
     server._documents.load()
-    server._db = SimpleNamespace(get_transcriber_languages=lambda username: [])
+    server._db = SimpleNamespace(get_transcriber_languages=AsyncMock(return_value=[]))
 
-    server._show_documents_menu(user)
+    await server._show_documents_menu(user)
 
     items = server._users.get(user.username, user)._current_menus["documents_menu"]["items"]
     assert any(item["id"] == "all" and item["text"] == "All documents (0)" for item in items)

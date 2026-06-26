@@ -42,7 +42,7 @@ class FakeAuth:
         self.sessions: dict[str, str] = {}
         self.authenticate_calls: list[tuple[str, str]] = []
 
-    def authenticate(self, username, password):
+    async def authenticate(self, username, password):
         self.authenticate_calls.append((username, password))
         if username == "alice" and password == "secret":
             return AuthResult.SUCCESS
@@ -50,7 +50,7 @@ class FakeAuth:
             return AuthResult.WRONG_PASSWORD
         return AuthResult.NOT_FOUND
 
-    def register(self, username, password, locale="en"):
+    async def register(self, username, password, locale="en"):
         self.users[username] = SimpleNamespace(
             uuid="new",
             locale=locale,
@@ -61,17 +61,17 @@ class FakeAuth:
         )
         return True
 
-    def get_user(self, username):
+    async def get_user(self, username):
         return self.users.get(username)
 
-    def validate_session(self, token):
+    async def validate_session(self, token):
         return self.sessions.get(token)
 
-    def create_session(self, username, ttl_seconds):
+    async def create_session(self, username, ttl_seconds):
         self.sessions["generated"] = username
         return "access-token", 123
 
-    def create_refresh_token(self, username, ttl_seconds):
+    async def create_refresh_token(self, username, ttl_seconds):
         return "refresh-token", 456
 
 
@@ -79,16 +79,16 @@ class FakeDB:
     def __init__(self):
         self.user_count = 0
 
-    def get_user_count(self):
+    async def get_user_count(self):
         return self.user_count
 
-    def initialize_trust_levels(self):
+    async def initialize_trust_levels(self):
         return None
 
-    def load_all_tables(self):
+    async def load_all_tables(self):
         return []
 
-    def delete_all_tables(self):
+    async def delete_all_tables(self):
         return None
 
 

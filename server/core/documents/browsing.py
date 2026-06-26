@@ -139,11 +139,11 @@ class DocumentBrowsingMixin:
         """
         if current_menu == "document_view":
             folder_name = state.get("folder_name", "")
-            if self._is_transcriber(user.username) or self._is_admin(user):
+            if await self._is_transcriber(user.username) or self._is_admin(user):
                 self._show_document_actions(user, folder_name, state)
             else:
                 category_slug = state.get("category_slug")
-                self._show_documents_list(user, category_slug)
+                await self._show_documents_list(user, category_slug)
             return True
 
         if current_menu == "document_title_editbox":
@@ -153,27 +153,27 @@ class DocumentBrowsingMixin:
 
         if current_menu == "new_document_slug_editbox":
             text = packet.get("text", "")
-            self._handle_new_document_slug(user, text, state)
+            await self._handle_new_document_slug(user, text, state)
             return True
 
         if current_menu == "new_category_slug_editbox":
             text = packet.get("text", "")
-            self._handle_new_category_slug(user, text, state)
+            await self._handle_new_category_slug(user, text, state)
             return True
 
         if current_menu == "new_category_name_editbox":
             text = packet.get("text", "")
-            self._handle_new_category_name(user, text, state)
+            await self._handle_new_category_name(user, text, state)
             return True
 
         if current_menu == "rename_category_editbox":
             text = packet.get("text", "")
-            self._handle_rename_category(user, text, state)
+            await self._handle_rename_category(user, text, state)
             return True
 
         if current_menu == "commit_message_editbox":
             text = packet.get("text", "")
-            self._handle_commit_message(user, text, state)
+            await self._handle_commit_message(user, text, state)
             return True
 
         return False
@@ -182,15 +182,15 @@ class DocumentBrowsingMixin:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _is_transcriber(self, username: str) -> bool:
+    async def _is_transcriber(self, username: str) -> bool:
         """Return True if the user has any transcriber language assignments."""
-        return len(self._db.get_transcriber_languages(username)) > 0
+        return len(await self._db.get_transcriber_languages(username)) > 0
 
     def _is_admin(self, user: NetworkUser) -> bool:
         """Return True if the user is an admin."""
         return user.trust_level.value >= TrustLevel.ADMIN.value
 
-    def _get_user_visible_locales(self, user: NetworkUser, folder_name: str) -> list[str]:
+    async def _get_user_visible_locales(self, user: NetworkUser, folder_name: str) -> list[str]:
         """Return document locales the user is allowed to read."""
         meta = self._documents.get_document_metadata(folder_name)
         if meta is None:
@@ -198,28 +198,28 @@ class DocumentBrowsingMixin:
         if self._is_admin(user):
             return sorted(meta.get("locales", {}).keys())
 
-        assigned = self._get_user_assigned_languages(user.username)
+        assigned = await self._get_user_assigned_languages(user.username)
         return sorted(
             locale_code
             for locale_code, loc_info in meta.get("locales", {}).items()
             if loc_info.get("public", False) or locale_code in assigned
         )
 
-    def _get_user_assigned_languages(self, username: str) -> set[str]:
+    async def _get_user_assigned_languages(self, username: str) -> set[str]:
         """Return the set of languages assigned to a user as a transcriber."""
-        return set(self._db.get_transcriber_languages(username))
+        return set(await self._db.get_transcriber_languages(username))
 
-    def _get_user_accessible_locales(self, user: NetworkUser, folder_name: str) -> list[str]:
+    async def _get_user_accessible_locales(self, user: NetworkUser, folder_name: str) -> list[str]:
         """Return document locales the user can edit (assigned/admin only)."""
         meta = self._documents.get_document_metadata(folder_name)
         if meta is None:
             return []
         if self._is_admin(user):
             return sorted(meta.get("locales", {}).keys())
-        assigned = self._get_user_assigned_languages(user.username)
+        assigned = await self._get_user_assigned_languages(user.username)
         return [loc for loc in meta.get("locales", {}).keys() if loc in assigned]
 
-    def _deny_document_permission(
+    async def _deny_document_permission(
         self,
         user: NetworkUser,
         *,
@@ -231,7 +231,7 @@ class DocumentBrowsingMixin:
         if folder_name and state is not None:
             self._show_document_actions(user, folder_name, state)
         else:
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
 
     def _get_document_title(self, folder_name: str, locale: str) -> str:
         """Get display title for a document."""
@@ -265,19 +265,19 @@ class DocumentBrowsingMixin:
                 return title
         return folder_name
 
-    def _get_title_candidate_locales(self, user: NetworkUser) -> list[str]:
+    async def _get_title_candidate_locales(self, user: NetworkUser) -> list[str]:
         """Return locales this user may target for title edits."""
         if self._is_admin(user):
             return sorted(Localization.get_available_locale_codes())
 
-        assigned = self._get_user_assigned_languages(user.username)
+        assigned = await self._get_user_assigned_languages(user.username)
         return [
             code
             for code in Localization.get_available_locale_codes()
             if code in assigned
         ]
 
-    def _get_add_translation_locales(
+    async def _get_add_translation_locales(
         self, user: NetworkUser, folder_name: str, meta: dict | None = None
     ) -> list[str]:
         """Return locales this user may add as new translations."""
@@ -287,22 +287,22 @@ class DocumentBrowsingMixin:
         if self._is_admin(user):
             candidates = Localization.get_available_locale_codes()
         else:
-            candidates = sorted(self._get_user_assigned_languages(user.username))
+            candidates = sorted(await self._get_user_assigned_languages(user.username))
         return [code for code in candidates if code not in existing_locales]
 
     # ------------------------------------------------------------------
     # Category / document list browsing
     # ------------------------------------------------------------------
 
-    def _show_documents_menu(self, user: NetworkUser) -> None:
+    async def _show_documents_menu(self, user: NetworkUser) -> None:
         """Show the documents category menu."""
         categories = self._documents.get_categories(user.locale)
         is_admin = self._is_admin(user)
         counts = self._documents.get_category_document_counts(
             include_private=is_admin,
-            allowed_private_locales=self._get_user_assigned_languages(user.username),
+            allowed_private_locales=await self._get_user_assigned_languages(user.username),
         )
-        show_empty = is_admin or self._is_transcriber(user.username)
+        show_empty = is_admin or await self._is_transcriber(user.username)
 
         items = []
 
@@ -400,46 +400,46 @@ class DocumentBrowsingMixin:
         if selection_id == "back":
             self._show_main_menu(user)
         elif selection_id == "all":
-            self._show_documents_list(user, None)
+            await self._show_documents_list(user, None)
         elif selection_id == "uncategorized":
-            self._show_documents_list(user, "")
+            await self._show_documents_list(user, "")
         elif selection_id == "new_document":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
-            self._show_new_document_scope(user)
+            await self._show_new_document_scope(user)
         elif selection_id == "new_category":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
             self._show_new_category_slug_editbox(user)
         elif selection_id == "sync_documents":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
             await self._handle_sync_documents(user)
         elif selection_id == "export_pending":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
             await self._handle_export_pending(user)
         elif selection_id == "create_pr":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
             await self._handle_create_pr(user)
         elif selection_id == "pending_info":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
-            self._handle_pending_info(user)
+            await self._handle_pending_info(user)
         elif selection_id == "transcribers_by_language":
             self._show_transcribers_by_language(user)
         elif selection_id == "transcribers_by_user":
             self._show_transcribers_by_user(user)
         elif selection_id.startswith("cat_"):
             slug = selection_id[4:]
-            self._show_documents_list(user, slug)
+            await self._show_documents_list(user, slug)
 
     # ------------------------------------------------------------------
     # Sync and export
@@ -464,7 +464,7 @@ class DocumentBrowsingMixin:
         if changed_docs:
             self._show_sync_discard_menu(user, changed_docs)
         else:
-            self._do_sync(user)
+            await self._do_sync(user)
 
     def _show_sync_discard_menu(
         self,
@@ -544,7 +544,7 @@ class DocumentBrowsingMixin:
         discard_set = set(state.get("sync_discard", []))
 
         if selection_id == "back":
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
 
         if selection_id == "discard_all":
@@ -565,7 +565,7 @@ class DocumentBrowsingMixin:
             # Discard selected documents, then sync
             for folder in discard_set:
                 self._documents.discard_document_changes(folder)
-            self._do_sync(user)
+            await self._do_sync(user)
             return
 
         if selection_id.startswith("toggle_"):
@@ -582,21 +582,21 @@ class DocumentBrowsingMixin:
                 user, changed_docs, focus_id=selection_id,
             )
 
-    def _do_sync(self, user: NetworkUser) -> None:
+    async def _do_sync(self, user: NetworkUser) -> None:
         """Run the actual sync and report the result."""
         success, message = self._documents.sync_shared_documents()
         if success:
             user.speak_l("documents-sync-success")
         else:
             user.speak_l("documents-sync-failed", reason=message)
-        self._show_documents_menu(user)
+        await self._show_documents_menu(user)
 
     async def _handle_export_pending(self, user: NetworkUser) -> None:
         """Export pending shared document changes as a ZIP file."""
         pending_count = self._documents.get_pending_change_count()
         if pending_count == 0:
             user.speak_l("documents-export-no-changes")
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -614,14 +614,14 @@ class DocumentBrowsingMixin:
             self._documents.clear_pending_changes()
         else:
             user.speak_l("documents-export-no-changes")
-        self._show_documents_menu(user)
+        await self._show_documents_menu(user)
 
     async def _handle_create_pr(self, user: NetworkUser) -> None:
         """Create a pull request from pending commits (auto_pr mode)."""
         pending_count = self._documents.get_pending_change_count()
         if pending_count == 0:
             user.speak_l("documents-pr-no-commits")
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
 
         success, result = self._documents.create_pull_request()
@@ -629,28 +629,28 @@ class DocumentBrowsingMixin:
             user.speak_l("documents-pr-success", url=result)
         else:
             user.speak_l("documents-pr-failed", reason=result)
-        self._show_documents_menu(user)
+        await self._show_documents_menu(user)
 
-    def _handle_pending_info(self, user: NetworkUser) -> None:
+    async def _handle_pending_info(self, user: NetworkUser) -> None:
         """Show informational message about pending commits (auto_commit mode)."""
         pending_count = self._documents.get_pending_change_count()
         user.speak_l(
             "documents-pending-commits-info",
             count=str(pending_count),
         )
-        self._show_documents_menu(user)
+        await self._show_documents_menu(user)
 
-    def _show_documents_list(self, user: NetworkUser, category_slug: str | None) -> None:
+    async def _show_documents_list(self, user: NetworkUser, category_slug: str | None) -> None:
         """Show the list of documents in a category."""
         documents = self._documents.get_documents_in_category(
             category_slug,
             user.locale,
             include_private=self._is_admin(user),
-            allowed_private_locales=self._get_user_assigned_languages(user.username),
+            allowed_private_locales=await self._get_user_assigned_languages(user.username),
         )
         is_real_category = category_slug is not None and category_slug != ""
         is_admin = self._is_admin(user)
-        is_transcriber = self._is_transcriber(user.username)
+        is_transcriber = await self._is_transcriber(user.username)
 
         items = []
         for doc in documents:
@@ -699,37 +699,37 @@ class DocumentBrowsingMixin:
         """Handle document list menu selection."""
         category_slug = state.get("category_slug")
         if selection_id == "back":
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
         elif selection_id == "rename_category":
-            if not (self._is_transcriber(user.username) or self._is_admin(user)):
-                self._deny_document_permission(user)
+            if not (await self._is_transcriber(user.username) or self._is_admin(user)):
+                await self._deny_document_permission(user)
                 return
             self._show_rename_category_editbox(user, category_slug)
         elif selection_id == "category_settings":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
             self._show_category_settings(user, category_slug)
         elif selection_id == "delete_category":
             if not self._is_admin(user):
-                self._deny_document_permission(user)
+                await self._deny_document_permission(user)
                 return
             self._show_delete_category_confirm(user, category_slug)
         elif selection_id.startswith("doc_"):
             folder_name = selection_id[4:]
-            if self._is_transcriber(user.username) or self._is_admin(user):
+            if await self._is_transcriber(user.username) or self._is_admin(user):
                 self._show_document_actions(user, folder_name, state)
             else:
-                self._show_document_view(user, folder_name, state)
+                await self._show_document_view(user, folder_name, state)
 
     # ------------------------------------------------------------------
     # Document view
     # ------------------------------------------------------------------
 
-    def _show_document_view(self, user: NetworkUser, folder_name: str, state: dict) -> None:
+    async def _show_document_view(self, user: NetworkUser, folder_name: str, state: dict) -> None:
         """Show a document in a read-only editbox."""
-        visible_locales = self._get_user_visible_locales(user, folder_name)
-        allowed_private_locales = self._get_user_assigned_languages(user.username)
+        visible_locales = await self._get_user_visible_locales(user, folder_name)
+        allowed_private_locales = await self._get_user_assigned_languages(user.username)
         meta = self._documents.get_document_metadata(folder_name) or {}
         source_locale = meta.get("source_locale", "en")
         title_locale = None
@@ -750,7 +750,7 @@ class DocumentBrowsingMixin:
             break
         if content is None:
             user.speak_l("documents-no-content")
-            self._show_documents_list(user, state.get("category_slug"))
+            await self._show_documents_list(user, state.get("category_slug"))
             return
 
         title = self._get_visible_document_title(
@@ -812,11 +812,11 @@ class DocumentBrowsingMixin:
         """Handle document action menu selection."""
         folder_name = state.get("folder_name", "")
         if selection_id == "back":
-            self._show_documents_list(user, state.get("category_slug"))
+            await self._show_documents_list(user, state.get("category_slug"))
         elif selection_id == "view":
-            self._show_document_view(user, folder_name, state)
+            await self._show_document_view(user, folder_name, state)
         elif selection_id == "edit":
-            self._show_edit_language_menu(user, folder_name, state)
+            await self._show_edit_language_menu(user, folder_name, state)
         elif selection_id == "settings":
             self._show_document_settings(user, folder_name, state)
 
@@ -928,38 +928,38 @@ class DocumentBrowsingMixin:
         if selection_id == "back":
             self._show_document_actions(user, folder_name, state)
         elif selection_id == "change_title":
-            if not (self._is_admin(user) or self._is_transcriber(user.username)):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+            if not (self._is_admin(user) or await self._is_transcriber(user.username)):
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
-            self._show_document_title_languages(user, folder_name, state)
+            await self._show_document_title_languages(user, folder_name, state)
         elif selection_id == "manage_visibility":
-            if not (self._is_admin(user) or self._is_transcriber(user.username)):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+            if not (self._is_admin(user) or await self._is_transcriber(user.username)):
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
             self._show_document_visibility(user, folder_name, state)
         elif selection_id == "modify_categories":
             if not self._is_admin(user):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
             self._show_document_categories(user, folder_name, state)
         elif selection_id == "add_translation":
-            if not (self._is_admin(user) or self._is_transcriber(user.username)):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+            if not (self._is_admin(user) or await self._is_transcriber(user.username)):
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
-            self._show_add_translation_languages(user, folder_name, state)
+            await self._show_add_translation_languages(user, folder_name, state)
         elif selection_id == "remove_translation":
             if not self._is_admin(user):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
-            self._show_remove_translation_languages(user, folder_name, state)
+            await self._show_remove_translation_languages(user, folder_name, state)
         elif selection_id == "delete_document":
             if not self._is_admin(user):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
             self._show_delete_document_confirm(user, folder_name, state)
         elif selection_id == "promote_to_shared":
             if not self._is_admin(user):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
             self._show_promote_confirm(user, folder_name, state)
         elif selection_id == "based_on_stale_notice":
@@ -984,7 +984,7 @@ class DocumentBrowsingMixin:
         """Handle promote-to-shared confirmation."""
         folder_name = state.get("folder_name", "")
         if not self._is_admin(user):
-            self._deny_document_permission(user, folder_name=folder_name, state=state)
+            await self._deny_document_permission(user, folder_name=folder_name, state=state)
             return
         if selection_id == "yes":
             result = self._documents.promote_to_shared(folder_name)
@@ -1011,7 +1011,7 @@ class DocumentBrowsingMixin:
     # Change title
     # ------------------------------------------------------------------
 
-    def _show_document_title_languages(
+    async def _show_document_title_languages(
         self, user: NetworkUser, folder_name: str, state: dict
     ) -> None:
         """Show language selection for changing a document title."""
@@ -1021,7 +1021,7 @@ class DocumentBrowsingMixin:
             return
 
         # Titles are transcribable even without an existing translation.
-        title_locales = self._get_title_candidate_locales(user)
+        title_locales = await self._get_title_candidate_locales(user)
 
         if not title_locales:
             user.speak_l("documents-no-permission")
@@ -1101,7 +1101,7 @@ class DocumentBrowsingMixin:
         if not value.strip():
             # Empty/cancelled — return to appropriate menu
             if flow == "new_document":
-                self._show_documents_menu(user)
+                await self._show_documents_menu(user)
             else:
                 self._show_document_settings(user, folder_name, state)
             return
@@ -1192,7 +1192,7 @@ class DocumentBrowsingMixin:
         elif selection_id.startswith("lang_"):
             locale_code = selection_id[5:]
             # Permission check: user must have this language assigned
-            assigned = self._get_user_assigned_languages(user.username)
+            assigned = await self._get_user_assigned_languages(user.username)
             if not self._is_admin(user) and locale_code not in assigned:
                 lang_name = Localization.get(user.locale, f"language-{locale_code}")
                 user.speak_l("documents-visibility-no-permission", language=lang_name)
@@ -1272,7 +1272,7 @@ class DocumentBrowsingMixin:
             self._show_document_settings(user, folder_name, state)
         elif selection_id.startswith("cat_"):
             if not self._is_admin(user):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
             slug = selection_id[4:]
             meta = self._documents.get_document_metadata(folder_name)
@@ -1292,7 +1292,7 @@ class DocumentBrowsingMixin:
     # Remove translation (admin only)
     # ------------------------------------------------------------------
 
-    def _show_remove_translation_languages(
+    async def _show_remove_translation_languages(
         self, user: NetworkUser, folder_name: str, state: dict
     ) -> None:
         """Show language selection for removing a translation."""
@@ -1302,7 +1302,7 @@ class DocumentBrowsingMixin:
             return
 
         source_locale = meta.get("source_locale", "en")
-        doc_locales = self._get_user_accessible_locales(user, folder_name)
+        doc_locales = await self._get_user_accessible_locales(user, folder_name)
 
         if not doc_locales:
             user.speak_l("documents-no-permission")
@@ -1339,7 +1339,7 @@ class DocumentBrowsingMixin:
             locale_code = selection_id[5:]
             if locale_code == source_locale:
                 user.speak_l("documents-remove-translation-source")
-                self._show_remove_translation_languages(user, folder_name, state)
+                await self._show_remove_translation_languages(user, folder_name, state)
             else:
                 self._show_remove_translation_confirm(
                     user,
@@ -1374,7 +1374,7 @@ class DocumentBrowsingMixin:
         folder_name = state.get("folder_name", "")
         locale_code = state.get("locale_code", "")
         if not self._is_admin(user):
-            self._deny_document_permission(user, folder_name=folder_name, state=state)
+            await self._deny_document_permission(user, folder_name=folder_name, state=state)
             return
         if selection_id == "yes":
             lock_holder = self._documents.get_edit_lock_holder(
@@ -1450,7 +1450,7 @@ class DocumentBrowsingMixin:
         folder_name = state.get("folder_name", "")
         locale_code = state.get("locale_code", "")
         if not self._is_admin(user):
-            self._deny_document_permission(user, folder_name=folder_name, state=state)
+            await self._deny_document_permission(user, folder_name=folder_name, state=state)
             return
         remove_title = selection_id == "yes"
         self._documents.remove_document_translation(
@@ -1491,7 +1491,7 @@ class DocumentBrowsingMixin:
         folder_name = state.get("folder_name", "")
         category_slug = state.get("category_slug")
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         if selection_id == "yes":
             active_locks = self._documents.get_document_lock_holders(
@@ -1512,7 +1512,7 @@ class DocumentBrowsingMixin:
             else:
                 self._documents.delete_document(folder_name)
                 user.speak_l("documents-deleted")
-                self._show_documents_list(user, category_slug)
+                await self._show_documents_list(user, category_slug)
         else:
             self._show_document_settings(user, folder_name, state)
 
@@ -1520,9 +1520,9 @@ class DocumentBrowsingMixin:
     # Edit document content
     # ------------------------------------------------------------------
 
-    def _show_edit_language_menu(self, user: NetworkUser, folder_name: str, state: dict) -> None:
+    async def _show_edit_language_menu(self, user: NetworkUser, folder_name: str, state: dict) -> None:
         """Show language selection for editing document content."""
-        locales = self._get_user_accessible_locales(user, folder_name)
+        locales = await self._get_user_accessible_locales(user, folder_name)
         if not locales:
             user.speak_l("documents-no-permission")
             self._show_document_actions(user, folder_name, state)
@@ -1561,8 +1561,8 @@ class DocumentBrowsingMixin:
             self._show_document_actions(user, folder_name, state)
         elif selection_id.startswith("lang_"):
             locale_code = selection_id[5:]
-            if locale_code not in self._get_user_accessible_locales(user, folder_name):
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+            if locale_code not in await self._get_user_accessible_locales(user, folder_name):
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
             self._open_document_editor(
                 user,
@@ -1576,7 +1576,7 @@ class DocumentBrowsingMixin:
     # Add translation
     # ------------------------------------------------------------------
 
-    def _show_add_translation_languages(
+    async def _show_add_translation_languages(
         self, user: NetworkUser, folder_name: str, state: dict
     ) -> None:
         """Show language selection for adding a new translation."""
@@ -1585,7 +1585,7 @@ class DocumentBrowsingMixin:
             self._show_document_settings(user, folder_name, state)
             return
 
-        available = self._get_add_translation_locales(user, folder_name, meta)
+        available = await self._get_add_translation_locales(user, folder_name, meta)
 
         if not available:
             user.speak_l("documents-no-languages-available")
@@ -1622,9 +1622,9 @@ class DocumentBrowsingMixin:
             self._show_document_settings(user, folder_name, state)
         elif selection_id.startswith("lang_"):
             locale_code = selection_id[5:]
-            assigned = self._get_user_assigned_languages(user.username)
+            assigned = await self._get_user_assigned_languages(user.username)
             if not self._is_admin(user) and locale_code not in assigned:
-                self._deny_document_permission(user, folder_name=folder_name, state=state)
+                await self._deny_document_permission(user, folder_name=folder_name, state=state)
                 return
             # Show title editbox for the new translation, pre-populated
             # with existing title if one was set (e.g. via change-title).
@@ -1808,7 +1808,7 @@ class DocumentBrowsingMixin:
                         user, folder_name, locale_code, flow,
                     )
                     return
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
 
         # Guard against the document or translation being removed while
@@ -1871,7 +1871,7 @@ class DocumentBrowsingMixin:
         # Return to appropriate menu.  If the document was removed while
         # the editor was open, fall back to the top-level documents list.
         if meta is None:
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
         elif flow == "add_translation":
             self._show_document_settings(user, folder_name, state)
         else:
@@ -1906,7 +1906,7 @@ class DocumentBrowsingMixin:
             "flow": flow,
         }
 
-    def _handle_commit_message(
+    async def _handle_commit_message(
         self, user: NetworkUser, text: str, state: dict
     ) -> None:
         """Process the commit message after a shared document save."""
@@ -1940,7 +1940,7 @@ class DocumentBrowsingMixin:
 
         # Return to the appropriate menu
         if flow == "new_document":
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
         elif flow == "add_translation":
             self._show_document_settings(user, folder_name, state)
         else:
@@ -1950,10 +1950,10 @@ class DocumentBrowsingMixin:
     # New document creation
     # ------------------------------------------------------------------
 
-    def _show_new_document_scope(self, user: NetworkUser) -> None:
+    async def _show_new_document_scope(self, user: NetworkUser) -> None:
         """Show scope selection menu for a new document."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         items = [
             MenuItem(
@@ -1983,10 +1983,10 @@ class DocumentBrowsingMixin:
     ) -> None:
         """Handle scope selection for new document creation."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         if selection_id == "back":
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
         scope = SCOPE_SHARED if selection_id == "shared" else SCOPE_INDEPENDENT
         self._user_states[user.username] = {
@@ -2061,10 +2061,10 @@ class DocumentBrowsingMixin:
     ) -> None:
         """Handle category toggle/done/back for new document creation."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         if selection_id == "back":
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
         elif selection_id == "done":
             self._show_new_document_slug_editbox(user, state)
         elif selection_id.startswith("cat_"):
@@ -2093,13 +2093,13 @@ class DocumentBrowsingMixin:
             "new_document_scope": state.get("new_document_scope", SCOPE_INDEPENDENT),
         }
 
-    def _handle_new_document_slug(self, user: NetworkUser, value: str, state: dict) -> None:
+    async def _handle_new_document_slug(self, user: NetworkUser, value: str, state: dict) -> None:
         """Handle slug editbox submission for a new document."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         if not value.strip():
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
 
         slug = value.strip().lower().replace(" ", "_")
@@ -2145,13 +2145,13 @@ class DocumentBrowsingMixin:
             "menu": "new_category_slug_editbox",
         }
 
-    def _handle_new_category_slug(self, user: NetworkUser, value: str, state: dict) -> None:
+    async def _handle_new_category_slug(self, user: NetworkUser, value: str, state: dict) -> None:
         """Handle slug editbox submission for a new category."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         if not value.strip():
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
 
         slug = value.strip().lower().replace(" ", "_")
@@ -2182,20 +2182,20 @@ class DocumentBrowsingMixin:
             "category_slug": slug,
         }
 
-    def _handle_new_category_name(self, user: NetworkUser, value: str, state: dict) -> None:
+    async def _handle_new_category_name(self, user: NetworkUser, value: str, state: dict) -> None:
         """Handle name editbox submission for a new category."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         slug = state.get("category_slug", "")
         if not value.strip():
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
             return
 
         name = value.strip()
         self._documents.create_category(slug, name, user.locale)
         user.speak_l("documents-category-created")
-        self._show_documents_menu(user)
+        await self._show_documents_menu(user)
 
     # ------------------------------------------------------------------
     # Category management (rename, settings, delete)
@@ -2231,20 +2231,20 @@ class DocumentBrowsingMixin:
             "category_slug": category_slug,
         }
 
-    def _handle_rename_category(self, user: NetworkUser, value: str, state: dict) -> None:
+    async def _handle_rename_category(self, user: NetworkUser, value: str, state: dict) -> None:
         """Handle rename editbox submission for a category."""
-        if not (self._is_transcriber(user.username) or self._is_admin(user)):
-            self._deny_document_permission(user)
+        if not (await self._is_transcriber(user.username) or self._is_admin(user)):
+            await self._deny_document_permission(user)
             return
         slug = state.get("category_slug", "")
         if not value.strip():
-            self._show_documents_list(user, slug)
+            await self._show_documents_list(user, slug)
             return
 
         name = value.strip()
         self._documents.rename_category(slug, name, user.locale)
         user.speak_l("documents-category-renamed")
-        self._show_documents_list(user, slug)
+        await self._show_documents_list(user, slug)
 
     def _show_category_settings(
         self,
@@ -2287,11 +2287,11 @@ class DocumentBrowsingMixin:
     ) -> None:
         """Handle category settings submenu selection."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         category_slug = state.get("category_slug", "")
         if selection_id == "back":
-            self._show_documents_list(user, category_slug)
+            await self._show_documents_list(user, category_slug)
         elif selection_id == "sort_method":
             self._show_category_sort_menu(user, category_slug)
 
@@ -2333,7 +2333,7 @@ class DocumentBrowsingMixin:
     ) -> None:
         """Handle sort method selection."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         category_slug = state.get("category_slug", "")
         if selection_id == "back":
@@ -2364,12 +2364,12 @@ class DocumentBrowsingMixin:
     ) -> None:
         """Handle delete-category confirmation."""
         if not self._is_admin(user):
-            self._deny_document_permission(user)
+            await self._deny_document_permission(user)
             return
         category_slug = state.get("category_slug", "")
         if selection_id == "yes":
             self._documents.delete_category(category_slug)
             user.speak_l("documents-category-deleted")
-            self._show_documents_menu(user)
+            await self._show_documents_menu(user)
         else:
-            self._show_documents_list(user, category_slug)
+            await self._show_documents_list(user, category_slug)

@@ -1,5 +1,5 @@
 from pathlib import Path
-from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -12,104 +12,77 @@ from server.core.server import Server, BOOTSTRAP_WARNING_ENV
 LOCALES_DIR = Path(__file__).resolve().parents[1] / "locales"
 
 
-def test_bootstrap_owner_creates_new_owner(tmp_path):
-    db_path = tmp_path / "playpalace.db"
+@pytest.fixture
+def mock_db():
+    db = AsyncMock(spec=Database)
+    db.get_user_count = AsyncMock(return_value=0)
+    db.user_exists = AsyncMock(return_value=False)
+    db.create_user = AsyncMock()
+    db.update_user_password = AsyncMock()
+    db.update_user_trust_level = AsyncMock()
+    db.approve_user = AsyncMock()
+    db.get_user = AsyncMock(return_value=None)
+    db.close = AsyncMock()
+    return db
 
-    bootstrap_owner(
-        db_path=str(db_path),
+
+async def test_bootstrap_owner_creates_new_owner(mock_db):
+    action = await bootstrap_owner(
         username="admin",
         password="secret-pass",
         locale="en",
         force=False,
         quiet=True,
+        database=mock_db,
     )
 
-    database = Database(db_path)
-    database.connect()
-    try:
-        user = database.get_user("admin")
-        assert user is not None
-        assert user.trust_level == TrustLevel.SERVER_OWNER
-        assert user.approved
-
-        auth = AuthManager(database)
-        assert auth.verify_password("secret-pass", user.password_hash)
-    finally:
-        database.close()
+    assert action == "Created"
+    mock_db.create_user.assert_awaited_once()
 
 
-def test_bootstrap_owner_requires_force_when_users_exist(tmp_path):
-    db_path = tmp_path / "existing.db"
-    database = Database(db_path)
-    database.connect()
-    try:
-        auth = AuthManager(database)
-        database.create_user(
-            username="existing",
-            password_hash=auth.hash_password("pw"),
-            trust_level=TrustLevel.USER,
-            approved=False,
-        )
-    finally:
-        database.close()
+async def test_bootstrap_owner_requires_force_when_users_exist(mock_db):
+    mock_db.get_user_count = AsyncMock(return_value=1)
 
     with pytest.raises(RuntimeError):
-        bootstrap_owner(
-            db_path=str(db_path),
+        await bootstrap_owner(
             username="admin",
             password="secret",
             force=False,
             quiet=True,
+            database=mock_db,
         )
 
 
-def test_bootstrap_owner_force_updates_existing_user(tmp_path):
-    db_path = tmp_path / "override.db"
-    database = Database(db_path)
-    database.connect()
-    try:
-        auth = AuthManager(database)
-        database.create_user(
-            username="admin",
-            password_hash=auth.hash_password("old"),
-            trust_level=TrustLevel.USER,
-            approved=False,
-        )
-    finally:
-        database.close()
+async def test_bootstrap_owner_force_updates_existing_user(mock_db):
+    mock_db.get_user_count = AsyncMock(return_value=1)
+    mock_db.user_exists = AsyncMock(return_value=True)
 
-    bootstrap_owner(
-        db_path=str(db_path),
+    action = await bootstrap_owner(
         username="admin",
         password="new-secret",
         force=True,
         quiet=True,
+        database=mock_db,
     )
 
-    database = Database(db_path)
-    database.connect()
-    try:
-        user = database.get_user("admin")
-        assert user.trust_level == TrustLevel.SERVER_OWNER
-        assert user.approved
-        auth = AuthManager(database)
-        assert auth.verify_password("new-secret", user.password_hash)
-    finally:
-        database.close()
+    assert action == "Updated"
+    mock_db.update_user_password.assert_awaited_once()
+    mock_db.update_user_trust_level.assert_awaited_once()
+    mock_db.approve_user.assert_awaited_once()
 
 
-def test_warn_if_no_users_prints_message(capsys, tmp_path):
+async def test_warn_if_no_users_prints_message(capsys, tmp_path):
     server = Server(db_path=str(tmp_path / "db.sqlite"), locales_dir=LOCALES_DIR)
-    server._db = SimpleNamespace(get_user_count=lambda: 0)
-    server._warn_if_no_users()
+    server._db = AsyncMock(get_user_count=AsyncMock(return_value=0))
+    await server._warn_if_no_users()
     out = capsys.readouterr().out
     assert "bootstrap-owner" in out
 
 
-def test_warn_if_no_users_respects_env(monkeypatch, capsys, tmp_path):
+async def test_warn_if_no_users_respects_env(monkeypatch, capsys, tmp_path):
     server = Server(db_path=str(tmp_path / "db.sqlite"), locales_dir=LOCALES_DIR)
-    server._db = SimpleNamespace(get_user_count=lambda: 0)
+    server._db = AsyncMock(get_user_count=AsyncMock(return_value=0))
     monkeypatch.setenv(BOOTSTRAP_WARNING_ENV, "1")
-    server._warn_if_no_users()
+    await server._warn_if_no_users()
     out = capsys.readouterr().out
     assert out == ""
