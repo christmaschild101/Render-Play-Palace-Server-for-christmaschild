@@ -35,8 +35,8 @@ Examples:
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port number to listen on (default: 8000)",
+        default=None,
+        help="Port number to listen on (overrides config; default: 8000)",
     )
     parser.add_argument(
         "--ssl-cert",

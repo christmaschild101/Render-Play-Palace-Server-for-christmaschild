@@ -8,7 +8,7 @@ ENV APP_USER=${APP_USER}
 WORKDIR ${APP_DIR}
 
 COPY . ./
-RUN uv sync --frozen --no-dev --python python3.11 \
+RUN uv sync --frozen --no-dev --python python3.13 \
     && chown -R ${APP_USER}:${APP_USER} ${APP_DIR}
 USER ${APP_USER}
 
