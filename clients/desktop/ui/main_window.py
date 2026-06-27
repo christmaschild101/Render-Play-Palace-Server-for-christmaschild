@@ -1234,7 +1234,8 @@ class MainWindow(wx.Frame):
             self.add_history(f"Connecting as {username}...", "activity")
 
             # Set a timeout to detect if connection never succeeds
-            self.connection_timeout_timer = wx.CallLater(10000, self._check_connection_timeout)
+            # Render free tier can take 30+ seconds to cold-start (Supabase + service spin-up)
+            self.connection_timeout_timer = wx.CallLater(30000, self._check_connection_timeout)
         else:
             self._show_connection_error("Failed to start connection to server.")
 
