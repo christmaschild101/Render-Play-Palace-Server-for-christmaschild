@@ -76,7 +76,38 @@ class Database:
         self._pool: asyncpg.Pool | None = None
         self._database_url: str | None = None
 
+    @staticmethod
+    def _load_dotenv() -> None:
+        """Load DATABASE_URL from a .env file in the server directory, if present.
+
+        Only sets the env var if it isn't already set — Render's env vars take
+        precedence over the local .env file.
+        """
+        if os.environ.get("DATABASE_URL"):
+            return
+        dotenv_path = Path(__file__).resolve().parents[1] / ".env"
+        if not dotenv_path.exists():
+            dotenv_path = Path.cwd() / ".env"
+        if not dotenv_path.exists():
+            return
+        try:
+            for line in dotenv_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip("\"'")
+                if key == "DATABASE_URL":
+                    os.environ["DATABASE_URL"] = value
+                    return
+        except OSError:
+            pass
+
     def _get_database_url(self) -> str:
+        self._load_dotenv()
         url = self._database_url or os.environ.get("DATABASE_URL") or ""
         if not url:
             print(
