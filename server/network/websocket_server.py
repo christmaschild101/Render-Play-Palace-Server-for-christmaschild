@@ -123,8 +123,6 @@ class WebSocketServer:
         WebSocket upgrade requests are never intercepted - they pass
         through regardless of path.
         """
-        # Check for WebSocket upgrade by looking for the mandatory
-        # Sec-WebSocket-Key header (present ONLY in upgrade requests).
         headers = getattr(request, "headers", {})
         if headers and "sec-websocket-key" in {k.lower() for k in headers}:
             return None
