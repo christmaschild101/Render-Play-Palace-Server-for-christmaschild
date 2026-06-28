@@ -202,6 +202,9 @@ class WebSocketServer:
             async for message in websocket:
                 try:
                     packet = json.loads(message)
+                    # Echo ping immediately to verify basic message flow
+                    if packet.get("type") == "ping":
+                        await client.send({"type": "pong"})
                     if self._on_message:
                         await self._on_message(client, packet)
                 except json.JSONDecodeError:
